@@ -3,7 +3,7 @@
  * Plugin Name: Hexa JPN Tools
  * Plugin URI: https://github.com/mikeyperes/hexa-jpn-tools
  * Description: JPN event management, host tools, and the authenticated Code.Hexa integration contract.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Requires at least: 6.0
  * Requires PHP: 8.1
  * Author: Michael Peres
@@ -18,7 +18,7 @@ declare(strict_types=1);
 
 defined('ABSPATH') || exit;
 
-define('HEXA_JPN_TOOLS_VERSION', '1.0.0');
+define('HEXA_JPN_TOOLS_VERSION', '1.0.1');
 define('HEXA_JPN_TOOLS_PLUGIN_FILE', __FILE__);
 define('HEXA_JPN_TOOLS_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('HEXA_JPN_TOOLS_PLUGIN_URL', plugin_dir_url(__FILE__));

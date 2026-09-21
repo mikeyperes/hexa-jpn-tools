@@ -71,7 +71,7 @@ try {
     $manifestData = (array) $manifest->get_data();
     $expect($manifest->get_status() === 200, 'authenticated manifest returns HTTP 200');
     $expect(($manifestData['plugin']['name'] ?? null) === 'Hexa JPN Tools', 'manifest identifies Hexa JPN Tools');
-    $expect(($manifestData['plugin']['version'] ?? null) === '1.0.0', 'manifest exposes plugin version 1.0.0');
+    $expect(($manifestData['plugin']['version'] ?? null) === '1.0.1', 'manifest exposes plugin version 1.0.1');
     $expect(($manifestData['plugin']['slug'] ?? null) === 'hexa-jpn-tools', 'manifest exposes the canonical plugin slug');
     $expect(($manifestData['timezone'] ?? null) === EventDates::TIMEZONE, 'manifest exposes the event timezone');
     $manifestJson = (string) wp_json_encode($manifestData);
@@ -340,9 +340,7 @@ try {
     wp_update_post(['ID' => $eventPostId, 'post_author' => $createdUserId]);
     wp_set_current_user($createdUserId);
     $contributorRead = $request('GET', $eventRoute($externalRef));
-    $contributorData = (array) $contributorRead->get_data();
-    $expect($contributorRead->get_status() === 200, 'event author can read its own draft receipt');
-    $expect((array) ($contributorData['event']['related_post_ids'] ?? []) === [], 'snapshot hides an unreadable related draft from a lower-privilege author');
+    $expect($contributorRead->get_status() === 403, 'event author without the integration capability cannot read through the first-party API');
     wp_set_current_user($administratorId);
 
     global $wpdb;

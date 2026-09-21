@@ -35,7 +35,7 @@ if (!defined('HEXA_JPN_TOOLS_VERSION')) {
     require $root . '/hexa-jpn-tools.php';
 }
 
-$expect(defined('HEXA_JPN_TOOLS_VERSION') && HEXA_JPN_TOOLS_VERSION === '1.0.0', 'plugin bootstrap defines version 1.0.0');
+$expect(defined('HEXA_JPN_TOOLS_VERSION') && HEXA_JPN_TOOLS_VERSION === '1.0.1', 'plugin bootstrap defines version 1.0.1');
 $expect(class_exists(Hexa\JpnTools\Plugin::class), 'namespaced plugin class autoloads');
 $expect(
     $privacyMuLoaded
