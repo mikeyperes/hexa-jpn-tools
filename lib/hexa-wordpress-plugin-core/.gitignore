@@ -1,0 +1,9 @@
+/vendor/
+/.phpunit.cache/
+/.php-cs-fixer.cache
+.DS_Store
+*.log
+error_log
+*.tmp
+*.bak
+*.backup

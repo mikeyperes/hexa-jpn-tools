@@ -1,0 +1,130 @@
+.events-photos .event-photo {
+    margin-bottom: 20px;
+}
+
+.events-photos .event-photo img {
+    width: 100%;
+}
+
+.events-photos .click-overlay {
+    background: rgba(0, 0, 0, .8);
+    bottom: 0;
+    color: #fff;
+    font-size: 2.1em;
+    left: 0;
+    padding: 7px;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+    text-align: center;
+}
+
+.jpn-related-events {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    margin-top: 2rem;
+    padding: 1.25rem;
+}
+
+.jpn-related-events h2 {
+    font-size: 1.25rem;
+    margin: 0 0 .75rem;
+}
+
+.jpn-related-events ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.jpn-upcoming-event-banner {
+    align-items: center;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .09);
+    box-shadow: 0 0 40px rgba(0, 0, 0, .4);
+    color: #fff;
+    display: flex;
+    gap: 24px;
+    justify-content: space-between;
+    padding: 24px;
+    text-decoration: none;
+    width: 100%;
+}
+
+.jpn-upcoming-event-banner:hover,
+.jpn-upcoming-event-banner:focus {
+    color: #fff;
+    text-decoration: none;
+}
+
+.jpn-event-banner-main,
+.jpn-event-banner-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.jpn-event-banner-main { flex: 1 1 42%; }
+.jpn-event-banner-meta { flex: 0 1 180px; }
+.jpn-event-banner-date { flex-basis: 120px; }
+
+.jpn-event-banner-label {
+    color: rgba(255, 255, 255, .55);
+    font-family: "Segoe UI", sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: .4em;
+    line-height: 1.3;
+    margin-bottom: 8px;
+}
+
+.jpn-event-banner-title {
+    color: #fff;
+    font-family: "Segoe UI", sans-serif;
+    font-size: clamp(16px, 2vw, 24px);
+    font-weight: 900;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+
+.jpn-event-banner-value {
+    color: #fff;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.jpn-event-banner-divider {
+    background: rgba(255, 255, 255, .1);
+    height: 32px;
+    width: 1px;
+}
+
+.jpn-event-banner-button {
+    border: 1px solid rgba(255, 255, 255, .25);
+    color: #fff;
+    flex: 0 0 auto;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 14px;
+    letter-spacing: .4em;
+    padding: 16px 28px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+    .jpn-upcoming-event-banner {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .jpn-event-banner-divider { display: none; }
+    .jpn-event-banner-meta,
+    .jpn-event-banner-date { flex-basis: auto; }
+    .jpn-event-banner-button {
+        display: inline-flex;
+        justify-content: center;
+        width: 100%;
+    }
+}

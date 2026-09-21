@@ -1,0 +1,9 @@
+.column-event_thumbnail { width: 72px; }
+.fixed .column-event_thumbnail { padding-bottom: 8px; padding-top: 8px; }
+.jpn-admin-thumbnail { border-radius: 6px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .08); display: block; height: 56px; object-fit: cover; width: 56px; }
+.jpn-derived-event-field input,
+.jpn-derived-event-field textarea,
+.jpn-derived-event-field select { background: #f6f7f7; color: #50575e; cursor: not-allowed; }
+.hexa-jpn-dashboard-card { margin: 10px; }
+.hexa-jpn-dashboard-card .inside { padding: 10px; }
+.hexa-jpn-dashboard-card button { margin: 5px; }
