@@ -131,11 +131,13 @@ final class EventWriter
                     $this->setMeta($postId, $stored, '');
                     $this->setMeta($postId, $stored . '_timestamp', '');
                     $this->setMeta($postId, $stored . '_display', '');
+                    $this->setMeta($postId, $stored . '_precision', '');
                 } else {
                     $normalized = $this->dates->normalize($value);
                     $this->setMeta($postId, $stored, $normalized['storage']);
                     $this->setMeta($postId, $stored . '_timestamp', (string) $normalized['timestamp']);
                     $this->setMeta($postId, $stored . '_display', $normalized['display']);
+                    $this->setMeta($postId, $stored . '_precision', $normalized['precision']);
                 }
                 $changed = true;
             } catch (Throwable $exception) {

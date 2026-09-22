@@ -17,6 +17,7 @@ use Hexa\JpnTools\Events\EventRelations;
 use Hexa\JpnTools\Frontend\Privacy;
 use Hexa\JpnTools\Frontend\Shortcodes;
 use Hexa\JpnTools\Integration\CoreIntegration;
+use Hexa\JpnTools\Migrations\Migration;
 use Hexa\JpnTools\Rest\EventBindings;
 use Hexa\JpnTools\Rest\EventController;
 use Hexa\JpnTools\Rest\HostController;
@@ -56,6 +57,7 @@ final class Plugin
         $relations = new EventRelations($queries);
 
         (new ContentTypes())->register();
+        Migration::register();
         (new AcfFields())->register();
         (new HostRole())->register();
         (new EventAdmin($dates))->register();

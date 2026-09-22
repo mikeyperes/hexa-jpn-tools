@@ -51,8 +51,12 @@ $expect = static function (bool $condition, string $message) use (&$assertions, 
 $dates = new EventDates();
 $normalized = $dates->normalize('2026-07-04 16:30:00');
 $expect($normalized['storage'] === '2026-07-04 16:30:00', 'local storage date is preserved');
+$expect($normalized['precision'] === 'date_time', 'timed events retain date-time precision');
 $expect(str_ends_with($normalized['iso8601'], '-04:00'), 'summer event uses Miami daylight offset');
 $expect($dates->normalize('2026-07-04T20:30:00+00:00')['storage'] === '2026-07-04 16:30:00', 'offset date normalizes to Miami time');
+$dateOnly = $dates->normalize('2027-01-14');
+$expect($dateOnly['storage'] === '2027-01-14 00:00:00', 'date-only events retain calendar storage without inventing a source time');
+$expect($dateOnly['display'] === 'January 14' && $dateOnly['precision'] === 'date', 'date-only events expose date precision and no midnight display');
 
 $gapRejected = false;
 try {
@@ -116,7 +120,7 @@ $expect(EventController::requestDigest($firstPayload) !== EventController::reque
 $bootstrapPath = $root . '/hexa-jpn-tools.php';
 $bootstrap = (string) file_get_contents($bootstrapPath);
 $expect(str_contains($bootstrap, 'Plugin Name: Hexa JPN Tools'), 'prepared bootstrap has the final display name');
-$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.0.1')"), 'plugin header and version constant use version 1.0.1');
+$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.0.2')"), 'plugin header and version constant use version 1.0.2');
 $expect(str_contains($bootstrap, '\\Hexa\\JpnTools\\Plugin::register();'), 'plugin bootstrap registers the isolated namespaced plugin');
 $expect(str_contains($bootstrap, "hexa_plugin_core_register_package('hexa-jpn-tools'"), 'plugin registers its vendored Hexa WP Core candidate');
 

@@ -409,6 +409,8 @@ final class EventController
         $currentBinding = $bindingSchemaReady ? $this->bindings->findByPostId($postId) : null;
         $start = (int) get_post_meta($postId, 'start_date_timestamp', true);
         $end = (int) get_post_meta($postId, 'end_date_timestamp', true);
+        $startPrecision = (string) get_post_meta($postId, 'start_date_precision', true);
+        $endPrecision = (string) get_post_meta($postId, 'end_date_precision', true);
         $areaId = $this->normalizeAreaId(get_post_meta($postId, 'area', true));
         if ($areaId <= 0) {
             $terms = wp_get_object_terms($postId, 'area', ['fields' => 'ids']);
@@ -463,8 +465,10 @@ final class EventController
             'content' => $post ? EventRelations::stripLegacyBlock((string) $post->post_content) : '',
             'permalink' => $post ? get_permalink($postId) : null,
             'edit_url' => $post ? get_edit_post_link($postId, 'raw') : null,
-            'start_at' => $start > 0 ? $this->dates->formatTimestamp($start, DATE_ATOM) : null,
-            'end_at' => $end > 0 ? $this->dates->formatTimestamp($end, DATE_ATOM) : null,
+            'start_at' => $start > 0 ? $this->dates->formatTimestamp($start, $startPrecision === 'date' ? 'Y-m-d' : DATE_ATOM) : null,
+            'end_at' => $end > 0 ? $this->dates->formatTimestamp($end, $endPrecision === 'date' ? 'Y-m-d' : DATE_ATOM) : null,
+            'start_precision' => in_array($startPrecision, ['date', 'date_time'], true) ? $startPrecision : null,
+            'end_precision' => in_array($endPrecision, ['date', 'date_time'], true) ? $endPrecision : null,
             'start_timestamp' => $start ?: null,
             'end_timestamp' => $end ?: null,
             'link' => $registrationUrl,

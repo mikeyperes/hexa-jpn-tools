@@ -47,6 +47,10 @@ New events require `fields.title` and `fields.start_at` and are created as
 drafts before any requested status transition. The durable receipt reports
 each applied effect and whether public state changed.
 
+`fields.start_at` and `fields.end_at` accept strict `YYYY-MM-DD` values when the
+source supplies no time. The plugin preserves that date-only precision in event
+snapshots and frontend output instead of presenting midnight as an event time.
+
 `GET /operations/{operation_id}` returns the latest durable receipt for an
 operation ID. Code.Hexa can use this after a timeout instead of scraping the
 site or guessing whether a write succeeded.

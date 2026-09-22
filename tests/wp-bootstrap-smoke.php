@@ -35,7 +35,7 @@ if (!defined('HEXA_JPN_TOOLS_VERSION')) {
     require $root . '/hexa-jpn-tools.php';
 }
 
-$expect(defined('HEXA_JPN_TOOLS_VERSION') && HEXA_JPN_TOOLS_VERSION === '1.0.1', 'plugin bootstrap defines version 1.0.1');
+$expect(defined('HEXA_JPN_TOOLS_VERSION') && HEXA_JPN_TOOLS_VERSION === '1.0.2', 'plugin bootstrap defines version 1.0.2');
 $expect(class_exists(Hexa\JpnTools\Plugin::class), 'namespaced plugin class autoloads');
 $expect(
     $privacyMuLoaded
@@ -58,6 +58,12 @@ $expect($eventType instanceof WP_Post_Type && $eventType->rewrite['slug'] === 'e
 $expect($serviceType instanceof WP_Post_Type && $serviceType->rewrite['slug'] === 'service', 'service post type retains the service permalink slug');
 $expect($areaTaxonomy instanceof WP_Taxonomy && $areaTaxonomy->rewrite['slug'] === 'area', 'area taxonomy retains the area permalink slug');
 $expect(post_type_supports('event', 'author') && post_type_supports('event', 'thumbnail'), 'event post type retains author and thumbnail support');
+
+update_option('hexa_jpn_plugin_version', '1.0.1', false);
+Hexa\JpnTools\Migrations\Migration::maybeUpgrade();
+$expect(get_option('hexa_jpn_plugin_version') === '1.0.2', 'plugin upgrade records version 1.0.2');
+$rewriteRules = (array) get_option('rewrite_rules', []);
+$expect(isset($rewriteRules['event/([^/]+)/?$']), 'plugin upgrade refreshes the event permalink rule');
 
 (new Hexa\JpnTools\Content\AcfFields())->registerFields();
 $expect(function_exists('acf_get_local_field_group') && is_array(acf_get_local_field_group('group_6768f6933c3ea')), 'historical Event ACF group is registered locally');

@@ -71,7 +71,7 @@ try {
     $manifestData = (array) $manifest->get_data();
     $expect($manifest->get_status() === 200, 'authenticated manifest returns HTTP 200');
     $expect(($manifestData['plugin']['name'] ?? null) === 'Hexa JPN Tools', 'manifest identifies Hexa JPN Tools');
-    $expect(($manifestData['plugin']['version'] ?? null) === '1.0.1', 'manifest exposes plugin version 1.0.1');
+    $expect(($manifestData['plugin']['version'] ?? null) === '1.0.2', 'manifest exposes plugin version 1.0.2');
     $expect(($manifestData['plugin']['slug'] ?? null) === 'hexa-jpn-tools', 'manifest exposes the canonical plugin slug');
     $expect(($manifestData['timezone'] ?? null) === EventDates::TIMEZONE, 'manifest exposes the event timezone');
     $manifestJson = (string) wp_json_encode($manifestData);
@@ -190,6 +190,7 @@ try {
     $expect($eventPostId > 0 && get_post_status($eventPostId) === 'draft', 'new event is created as a draft');
     $expect((string) get_post_meta($eventPostId, 'start_date', true) === '2030-03-10 13:30:00', 'start date uses Miami local storage');
     $expect((int) get_post_meta($eventPostId, 'start_date_timestamp', true) === 1899394200, 'start date stores a true Unix timestamp');
+    $expect((string) get_post_meta($eventPostId, 'start_date_precision', true) === 'date_time', 'timed start stores date-time precision');
     $expect((int) get_post_meta($eventPostId, '_hexa_jpn_code_submission_id', true) === 987654321, 'Code submission ID is stored under the canonical key');
 
     $operation = $request('GET', '/' . EventController::NAMESPACE . '/operations/' . rawurlencode($createPayload['operation_id']));
@@ -221,7 +222,7 @@ try {
         'status' => 'draft',
         'fields' => [
             'title' => 'Hexa JPN Fixture Updated ' . $token,
-            'start_at' => '2030-03-11T14:45:00-04:00',
+            'start_at' => '2030-03-11',
             'start_date' => '2030-03-12 09:00:00',
             'related_post_ids' => [$relatedPostId],
         ],
@@ -230,7 +231,8 @@ try {
     $updatedData = (array) $updated->get_data();
     $expect($updated->get_status() === 200, 'existing event update returns HTTP 200');
     $expect(($updatedData['mode'] ?? null) === 'update' && ($updatedData['result'] ?? null) === 'updated', 'update receipt records update mode and outcome');
-    $expect((string) get_post_meta($eventPostId, 'start_date', true) === '2030-03-11 14:45:00', 'canonical start_at wins when both date aliases are supplied');
+    $expect((string) get_post_meta($eventPostId, 'start_date', true) === '2030-03-11 00:00:00', 'canonical date-only start_at wins when both date aliases are supplied');
+    $expect((string) get_post_meta($eventPostId, 'start_date_precision', true) === 'date', 'date-only start stores date precision');
 
     $found = $request('GET', $eventRoute($externalRef));
     $foundData = (array) $found->get_data();
@@ -242,6 +244,7 @@ try {
     }
     $expect(($snapshot['external_ref'] ?? null) === $externalRef, 'bound snapshot includes its safe external reference');
     $expect(($snapshot['operation_id'] ?? null) === $updatePayload['operation_id'], 'bound snapshot includes its latest operation ID');
+    $expect(($snapshot['start_at'] ?? null) === '2030-03-11' && ($snapshot['start_precision'] ?? null) === 'date', 'snapshot preserves date-only precision');
     $expect(in_array($relatedPostId, (array) ($snapshot['related_post_ids'] ?? []), true), 'authorized snapshot includes readable related draft');
     if ($attachmentId > 0) {
         $expect(($snapshot['featured_media_id'] ?? null) === $attachmentId, 'authorized snapshot includes readable featured media');

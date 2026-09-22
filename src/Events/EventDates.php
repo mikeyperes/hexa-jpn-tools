@@ -27,6 +27,18 @@ final class EventDates
             throw new RuntimeException('Event date is empty.');
         }
 
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/D', $value)) {
+            $local = DateTimeImmutable::createFromFormat('!Y-m-d', $value, $this->timezone());
+            $errors = DateTimeImmutable::getLastErrors();
+            if ($local instanceof DateTimeImmutable
+                && ($errors === false || (($errors['warning_count'] ?? 0) === 0 && ($errors['error_count'] ?? 0) === 0))
+                && $local->format('Y-m-d') === $value) {
+                return $local;
+            }
+
+            throw new RuntimeException('Invalid event date.');
+        }
+
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/D', $value)) {
             $local = DateTimeImmutable::createFromFormat('!' . self::STORAGE_FORMAT, $value, $this->timezone());
             $errors = DateTimeImmutable::getLastErrors();
@@ -50,13 +62,15 @@ final class EventDates
 
     public function normalize(string $value): array
     {
+        $dateOnly = preg_match('/^\d{4}-\d{2}-\d{2}$/D', trim($value)) === 1;
         $date = $this->parse($value);
 
         return [
             'storage' => $date->format(self::STORAGE_FORMAT),
             'timestamp' => $date->getTimestamp(),
-            'display' => $date->format('F j') . ' at ' . $date->format('g:iA'),
+            'display' => $dateOnly ? $date->format('F j') : $date->format('F j') . ' at ' . $date->format('g:iA'),
             'iso8601' => $date->format(DateTimeInterface::ATOM),
+            'precision' => $dateOnly ? 'date' : 'date_time',
         ];
     }
 

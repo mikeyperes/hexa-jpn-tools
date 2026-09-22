@@ -13,6 +13,13 @@ use Throwable;
 
 final class Migration
 {
+    private const VERSION_OPTION = 'hexa_jpn_plugin_version';
+
+    public static function register(): void
+    {
+        add_action('init', [self::class, 'maybeUpgrade'], 99);
+    }
+
     public static function activate(): void
     {
         self::installBindingSchema();
@@ -21,11 +28,22 @@ final class Migration
         self::recordLegacyCutover();
         (new ContentTypes())->registerTypes();
         flush_rewrite_rules(false);
+        update_option(self::VERSION_OPTION, HEXA_JPN_TOOLS_VERSION, false);
     }
 
     public static function deactivate(): void
     {
         flush_rewrite_rules(false);
+    }
+
+    public static function maybeUpgrade(): void
+    {
+        if ((string) get_option(self::VERSION_OPTION, '') === HEXA_JPN_TOOLS_VERSION) {
+            return;
+        }
+
+        flush_rewrite_rules(false);
+        update_option(self::VERSION_OPTION, HEXA_JPN_TOOLS_VERSION, false);
     }
 
     public static function installBindingSchema(): array
@@ -153,6 +171,7 @@ final class Migration
 
         return [
             'plugin_version' => defined('HEXA_JPN_TOOLS_VERSION') ? HEXA_JPN_TOOLS_VERSION : null,
+            'installed_plugin_version' => (string) get_option(self::VERSION_OPTION, ''),
             'binding_schema_version' => (int) get_option('hexa_jpn_binding_schema_version', 0),
             'binding_schema_ready' => $bindings->schemaReady(),
             'role_schema_version' => (int) get_option('hexa_jpn_role_schema_version', 0),
@@ -179,6 +198,7 @@ final class Migration
             'hexa_jpn_binding_schema_version',
             'hexa_jpn_role_schema_version',
             'hexa_jpn_date_schema_version',
+            self::VERSION_OPTION,
             'hexa_jpn_legacy_cutover',
         ];
         $options = [];
@@ -201,6 +221,8 @@ final class Migration
             'end_date',
             'end_date_timestamp',
             'end_date_display',
+            'start_date_precision',
+            'end_date_precision',
         ];
         $page = 1;
         do {

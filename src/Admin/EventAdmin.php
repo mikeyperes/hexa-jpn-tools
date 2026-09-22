@@ -182,19 +182,31 @@ final class EventAdmin
     private function updateOneDate(int $postId, string $source, string $timestamp, string $display): void
     {
         $raw = trim((string) get_post_meta($postId, $source, true));
+        $precisionKey = $source . '_precision';
         if ($raw === '') {
             update_post_meta($postId, $timestamp, '');
             update_post_meta($postId, $display, '');
+            update_post_meta($postId, $precisionKey, '');
             return;
         }
 
         try {
             $normalized = $this->dates->normalize($raw);
+            $precision = (string) get_post_meta($postId, $precisionKey, true);
+            if ($precision !== 'date' || !str_ends_with($normalized['storage'], ' 00:00:00')) {
+                $precision = $normalized['precision'];
+            }
             update_post_meta($postId, $timestamp, (string) $normalized['timestamp']);
-            update_post_meta($postId, $display, (string) $normalized['display']);
+            update_post_meta(
+                $postId,
+                $display,
+                $precision === 'date' ? $this->dates->formatTimestamp((int) $normalized['timestamp'], 'F j') : (string) $normalized['display']
+            );
+            update_post_meta($postId, $precisionKey, $precision);
         } catch (Throwable $exception) {
             update_post_meta($postId, $timestamp, '');
             update_post_meta($postId, $display, '');
+            update_post_meta($postId, $precisionKey, '');
             error_log(sprintf('Hexa JPN Tools: invalid %s for event %d.', $source, $postId));
         }
     }

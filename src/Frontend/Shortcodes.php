@@ -88,7 +88,7 @@ final class Shortcodes
     {
         $eventId = (int) get_the_ID();
         $start = (int) get_post_meta($eventId, 'start_date_timestamp', true);
-        if ($eventId <= 0 || $start <= 0) {
+        if ($eventId <= 0 || $start <= 0 || get_post_meta($eventId, 'start_date_precision', true) === 'date') {
             return '';
         }
         $value = $this->dates->formatTimestamp($start, 'g:i A');
