@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,10 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.0.3 =
+* Formats date-only event cards as a calendar date without an invented midnight time.
+* Preserves the supplied time for timed event cards.
 
 = 1.0.2 =
 * Preserves date-only event precision and hides unsupported midnight times.

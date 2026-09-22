@@ -4,11 +4,29 @@ declare(strict_types=1);
 
 namespace Hexa\JpnTools\Content;
 
+use Hexa\JpnTools\Events\EventDates;
+
 final class AcfFields
 {
+    public function __construct(private ?EventDates $dates = null)
+    {
+        $this->dates ??= new EventDates();
+    }
+
     public function register(): void
     {
         add_action('acf/init', [$this, 'registerFields'], 5);
+        add_filter('acf/format_value/name=start_date', [$this, 'formatStartDate'], 20, 2);
+    }
+
+    public function formatStartDate(mixed $value, mixed $postId): mixed
+    {
+        if (!is_numeric($postId) || get_post_meta((int) $postId, 'start_date_precision', true) !== 'date') {
+            return $value;
+        }
+
+        $timestamp = (int) get_post_meta((int) $postId, 'start_date_timestamp', true);
+        return $timestamp > 0 ? $this->dates->formatTimestamp($timestamp, 'F j, Y') : $value;
     }
 
     public function registerFields(): void
