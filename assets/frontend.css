@@ -498,3 +498,77 @@ a.jpn-host__chip--link:focus-visible {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
+
+/* Event calendar ([hexa_calendar id="jpn_events"]); Hexa WP Core owns the grid, JPN owns the palette. */
+.jpn-calendar {
+    --hcal-accent: #25D366;
+    --hcal-accent-fg: #0A150D;
+    --hcal-border: rgba(255, 255, 255, .1);
+    --hcal-muted: #9aa0a6;
+    --hcal-outside-bg: rgba(255, 255, 255, .015);
+    --hcal-item-bg: rgba(37, 211, 102, .08);
+    --hcal-item-hover: rgba(37, 211, 102, .2);
+    --hcal-item-fg: #e8ece9;
+    --hcal-field-bg: #101712;
+    --hcal-radius: 4px;
+    --hcal-gap: 14px;
+    --hcal-cell-h: 124px;
+    color: #fff;
+}
+
+.jpn-calendar .hcal-title {
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -.01em;
+}
+
+.jpn-calendar .hcal-filters {
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--hcal-border);
+    padding: 16px;
+}
+
+.jpn-calendar .hcal-select option {
+    background: #101712;
+    color: #fff;
+}
+
+.jpn-calendar .hcal-input {
+    color-scheme: dark;
+}
+
+.jpn-calendar .hcal-day.is-today {
+    background: rgba(37, 211, 102, .05);
+}
+
+.jpn-calendar .hcal-item.is-featured {
+    background: rgba(245, 197, 66, .1);
+    border-left-color: #f5c542;
+}
+
+.jpn-calendar .hcal-item.is-featured:hover,
+.jpn-calendar .hcal-item.is-featured:focus-visible {
+    background: rgba(245, 197, 66, .2);
+}
+
+.jpn-calendar .jpn-cal-star {
+    color: #f5c542;
+}
+
+.jpn-calendar .jpn-cal-meta {
+    color: #9aa0a6;
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+    .jpn-calendar .jpn-cal-meta {
+        font-size: 12px;
+        white-space: normal;
+    }
+}

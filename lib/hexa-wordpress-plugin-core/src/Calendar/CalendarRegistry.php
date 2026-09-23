@@ -1,18 +1,18 @@
 <?php
 
-namespace Hexa\PluginCore\DirectorySearch;
+namespace Hexa\PluginCore\Calendar;
 
 use Hexa\PluginCore\PublicComponents\ProfileStore;
 
 /**
- * Holds the normalized directory search profiles registered during a request.
+ * Holds the normalized calendar profiles registered during a request.
  *
  * Hosts register profiles from their own boot code, or late through the
- * `hexa_plugin_core_directory_search_register` action, which fires once the
- * first time a profile is resolved.
+ * `hexa_plugin_core_calendar_register` action, which fires once the first
+ * time a profile is resolved.
  */
-final class DirectorySearchRegistry {
-    public const REGISTER_ACTION = 'hexa_plugin_core_directory_search_register';
+final class CalendarRegistry {
+    public const REGISTER_ACTION = 'hexa_plugin_core_calendar_register';
 
     private static ?ProfileStore $store = null;
 
@@ -26,9 +26,9 @@ final class DirectorySearchRegistry {
         return self::store()->get( $id );
     }
 
-    /** @return string[] */
-    public static function ids(): array {
-        return array_keys( self::store()->all() );
+    /** @return array<string,array<string,mixed>> */
+    public static function all(): array {
+        return self::store()->all();
     }
 
     /** Test helper: forget every registered profile. */
@@ -37,6 +37,6 @@ final class DirectorySearchRegistry {
     }
 
     private static function store(): ProfileStore {
-        return self::$store ??= new ProfileStore( self::REGISTER_ACTION, [ DirectorySearchProfile::class, 'normalize' ] );
+        return self::$store ??= new ProfileStore( self::REGISTER_ACTION, [ CalendarProfile::class, 'normalize' ] );
     }
 }

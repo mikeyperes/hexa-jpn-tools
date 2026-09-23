@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hexa\JpnTools\Integration;
 
+use Hexa\PluginCore\Calendar\CalendarModule;
 use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageConfig;
@@ -46,6 +47,10 @@ final class CoreIntegration
 
         if (class_exists(DirectorySearchModule::class)) {
             self::$bootstrap->add_module(new DirectorySearchModule());
+        }
+
+        if (class_exists(CalendarModule::class)) {
+            self::$bootstrap->add_module(new CalendarModule());
         }
 
         if (is_admin() || (function_exists('wp_doing_ajax') && wp_doing_ajax())) {

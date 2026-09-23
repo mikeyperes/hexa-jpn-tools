@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\DirectorySearch;
 
+use Hexa\PluginCore\QueryFilter\QueryFilterSet;
+
 /**
  * Normalizes untrusted visitor input for one directory search profile.
  *
@@ -20,7 +22,7 @@ final class DirectorySearchRequest {
     /**
      * @param array<string,mixed> $input   Unslashed parameters (wp_unslash( $_GET ) or REST query params).
      * @param array<string,mixed> $profile Normalized profile.
-     * @return array{q:string,page:int,sort:string,filters:array<string,string>}
+     * @return array{q:string,page:int,sort:string,filters:array<string,string|array{from:string,to:string}>}
      */
     public static function from_input( array $input, array $profile ): array {
         $query = self::scalar( $input[ self::PARAM_QUERY ] ?? '' );
@@ -38,62 +40,29 @@ final class DirectorySearchRequest {
             $sort = (string) $profile['default_sort'];
         }
 
-        $raw_filters = $input[ self::PARAM_FILTER ] ?? [];
-        $raw_filters = is_array( $raw_filters ) ? $raw_filters : [];
-        $filters = [];
-        foreach ( $profile['filters'] as $key => $filter ) {
-            $value = trim( self::scalar( $raw_filters[ $key ] ?? '' ) );
-            if ( '' === $value ) {
-                continue;
-            }
-            if ( 'toggle' === $filter['control'] ) {
-                if ( in_array( strtolower( $value ), [ '1', 'yes', 'on', 'true' ], true ) ) {
-                    $filters[ $key ] = '1';
-                }
-                continue;
-            }
-            $options = self::filter_options( $filter );
-            if ( array_key_exists( $value, $options ) ) {
-                $filters[ $key ] = $value;
-            }
-        }
-
         return [
             'q'       => $query,
             'page'    => $page,
             'sort'    => $sort,
-            'filters' => $filters,
+            'filters' => QueryFilterSet::parse( $profile['filters'], $input[ self::PARAM_FILTER ] ?? [], QueryFilterSet::scope( 'directory', $profile ) ),
         ];
     }
 
     /**
-     * Resolves a select filter's options (static array or host callback) to value => label.
+     * Resolves a select filter's options to value => label.
      *
-     * @param array<string,mixed> $filter
+     * @deprecated 3.2.0 Use QueryFilterSet::options().
+     * @param array<string,mixed> $filter Normalized filter.
      * @return array<string,string>
      */
     public static function filter_options( array $filter ): array {
-        $options = $filter['options'] ?? [];
-        if ( is_callable( $options ) ) {
-            // Hosts should cache expensive option lists themselves; Core calls this once per render pass.
-            $options = (array) call_user_func( $options );
-        }
-
-        $normalized = [];
-        foreach ( (array) $options as $value => $label ) {
-            $value = trim( (string) $value );
-            if ( '' !== $value ) {
-                $normalized[ $value ] = (string) $label;
-            }
-        }
-
-        return $normalized;
+        return QueryFilterSet::options( $filter + [ 'key' => '', 'type' => 'meta' ], [ 'component' => 'directory' ], false );
     }
 
     /**
      * Builds the public query arguments for a URL or REST call.
      *
-     * @param array{q:string,page:int,sort:string,filters:array<string,string>} $request
+     * @param array{q:string,page:int,sort:string,filters:array<string,mixed>} $request
      * @return array<string,mixed>
      */
     public static function to_args( array $request, array $profile, ?int $page = null ): array {
@@ -105,7 +74,7 @@ final class DirectorySearchRequest {
             $args[ self::PARAM_SORT ] = $request['sort'];
         }
         if ( [] !== $request['filters'] ) {
-            $args[ self::PARAM_FILTER ] = $request['filters'];
+            $args[ self::PARAM_FILTER ] = QueryFilterSet::to_args( $request['filters'] );
         }
         $page = $page ?? $request['page'];
         if ( $page > 1 ) {

@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,10 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.2.0 =
+* Adds the event month calendar `[hexa_calendar id="jpn_events"]` on Hexa WP Core Calendar: a lightweight server-rendered month grid whose events link to their pages, with Area, Dates, Kids events, and Featured filters and month navigation that swaps only the grid.
+* Vendors Hexa WP Core 3.2.0 (Calendar and the shared QueryFilter structure; the host directory keeps its behavior).
 
 = 1.1.0 =
 * Adds the searchable host directory `[hexa_directory id="jpn_hosts"]` on Hexa WP Core DirectorySearch: live prefix/wildcard search, area and upcoming filters, activity sorts, event counts, and recent events per host.

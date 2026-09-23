@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 
+set_error_handler( static function ( int $severity, string $message, string $file, int $line ): bool {
+    throw new ErrorException( $message, 0, $severity, $file, $line );
+} );
+
 final class FakeDirectoryWpdb {
     public string $prefix = 'wp_';
     public string $posts = 'wp_posts';
@@ -41,6 +45,16 @@ final class FakeDirectoryWpdb {
 require $root . '/src/SearchQuery/SearchQueryConfiguration.php';
 require $root . '/src/SearchQuery/SearchTermParser.php';
 require $root . '/src/SearchQuery/SearchMatchSql.php';
+require $root . '/src/PublicComponents/ProfileValues.php';
+require $root . '/src/PublicComponents/ProfileStore.php';
+require $root . '/src/PublicComponents/PublicComponent.php';
+require $root . '/src/QueryFilter/QueryFilterType.php';
+require $root . '/src/QueryFilter/MetaFilterType.php';
+require $root . '/src/QueryFilter/TaxonomyFilterType.php';
+require $root . '/src/QueryFilter/DateRangeFilterType.php';
+require $root . '/src/QueryFilter/CallbackFilterType.php';
+require $root . '/src/QueryFilter/QueryFilterTypes.php';
+require $root . '/src/QueryFilter/QueryFilterSet.php';
 require $root . '/src/DirectorySearch/DirectorySearchProfile.php';
 require $root . '/src/DirectorySearch/DirectorySearchRegistry.php';
 require $root . '/src/DirectorySearch/DirectorySearchRequest.php';
@@ -135,7 +149,8 @@ $short = $query->where_sql( $db, $hosts, [ 'q' => 'C', 'page' => 1, 'sort' => 'e
 $expect( ! str_contains( $short, 'REGEXP' ), 'Text shorter than min_chars applies no search clause.' );
 
 $filtered = $query->where_sql( $db, $hosts, [ 'q' => '', 'page' => 1, 'sort' => 'name', 'filters' => [ 'area' => '18', 'upcoming' => '1' ] ] );
-$expect( str_contains( $filtered, "hds_fm.meta_key = 'area'" ) && str_contains( $filtered, "LIKE '%\"18\"%'" ), 'Serialized meta filters match ACF-style stored arrays.' );
+$expect( str_contains( $filtered, "hds_u_f1.meta_key = 'area'" ) && str_contains( $filtered, "LIKE '%\"18\"%'" ), 'Serialized meta filters match ACF-style stored arrays.' );
+$expect( str_contains( $filtered, 'hds_u_f1.user_id = hds_u.ID' ), 'User meta filters correlate on the users alias through the shared filter set.' );
 $expect( str_contains( $filtered, '1=0' ), 'A callback filter returning no ids excludes everything.' );
 
 // Posts SQL.
@@ -154,7 +169,7 @@ $events = DirectorySearchProfile::normalize(
 $post_where = $query->where_sql( $db, $events, [ 'q' => 'shabbat dinner', 'page' => 1, 'sort' => 'title', 'filters' => [ 'area' => 'miami' ] ] );
 $expect( str_contains( $post_where, "hds_p.post_type IN ('event')" ) && str_contains( $post_where, "post_status = 'publish'" ) && str_contains( $post_where, "post_password = ''" ), 'Posts are scoped to published, unprotected content of declared types.' );
 $expect( str_contains( $post_where, ') OR (' ), 'Any-word logic joins term clauses with OR.' );
-$expect( str_contains( $post_where, "hds_ft.slug = 'miami'" ), 'Taxonomy filters accept term slugs.' );
+$expect( str_contains( $post_where, "hds_p_f1_t.slug = 'miami'" ), 'Taxonomy filters accept term slugs.' );
 $expect( str_contains( $post_where, "hds_t.name LIKE '%shabbat%'" ), 'Declared taxonomies are searchable by term name.' );
 
 // Base path normalization (REST `base` and REQUEST_URI).
@@ -170,6 +185,18 @@ $slug_profile = DirectorySearchProfile::normalize( 'tax', [ 'post_types' => [ 'e
     'area' => [ 'type' => 'taxonomy', 'taxonomy' => 'area', 'term_field' => 'term_id', 'options' => [ '25' => 'Miami' ] ],
 ], 'render_item' => $render ] );
 $tax_where = $query->where_sql( $db, $slug_profile, [ 'q' => '', 'page' => 1, 'sort' => 'title', 'filters' => [ 'year' => '2026', 'area' => '25' ] ] );
-$expect( str_contains( $tax_where, "hds_ft.slug = '2026'" ) && str_contains( $tax_where, 'hds_ftt.term_id = 25' ), 'Taxonomy filters match slugs by default and term ids only when declared.' );
+$expect( str_contains( $tax_where, "hds_p_f1_t.slug = '2026'" ) && str_contains( $tax_where, 'hds_p_f2_tt.term_id = 25' ), 'Taxonomy filters match slugs by default and term ids only when declared.' );
+
+$dated = DirectorySearchProfile::normalize( 'dated', [ 'post_types' => [ 'event' ], 'filters' => [
+    'when' => [ 'type' => 'date_range', 'meta_key' => 'start_date_timestamp', 'format' => 'timestamp', 'timezone' => 'America/New_York' ],
+], 'render_item' => $render ] );
+$dated_request = DirectorySearchRequest::from_input( [ 'dfilter' => [ 'when' => [ 'from' => '2026-10-01', 'to' => '' ] ] ], $dated );
+$expect( [ 'when' => [ 'from' => '2026-10-01', 'to' => '' ] ] === $dated_request['filters'], 'Directory requests accept date-range filters from the shared filter set.' );
+$expect( [ 'dfilter' => [ 'when' => [ 'from' => '2026-10-01' ] ] ] === DirectorySearchRequest::to_args( $dated_request, $dated ), 'Directory URL arguments drop empty date-range sides.' );
+$expect( str_contains( $query->where_sql( $db, $dated, $dated_request ), 'CAST(hds_p_f1.meta_value AS SIGNED) >= 1790827200' ), 'Directory date-range filters bound New York midnight as a Unix timestamp.' );
+
+$expect( [ 'miami' => 'Miami' ] === DirectorySearchRequest::filter_options( [ 'options' => static fn(): array => [ 'miami' => 'Miami' ] ] ), 'The 3.1.0 filter_options() helper still works (deprecated).' );
+$expect( [ '=', 'serialized' ] === DirectorySearchProfile::META_COMPARES && in_array( 'taxonomy', DirectorySearchProfile::FILTER_TYPES, true ), 'The 3.1.0 filter constants remain as deprecated aliases.' );
+$expect( [ 'area' => '0' ] === DirectorySearchRequest::to_args( [ 'q' => '', 'page' => 1, 'sort' => 'events', 'filters' => [ 'area' => '0' ] ], $hosts )['dfilter'], "A '0' filter value stays in pagination links." );
 
 echo "PASS: directory search contract ({$assertions} assertions).\n";

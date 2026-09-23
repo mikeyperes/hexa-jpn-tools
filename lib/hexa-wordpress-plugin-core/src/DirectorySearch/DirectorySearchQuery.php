@@ -2,6 +2,7 @@
 
 namespace Hexa\PluginCore\DirectorySearch;
 
+use Hexa\PluginCore\QueryFilter\QueryFilterSet;
 use Hexa\PluginCore\SearchQuery\SearchMatchSql;
 use Hexa\PluginCore\SearchQuery\SearchTermParser;
 
@@ -26,7 +27,7 @@ final class DirectorySearchQuery {
 
     /**
      * @param array<string,mixed> $profile Normalized profile.
-     * @param array{q:string,page:int,sort:string,filters:array<string,string>} $request Normalized request.
+     * @param array{q:string,page:int,sort:string,filters:array<string,mixed>} $request Normalized request.
      * @return array{ids:int[],total:int,page:int,pages:int,per_page:int,truncated:bool,searched:bool}
      */
     public function run( array $profile, array $request ): array {
@@ -108,13 +109,9 @@ final class DirectorySearchQuery {
             $clauses[] = $search;
         }
 
-        foreach ( $request['filters'] as $key => $value ) {
-            if ( isset( $profile['filters'][ $key ] ) ) {
-                $clauses[] = $this->filter_sql( $database, $profile, $profile['filters'][ $key ], (string) $value );
-            }
-        }
+        $filters = QueryFilterSet::where( $database, $profile['filters'], $request['filters'], QueryFilterSet::scope( 'directory', $profile ), $this->alias( $profile ) );
 
-        return implode( ' AND ', array_filter( $clauses ) );
+        return implode( ' AND ', array_filter( array_merge( $clauses, $filters ) ) );
     }
 
     /**
@@ -214,45 +211,6 @@ final class DirectorySearchQuery {
         return self::POST_ALIAS . '.post_type IN (' . $this->placeholders( $database, $profile['post_types'] ) . ')'
             . ' AND ' . self::POST_ALIAS . ".post_status = 'publish'"
             . ' AND ' . self::POST_ALIAS . ".post_password = ''";
-    }
-
-    /** @param object $database */
-    private function filter_sql( $database, array $profile, array $filter, string $value ): string {
-        $alias = $this->alias( $profile );
-
-        if ( 'callback' === $filter['type'] ) {
-            $ids = call_user_func( $filter['apply'], $value, $profile );
-            if ( null === $ids ) {
-                return '';
-            }
-            $ids = array_values( array_unique( array_filter( array_map( 'intval', (array) $ids ), static fn( int $id ): bool => $id > 0 ) ) );
-
-            return [] === $ids ? '1=0' : $alias . '.ID IN (' . implode( ',', $ids ) . ')';
-        }
-
-        if ( 'taxonomy' === $filter['type'] ) {
-            $term_match = 'term_id' === ( $filter['term_field'] ?? 'slug' )
-                ? $database->prepare( 'hds_ftt.term_id = %d', (int) $value )
-                : $database->prepare( 'hds_ft.slug = %s', $value );
-
-            return 'EXISTS (SELECT 1 FROM ' . $database->term_relationships . ' hds_ftr'
-                . ' INNER JOIN ' . $database->term_taxonomy . ' hds_ftt ON hds_ftt.term_taxonomy_id = hds_ftr.term_taxonomy_id'
-                . ' INNER JOIN ' . $database->terms . ' hds_ft ON hds_ft.term_id = hds_ftt.term_id'
-                . ' WHERE hds_ftr.object_id = ' . $alias . '.ID'
-                . ' AND ' . $database->prepare( 'hds_ftt.taxonomy = %s', $filter['taxonomy'] )
-                . ' AND ' . $term_match . ')';
-        }
-
-        $meta_table = 'users' === $profile['source'] ? $database->usermeta : $database->postmeta;
-        $owner      = 'users' === $profile['source'] ? 'user_id' : 'post_id';
-        $match      = 'serialized' === $filter['compare']
-            ? $database->prepare( '(hds_fm.meta_value = %s OR hds_fm.meta_value LIKE %s)', $value, '%' . $database->esc_like( '"' . $value . '"' ) . '%' )
-            : $database->prepare( 'hds_fm.meta_value = %s', $value );
-
-        return 'EXISTS (SELECT 1 FROM ' . $meta_table . ' hds_fm'
-            . ' WHERE hds_fm.' . $owner . ' = ' . $alias . '.ID'
-            . ' AND ' . $database->prepare( 'hds_fm.meta_key = %s', $filter['meta_key'] )
-            . ' AND ' . $match . ')';
     }
 
     private function field_order_sql( array $profile, array $sort ): string {

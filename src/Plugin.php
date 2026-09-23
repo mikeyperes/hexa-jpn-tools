@@ -11,6 +11,7 @@ use Hexa\JpnTools\Admin\NotificationDashboard;
 use Hexa\JpnTools\Content\AcfFields;
 use Hexa\JpnTools\Content\ContentTypes;
 use Hexa\JpnTools\Cli\MigrationCommand;
+use Hexa\JpnTools\Events\EventCalendar;
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventQueries;
 use Hexa\JpnTools\Events\EventRelations;
@@ -67,6 +68,7 @@ final class Plugin
         $relations->register();
         (new Shortcodes($queries, $dates))->register();
         (new HostDirectory($dates))->register();
+        (new EventCalendar())->register();
         add_action('wp_enqueue_scripts', [self::class, 'enqueueFrontend']);
         (new Privacy())->register();
 

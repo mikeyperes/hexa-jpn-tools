@@ -63,6 +63,9 @@ src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SchemaTools/        Hexa\PluginCore\SchemaTools
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
+src/Calendar/           Hexa\PluginCore\Calendar
+src/QueryFilter/        Hexa\PluginCore\QueryFilter
+src/PublicComponents/   Hexa\PluginCore\PublicComponents
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
 src/Taxonomies/         Hexa\PluginCore\Taxonomies
 src/WpAdminAjax/        Hexa\PluginCore\WpAdminAjax
@@ -113,6 +116,9 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put reusable API-key/secret storage, masking, and credential setup UI in `src/CredentialVault`.
 - Put reusable smart search/X-Search endpoint and typeahead UI in `src/SmartSearch`.
 - Put public directory search profiles (posts or role-scoped users), their SQL, REST endpoint, and live-search shortcode in `src/DirectorySearch`; hosts own only profile values and card markup.
+- Put public month-grid calendar profiles, their bounded query, REST endpoint, shortcode, and inline assets in `src/Calendar`; hosts own only profile values, item links, and optional item markup.
+- Put every visitor filter (taxonomy, custom field/ACF, date range, host callback, and host-registered types) in `src/QueryFilter`; public components declare `filters` and never build their own filter SQL, parsing, or controls.
+- Put shared public-component profile sanitizers, profile stores, base-path/URL helpers, shortcode-inert output, and public REST caching in `src/PublicComponents`.
 - Put reusable critical page blueprints, assigned page storage, navigation menu creation, menu structure attachment, and page-to-menu-item tools in `src/SiteStructure`.
 - Put activity log abstractions, storage modes, and the shared dark renderer in `src/ActivityLog`.
 - Put shortcode registries, definitions, display renderers, examples, live output, and testing tools in `src/ShortcodeRegistry`.

@@ -13,7 +13,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.0.7
+Current release: 3.2.0
 ```
 
 Do not rename these.
@@ -58,6 +58,9 @@ src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
 src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
+src/Calendar/           Hexa\PluginCore\Calendar
+src/QueryFilter/        Hexa\PluginCore\QueryFilter
+src/PublicComponents/   Hexa\PluginCore\PublicComponents
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
 src/Taxonomies/         Hexa\PluginCore\Taxonomies
 src/Typography/         Hexa\PluginCore\Typography

@@ -55,6 +55,20 @@ and Instagram, an area filter, an upcoming-events toggle, Upcoming first / Most
 events / Recently active / A–Z sorts, event statistics from one aggregate
 query, and the one-per-row card.
 
+## Event calendar
+
+`[hexa_calendar id="jpn_events"]` renders the event month calendar through
+Hexa WP Core `Calendar`. Core owns the month grid, the bounded month query,
+filters, month navigation (12 months back and ahead, `rel="nofollow"`), month
+caching, the public REST endpoint
+(`/wp-json/hexa-plugin-core/v1/calendar/jpn_events`), and live interaction.
+`Hexa\JpnTools\Events\EventCalendar` owns the profile: published events by
+`start_date_timestamp`/`end_date_timestamp` in New York time (date-only events
+keep their stored last day), Area / Dates (matching events that run during the
+chosen days) / Kids events / Featured filters, and each event's time, title,
+area, and badges.
+Days are not clickable; each event links to its permalink.
+
 ## Elementor queries and shortcodes
 
 | Name | Type | Purpose |

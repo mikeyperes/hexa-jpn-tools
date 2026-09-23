@@ -25,7 +25,9 @@ $expect(str_contains($main, 'Plugin Name: Hexa JPN Tools'), 'display name is can
 $expect(str_contains($main, 'GitHub Plugin URI: https://github.com/mikeyperes/hexa-jpn-tools'), 'GitHub updater points at the canonical repository');
 $expect(str_contains($main, "Text Domain: hexa-jpn-tools"), 'text domain matches the folder slug');
 $expect(str_contains($main, "hexa_plugin_core_register_package('hexa-jpn-tools'"), 'vendored Hexa WP Core is registered');
-$expect(trim($read('lib/hexa-wordpress-plugin-core/VERSION')) === '3.1.0', 'vendored Hexa WP Core version is 3.1.0');
+$expect(trim($read('lib/hexa-wordpress-plugin-core/VERSION')) === '3.2.0', 'vendored Hexa WP Core version is 3.2.0');
+$expect(str_contains($core, 'CalendarModule'), 'the Hexa WP Core calendar module is wired');
+$expect(str_contains($read('src/Events/EventCalendar.php'), "CalendarRegistry::register(self::PROFILE"), 'the JPN event calendar registers a Core calendar profile');
 $expect(str_contains($core, "'slug'        => 'hexa-jpn-tools'"), 'Core PluginContext uses the canonical slug');
 $expect(str_contains($core, "'github_repo' => 'mikeyperes/hexa-jpn-tools'"), 'Core PluginContext uses the canonical repository');
 $expect(str_contains($core, 'GitHubPluginUpdater'), 'plugin updater is delegated to Hexa WP Core');

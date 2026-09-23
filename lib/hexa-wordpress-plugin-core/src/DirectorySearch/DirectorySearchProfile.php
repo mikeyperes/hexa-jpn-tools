@@ -2,6 +2,9 @@
 
 namespace Hexa\PluginCore\DirectorySearch;
 
+use Hexa\PluginCore\PublicComponents\ProfileValues;
+use Hexa\PluginCore\QueryFilter\MetaFilterType;
+use Hexa\PluginCore\QueryFilter\QueryFilterSet;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 
 /**
@@ -35,9 +38,14 @@ final class DirectorySearchProfile {
         'url'          => 'user_url',
     ];
 
-    public const FILTER_TYPES = [ 'meta', 'taxonomy', 'callback' ];
-    public const FILTER_CONTROLS = [ 'select', 'toggle' ];
-    public const META_COMPARES = [ '=', 'serialized' ];
+    /** @deprecated 3.2.0 Filters are QueryFilter definitions; see QueryFilterTypes::names(). */
+    public const FILTER_TYPES = [ 'meta', 'taxonomy', 'date_range', 'callback' ];
+    /** @deprecated 3.2.0 Use QueryFilterSet::CONTROLS. */
+    public const FILTER_CONTROLS = QueryFilterSet::CONTROLS;
+    /** @deprecated 3.2.0 Use MetaFilterType::COMPARES. */
+    public const META_COMPARES = MetaFilterType::COMPARES;
+    /** @deprecated 3.2.0 Use QueryFilterSet::MAX_FILTERS. */
+    public const MAX_FILTERS = QueryFilterSet::MAX_FILTERS;
     public const SORT_TYPES = [ 'field', 'callback' ];
 
     /** Sortable field key => trusted column, per source. */
@@ -52,7 +60,6 @@ final class DirectorySearchProfile {
     ];
 
     public const MAX_META_KEYS = 20;
-    public const MAX_FILTERS = 8;
     public const MAX_SORTS = 8;
     public const MAX_PER_PAGE = 50;
     public const MAX_CALLBACK_CANDIDATES = 1000;
@@ -64,7 +71,7 @@ final class DirectorySearchProfile {
      * @throws \InvalidArgumentException When the profile cannot be served safely.
      */
     public static function normalize( string $id, array $config ): array {
-        $id = self::key( $id );
+        $id = ProfileValues::key( $id );
         if ( '' === $id ) {
             throw new \InvalidArgumentException( 'A directory search profile needs a non-empty id.' );
         }
@@ -77,8 +84,8 @@ final class DirectorySearchProfile {
             throw new \InvalidArgumentException( "Directory search profile '{$id}' needs a callable render_item." );
         }
 
-        $post_types = 'posts' === $source ? self::keys( (array) ( $config['post_types'] ?? [ 'post' ] ) ) : [];
-        $roles      = 'users' === $source ? self::keys( (array) ( $config['roles'] ?? [] ) ) : [];
+        $post_types = 'posts' === $source ? ProfileValues::keys( (array) ( $config['post_types'] ?? [ 'post' ] ) ) : [];
+        $roles      = 'users' === $source ? ProfileValues::keys( (array) ( $config['roles'] ?? [] ) ) : [];
         if ( 'posts' === $source && [] === $post_types ) {
             throw new \InvalidArgumentException( "Directory search profile '{$id}' needs at least one post type." );
         }
@@ -88,15 +95,15 @@ final class DirectorySearchProfile {
 
         $field_map      = 'users' === $source ? self::USER_FIELDS : self::POST_FIELDS;
         $default_fields = 'users' === $source ? [ 'display_name' ] : [ 'title', 'excerpt', 'content' ];
-        $fields         = array_values( array_intersect( self::keys( (array) ( $config['fields'] ?? $default_fields ) ), array_keys( $field_map ) ) );
-        $meta_keys      = array_slice( self::meta_keys( (array) ( $config['meta_keys'] ?? [] ) ), 0, self::MAX_META_KEYS );
-        $taxonomies     = 'posts' === $source ? self::keys( (array) ( $config['taxonomies'] ?? [] ) ) : [];
+        $fields         = array_values( array_intersect( ProfileValues::keys( (array) ( $config['fields'] ?? $default_fields ) ), array_keys( $field_map ) ) );
+        $meta_keys      = array_slice( ProfileValues::meta_keys( (array) ( $config['meta_keys'] ?? [] ) ), 0, self::MAX_META_KEYS );
+        $taxonomies     = 'posts' === $source ? ProfileValues::keys( (array) ( $config['taxonomies'] ?? [] ) ) : [];
         if ( [] === $fields && [] === $meta_keys && [] === $taxonomies ) {
             $fields = $default_fields;
         }
 
         $sorts = self::sorts( (array) ( $config['sorts'] ?? [] ), $source );
-        $default_sort = self::key( (string) ( $config['default_sort'] ?? '' ) );
+        $default_sort = ProfileValues::key( (string) ( $config['default_sort'] ?? '' ) );
         if ( ! isset( $sorts[ $default_sort ] ) ) {
             $default_sort = (string) array_key_first( $sorts );
         }
@@ -109,12 +116,12 @@ final class DirectorySearchProfile {
             'fields'        => $fields,
             'meta_keys'     => $meta_keys,
             'taxonomies'    => $taxonomies,
-            'term_logic'    => self::choice( $config['term_logic'] ?? 'all', SearchQueryConfiguration::TERM_LOGICS, 'all' ),
-            'word_matching' => self::choice( $config['word_matching'] ?? 'prefix', SearchQueryConfiguration::WORD_MATCHING, 'prefix' ),
+            'term_logic'    => ProfileValues::choice( $config['term_logic'] ?? 'all', SearchQueryConfiguration::TERM_LOGICS, 'all' ),
+            'word_matching' => ProfileValues::choice( $config['word_matching'] ?? 'prefix', SearchQueryConfiguration::WORD_MATCHING, 'prefix' ),
             'wildcards'     => (bool) ( $config['wildcards'] ?? true ),
             'min_chars'     => max( 1, min( 10, (int) ( $config['min_chars'] ?? 2 ) ) ),
             'per_page'      => max( 1, min( self::MAX_PER_PAGE, (int) ( $config['per_page'] ?? 12 ) ) ),
-            'filters'       => self::filters( (array) ( $config['filters'] ?? [] ), $source ),
+            'filters'       => QueryFilterSet::normalize( (array) ( $config['filters'] ?? [] ), $source ),
             'sorts'         => $sorts,
             'default_sort'  => $default_sort,
             'render_item'   => $config['render_item'],
@@ -122,55 +129,9 @@ final class DirectorySearchProfile {
             'labels'        => self::labels( (array) ( $config['labels'] ?? [] ) ),
             'public'        => (bool) ( $config['public'] ?? true ),
             'cache_ttl'     => max( 0, min( self::MAX_CACHE_TTL, (int) ( $config['cache_ttl'] ?? 0 ) ) ),
-            'cache_version' => substr( self::key( (string) ( $config['cache_version'] ?? '1' ) ), 0, 32 ),
-            'class'         => self::classes( (string) ( $config['class'] ?? '' ) ),
+            'cache_version' => substr( ProfileValues::key( (string) ( $config['cache_version'] ?? '1' ) ), 0, 32 ),
+            'class'         => ProfileValues::classes( (string) ( $config['class'] ?? '' ) ),
         ];
-    }
-
-    /**
-     * @param array<int|string,mixed> $filters
-     * @return array<string,array<string,mixed>>
-     */
-    private static function filters( array $filters, string $source ): array {
-        $normalized = [];
-        foreach ( $filters as $key => $filter ) {
-            if ( ! is_array( $filter ) || count( $normalized ) >= self::MAX_FILTERS ) {
-                continue;
-            }
-            $key = self::key( (string) ( $filter['key'] ?? ( is_string( $key ) ? $key : '' ) ) );
-            $type = self::choice( $filter['type'] ?? 'meta', self::FILTER_TYPES, '' );
-            if ( '' === $key || '' === $type ) {
-                continue;
-            }
-            if ( 'taxonomy' === $type && 'posts' !== $source ) {
-                continue;
-            }
-            if ( 'callback' === $type && ( ! isset( $filter['apply'] ) || ! is_callable( $filter['apply'] ) ) ) {
-                continue;
-            }
-
-            $meta_key = self::meta_keys( [ $filter['meta_key'] ?? '' ] )[0] ?? '';
-            $taxonomy = self::key( (string) ( $filter['taxonomy'] ?? '' ) );
-            if ( ( 'meta' === $type && '' === $meta_key ) || ( 'taxonomy' === $type && '' === $taxonomy ) ) {
-                continue;
-            }
-
-            $normalized[ $key ] = [
-                'key'       => $key,
-                'type'      => $type,
-                'control'   => self::choice( $filter['control'] ?? 'select', self::FILTER_CONTROLS, 'select' ),
-                'label'     => (string) ( $filter['label'] ?? ucfirst( str_replace( '_', ' ', $key ) ) ),
-                'all_label' => (string) ( $filter['all_label'] ?? 'All' ),
-                'meta_key'  => $meta_key,
-                'compare'   => self::choice( $filter['compare'] ?? '=', self::META_COMPARES, '=' ),
-                'taxonomy'  => $taxonomy,
-                'term_field' => self::choice( $filter['term_field'] ?? 'slug', [ 'slug', 'term_id' ], 'slug' ),
-                'options'   => $filter['options'] ?? [],
-                'apply'     => $filter['apply'] ?? null,
-            ];
-        }
-
-        return $normalized;
     }
 
     /**
@@ -185,8 +146,8 @@ final class DirectorySearchProfile {
             if ( ! is_array( $sort ) || count( $normalized ) >= self::MAX_SORTS ) {
                 continue;
             }
-            $key = self::key( (string) ( $sort['key'] ?? ( is_string( $key ) ? $key : '' ) ) );
-            $type = self::choice( $sort['type'] ?? 'field', self::SORT_TYPES, '' );
+            $key = ProfileValues::key( (string) ( $sort['key'] ?? ( is_string( $key ) ? $key : '' ) ) );
+            $type = ProfileValues::choice( $sort['type'] ?? 'field', self::SORT_TYPES, '' );
             if ( '' === $key || '' === $type ) {
                 continue;
             }
@@ -200,7 +161,7 @@ final class DirectorySearchProfile {
             $normalized[ $key ] = [
                 'key'      => $key,
                 'type'     => $type,
-                'label'    => (string) ( $sort['label'] ?? ucfirst( str_replace( '_', ' ', $key ) ) ),
+                'label'    => (string) ( $sort['label'] ?? ProfileValues::label( $key ) ),
                 'field'    => 'field' === $type ? (string) $sort['field'] : '',
                 'order'    => 'DESC' === strtoupper( (string) ( $sort['order'] ?? 'ASC' ) ) ? 'DESC' : 'ASC',
                 'callback' => 'callback' === $type ? $sort['callback'] : null,
@@ -224,7 +185,7 @@ final class DirectorySearchProfile {
 
     /** @return array<string,string> */
     private static function labels( array $labels ): array {
-        $defaults = [
+        return ProfileValues::labels( [
             'search'       => 'Search',
             'placeholder'  => 'Search…',
             'submit'       => 'Search',
@@ -238,57 +199,10 @@ final class DirectorySearchProfile {
             'previous'     => 'Previous',
             'next'         => 'Next',
             'pagination'   => 'Results pages',
-        ];
-
-        foreach ( $defaults as $key => $default ) {
-            if ( isset( $labels[ $key ] ) && is_string( $labels[ $key ] ) && '' !== trim( $labels[ $key ] ) ) {
-                $defaults[ $key ] = $labels[ $key ];
-            }
-        }
-
-        return $defaults;
-    }
-
-    /** @param mixed $value @param string[] $allowed */
-    private static function choice( $value, array $allowed, string $fallback ): string {
-        $value = is_scalar( $value ) ? strtolower( trim( (string) $value ) ) : '';
-
-        return in_array( $value, $allowed, true ) ? $value : $fallback;
-    }
-
-    /** @return string[] */
-    private static function keys( array $values ): array {
-        $keys = [];
-        foreach ( $values as $value ) {
-            $key = is_scalar( $value ) ? self::key( (string) $value ) : '';
-            if ( '' !== $key && ! in_array( $key, $keys, true ) ) {
-                $keys[] = $key;
-            }
-        }
-
-        return $keys;
-    }
-
-    /** Meta keys keep their case and allow the characters WordPress stores. @return string[] */
-    private static function meta_keys( array $values ): array {
-        $keys = [];
-        foreach ( $values as $value ) {
-            $key = is_scalar( $value ) ? (string) preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $value ) : '';
-            if ( '' !== $key && strlen( $key ) <= 191 && ! in_array( $key, $keys, true ) ) {
-                $keys[] = $key;
-            }
-        }
-
-        return $keys;
+        ], $labels );
     }
 
     public static function key( string $value ): string {
-        return (string) preg_replace( '/[^a-z0-9_\-]/', '', strtolower( trim( $value ) ) );
-    }
-
-    private static function classes( string $value ): string {
-        $classes = array_filter( array_map( static fn( string $class ): string => (string) preg_replace( '/[^A-Za-z0-9_\-]/', '', $class ), preg_split( '/\s+/', $value ) ?: [] ) );
-
-        return implode( ' ', $classes );
+        return ProfileValues::key( $value );
     }
 }

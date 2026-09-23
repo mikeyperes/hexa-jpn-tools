@@ -27,7 +27,8 @@ The four search domains stay separate:
 
 `DirectorySearch` reuses `SearchTermParser` and the shared `SearchMatchSql`
 matcher, so all/any/exact term logic and whole/prefix/contains word matching
-behave identically everywhere.
+behave identically everywhere. Its filters are the shared `QueryFilter`
+structure (`docs/query-filters.md`), also used by `Calendar`.
 
 ## Setup
 
@@ -91,7 +92,7 @@ DirectorySearchRegistry::register( 'team', [
 | `term_logic` | ✓ | ✓ | `all`, `any`, or `exact` phrase. |
 | `word_matching` | ✓ | ✓ | `whole`, `prefix`, `contains`. |
 | `wildcards` | ✓ | ✓ | `syn*` word starts, `*gogue` word ends, `s*gogue` one word. |
-| `filters` | `meta`, `taxonomy`, `callback` | `meta`, `callback` | `control`: `select` or `toggle`; `meta` `compare`: `=` or `serialized` (ACF arrays); `taxonomy` `term_field`: `slug` (default) or `term_id`. A `callback` returns allowed IDs (`null` = no restriction, `[]` = none). |
+| `filters` | `meta`, `taxonomy`, `date_range`, `callback`, custom | `meta`, `date_range`, `callback`, custom | Shared `QueryFilter` definitions (`docs/query-filters.md`): select, toggle, and date-range controls; ACF-aware meta compares; keyword options (`terms`, `acf`, `distinct`); host-registered types. |
 | `sorts` | `title`, `date`, `modified` | `name`, `registered` | `callback` sorts reorder the first 1,000 candidate IDs; later rows continue in default order and totals stay exact. |
 | `prepare` | ✓ | ✓ | Batch-load card data for the current page only. |
 | `render_item` | ✓ | ✓ | Must return escaped HTML for one card. |
@@ -108,7 +109,7 @@ shareable URLs, and REST calls:
 | `dq` | Search text (max 200 characters). |
 | `dpage` | Page number (1–1000). |
 | `dsort` | A declared sort key. |
-| `dfilter[key]` | A declared filter value; select values must be declared options. |
+| `dfilter[key]` | A declared filter value; select values must be declared options; date ranges use `dfilter[key][from]` and `dfilter[key][to]`. |
 | `dir` | The profile id that owns the URL state, so several directories can share a page. |
 
 ## REST Endpoint
@@ -120,7 +121,8 @@ GET /wp-json/hexa-plugin-core/v1/directory/{profile}?dq=&dpage=&dsort=&dfilter[k
 Returns `{ html, summary, total, page, pages }`. Anonymous responses carry
 `Cache-Control: public, max-age=60` and cap LiteSpeed Cache at the same TTL.
 `base` is reduced to a same-site root-relative path (max 255 characters) plus
-the page's own non-directory query arguments; it only builds pagination links.
+the page's own non-directory query arguments, without tracking parameters
+(`utm_*`, `gclid`, `fbclid`, and similar); it only builds pagination links.
 
 ## Rendering And Interaction
 
@@ -154,6 +156,7 @@ the page's own non-directory query arguments; it only builds pagination links.
 
 ```bash
 php tests/directory-search.php
+php tests/query-filters.php
 php tests/search-query-engine.php
 php tests/package-integrity.php
 ```

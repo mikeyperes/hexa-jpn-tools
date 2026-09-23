@@ -2,6 +2,9 @@
 
 namespace Hexa\PluginCore\DirectorySearch;
 
+use Hexa\PluginCore\PublicComponents\PublicComponent;
+use Hexa\PluginCore\QueryFilter\QueryFilterSet;
+
 /**
  * Renders a directory search component and its result fragments.
  *
@@ -11,7 +14,7 @@ namespace Hexa\PluginCore\DirectorySearch;
  * against the REST endpoint.
  */
 final class DirectorySearchRenderer {
-    public const REST_NAMESPACE = 'hexa-plugin-core/v1';
+    public const REST_NAMESPACE = PublicComponent::REST_NAMESPACE;
 
     /** Hidden field naming the directory that owns the URL state. */
     public const PARAM_DIRECTORY = 'dir';
@@ -24,55 +27,37 @@ final class DirectorySearchRenderer {
         if ( null === $profile ) {
             return '';
         }
-        if ( ! $profile['public'] && ! ( function_exists( 'current_user_can' ) && current_user_can( 'read' ) ) ) {
+        if ( ! PublicComponent::can_view( $profile['public'] ) ) {
             return '';
         }
 
-        $input = $input ?? ( function_exists( 'wp_unslash' ) ? (array) wp_unslash( $_GET ) : $_GET ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public read-only search.
-        if ( isset( $input[ self::PARAM_DIRECTORY ] ) && (string) $input[ self::PARAM_DIRECTORY ] !== $profile['id'] ) {
+        $input = PublicComponent::input( $input );
+        if ( isset( $input[ self::PARAM_DIRECTORY ] ) && PublicComponent::scalar( $input[ self::PARAM_DIRECTORY ] ) !== $profile['id'] ) {
             $input = []; // URL state belongs to another directory on this page.
         }
 
         $request = DirectorySearchRequest::from_input( $input, $profile );
-        $base    = self::sanitize_base( isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- sanitized by sanitize_base().
+        $base    = self::sanitize_base( PublicComponent::request_uri() );
         $payload = $this->results( $profile, $request, $base );
         $dom_id  = 'hds-' . $profile['id'];
         $labels  = $profile['labels'];
-        $live    = $profile['public'] || ( function_exists( 'is_user_logged_in' ) && is_user_logged_in() );
 
-        [ $base_path, $base_args ] = self::split_base( $base );
+        [ $base_path, $base_args ] = PublicComponent::split_base( $base );
 
         $html = '<div class="hds ' . esc_attr( $profile['class'] ) . '" id="' . esc_attr( $dom_id ) . '"'
-            . ( $live ? ' data-hds-endpoint="' . esc_url( $this->endpoint( $profile['id'] ) ) . '"' : '' )
-            . ( ! $profile['public'] && $live && function_exists( 'wp_create_nonce' ) ? ' data-hds-nonce="' . esc_attr( wp_create_nonce( 'wp_rest' ) ) . '"' : '' )
+            . PublicComponent::live_attributes( 'hds', 'directory/' . $profile['id'], $profile['public'] )
             . ' data-hds-base="' . esc_attr( $base ) . '"'
             . ' data-hds-min="' . esc_attr( (string) $profile['min_chars'] ) . '"'
             . ' data-hds-min-label="' . esc_attr( sprintf( $labels['min_chars'], $profile['min_chars'] ) ) . '"'
             . ' data-hds-error-label="' . esc_attr( $labels['error'] ) . '">';
         $html .= '<form class="hds-form" role="search" method="get" action="' . esc_url( $base_path ) . '">';
-        foreach ( $base_args as $name => $value ) {
-            $html .= '<input type="hidden" name="' . esc_attr( (string) $name ) . '" value="' . esc_attr( (string) $value ) . '">';
-        }
+        $html .= PublicComponent::hidden_inputs( $base_args );
         $html .= '<input type="hidden" name="' . esc_attr( self::PARAM_DIRECTORY ) . '" value="' . esc_attr( $profile['id'] ) . '">';
         $html .= '<label class="hds-field hds-field--q"><span class="hds-label">' . esc_html( $labels['search'] ) . '</span>'
             . '<input class="hds-input" type="search" name="' . esc_attr( DirectorySearchRequest::PARAM_QUERY ) . '" value="' . esc_attr( $request['q'] ) . '"'
             . ' placeholder="' . esc_attr( $labels['placeholder'] ) . '" autocomplete="off" aria-controls="' . esc_attr( $dom_id ) . '-results"></label>';
 
-        foreach ( $profile['filters'] as $key => $filter ) {
-            $name = DirectorySearchRequest::PARAM_FILTER . '[' . $key . ']';
-            $current = $request['filters'][ $key ] ?? '';
-            if ( 'toggle' === $filter['control'] ) {
-                $html .= '<label class="hds-toggle"><input type="checkbox" name="' . esc_attr( $name ) . '" value="1"' . ( '1' === $current ? ' checked' : '' ) . '>'
-                    . '<span>' . esc_html( $filter['label'] ) . '</span></label>';
-                continue;
-            }
-            $html .= '<label class="hds-field"><span class="hds-label">' . esc_html( $filter['label'] ) . '</span><select class="hds-select" name="' . esc_attr( $name ) . '">'
-                . '<option value="">' . esc_html( $filter['all_label'] ) . '</option>';
-            foreach ( DirectorySearchRequest::filter_options( $filter ) as $value => $label ) {
-                $html .= '<option value="' . esc_attr( (string) $value ) . '"' . ( (string) $value === $current ? ' selected' : '' ) . '>' . esc_html( $label ) . '</option>';
-            }
-            $html .= '</select></label>';
-        }
+        $html .= QueryFilterSet::controls( $profile['filters'], $request['filters'], DirectorySearchRequest::PARAM_FILTER, 'hds', QueryFilterSet::scope( 'directory', $profile ) );
 
         if ( count( $profile['sorts'] ) > 1 ) {
             $html .= '<label class="hds-field"><span class="hds-label">' . esc_html( $labels['sort'] ) . '</span><select class="hds-select" name="' . esc_attr( DirectorySearchRequest::PARAM_SORT ) . '" data-hds-default="' . esc_attr( (string) $profile['default_sort'] ) . '">';
@@ -88,7 +73,7 @@ final class DirectorySearchRenderer {
         $html .= '</div>';
 
         // Visitor text is echoed back; make it inert to a later do_shortcode() pass (for example Elementor's the_content).
-        return $this->assets() . self::inert( $html );
+        return $this->assets() . PublicComponent::inert( $html );
     }
 
     /**
@@ -136,7 +121,7 @@ final class DirectorySearchRenderer {
     }
 
     public function endpoint( string $profile_id ): string {
-        return function_exists( 'rest_url' ) ? rest_url( self::REST_NAMESPACE . '/directory/' . $profile_id ) : '';
+        return PublicComponent::endpoint( 'directory/' . $profile_id );
     }
 
     /**
@@ -144,33 +129,7 @@ final class DirectorySearchRenderer {
      * page's own query arguments (directory parameters removed).
      */
     public static function sanitize_base( string $url ): string {
-        $path = (string) preg_replace( '#[^A-Za-z0-9/_\-.~%]#', '', (string) parse_url( $url, PHP_URL_PATH ) );
-        if ( '' === $path || '/' !== $path[0] || str_starts_with( $path, '//' ) ) {
-            $path = '/';
-        }
-        $path = substr( $path, 0, 255 );
-
-        $args = [];
-        parse_str( (string) parse_url( $url, PHP_URL_QUERY ), $args );
-        foreach ( [ DirectorySearchRequest::PARAM_QUERY, DirectorySearchRequest::PARAM_PAGE, DirectorySearchRequest::PARAM_SORT, DirectorySearchRequest::PARAM_FILTER, self::PARAM_DIRECTORY, 'base' ] as $own ) {
-            unset( $args[ $own ] );
-        }
-        $args = array_slice( array_filter( $args, static fn( $value, $key ): bool => is_scalar( $value ) && is_string( $key ) && strlen( $key ) <= 64 && strlen( (string) $value ) <= 128, ARRAY_FILTER_USE_BOTH ), 0, 8, true );
-
-        return $path . ( [] !== $args ? '?' . http_build_query( $args ) : '' );
-    }
-
-    /** @return array{0:string,1:array<string,string>} */
-    private static function split_base( string $base ): array {
-        $args = [];
-        parse_str( (string) parse_url( $base, PHP_URL_QUERY ), $args );
-
-        return [ (string) parse_url( $base, PHP_URL_PATH ) ?: '/', array_map( 'strval', $args ) ];
-    }
-
-    /** Makes already-escaped text inert to do_shortcode(); zero-padded entities survive unescape_invalid_shortcodes(). */
-    private static function inert( string $html ): string {
-        return strtr( $html, [ '[' => '&#091;', ']' => '&#093;' ] );
+        return PublicComponent::sanitize_base( $url, [ DirectorySearchRequest::PARAM_QUERY, DirectorySearchRequest::PARAM_PAGE, DirectorySearchRequest::PARAM_SORT, DirectorySearchRequest::PARAM_FILTER, self::PARAM_DIRECTORY ] );
     }
 
     /** @return array{html:string,summary:string,total:int,page:int,pages:int} */
@@ -229,9 +188,7 @@ final class DirectorySearchRenderer {
     }
 
     private function page_link( array $profile, array $request, string $base, int $page, string $label, string $rel ): string {
-        [ $path, $args ] = self::split_base( $base );
-        $args = array_merge( $args, [ self::PARAM_DIRECTORY => $profile['id'] ], DirectorySearchRequest::to_args( $request, $profile, $page ) );
-        $url  = $path . '?' . http_build_query( $args );
+        $url = PublicComponent::url( $base, array_merge( [ self::PARAM_DIRECTORY => $profile['id'] ], DirectorySearchRequest::to_args( $request, $profile, $page ) ) );
 
         return '<a class="hds-page" href="' . esc_url( $url ) . '" data-hds-page="' . esc_attr( (string) $page ) . '"'
             . ( '' !== $rel ? ' rel="' . esc_attr( $rel ) . '"' : '' ) . '>' . esc_html( $label ) . '</a>';
@@ -247,7 +204,7 @@ final class DirectorySearchRenderer {
     }
 
     public static function css(): string {
-        // :where() keeps the defaults at zero specificity so any host rule overrides them wherever it loads.
+        // :where() keeps only the custom-property defaults at zero specificity; structural rules are class selectors, so hosts scope overrides with the profile class.
         return ':where(.hds){--hds-muted:#6b7280;--hds-border:rgba(127,127,127,.3);--hds-field-bg:transparent;--hds-accent:#2563eb;--hds-accent-fg:#fff;--hds-radius:6px;--hds-gap:12px}'
             . '.hds-form{display:grid;grid-template-columns:minmax(220px,2fr) repeat(auto-fit,minmax(150px,1fr));gap:var(--hds-gap);align-items:end}'
             . '.hds-field{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0}'
@@ -255,6 +212,7 @@ final class DirectorySearchRenderer {
             . '.hds-input,.hds-select{box-sizing:border-box;width:100%;min-height:44px;padding:0 12px;border:1px solid var(--hds-border);border-radius:var(--hds-radius);background:var(--hds-field-bg);color:inherit;font:inherit}'
             . '.hds-toggle{display:flex;align-items:center;gap:8px;min-height:44px;margin:0;cursor:pointer}'
             . '.hds-toggle input{width:18px;height:18px;accent-color:var(--hds-accent)}'
+            . '.hds-range-inputs{display:flex;align-items:center;gap:6px}.hds-range-inputs .hds-input{min-width:0}'
             . '.hds-submit{min-height:44px;padding:0 20px;border:0;border-radius:var(--hds-radius);background:var(--hds-accent);color:var(--hds-accent-fg);font:inherit;font-weight:700;cursor:pointer}'
             . '.hds-summary{margin:18px 0 12px;color:var(--hds-muted);font-size:14px}'
             . '.hds-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--hds-gap)}'
@@ -278,6 +236,7 @@ if(root.getAttribute('data-hds-ready'))return;root.setAttribute('data-hds-ready'
 var form=root.querySelector('.hds-form'),results=root.querySelector('.hds-results'),summary=root.querySelector('.hds-summary');
 if(!form||!results||!window.fetch||!window.URLSearchParams)return;
 var input=form.querySelector('[name="dq"]'),endpoint=root.getAttribute('data-hds-endpoint'),base=root.getAttribute('data-hds-base')||location.pathname;
+try{var eu=new URL(endpoint,location.href);if(eu.origin!==location.origin||eu.href.indexOf('hexa-plugin-core/v1/directory/')<0)return;}catch(e){return;}
 var nonce=root.getAttribute('data-hds-nonce'),min=parseInt(root.getAttribute('data-hds-min')||'2',10),timer=null,controller=null,lastKey=null,seq=0;
 var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function params(page){var p=new URLSearchParams();Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.disabled)return;if((el.type==='checkbox'||el.type==='radio')&&!el.checked)return;var v=(el.value||'').trim();if(v!=='')p.append(el.name,v);});if(page>1)p.set('dpage',String(page));return p;}
@@ -289,13 +248,13 @@ if(controller)controller.abort();controller=window.AbortController?new AbortCont
 root.setAttribute('aria-busy','true');results.classList.add('is-loading');
 var rp=new URLSearchParams(key);rp.set('base',base);var headers={'Accept':'application/json'};if(nonce)headers['X-WP-Nonce']=nonce;
 fetch(endpoint+(endpoint.indexOf('?')>-1?'&':'?')+rp.toString(),{credentials:nonce?'same-origin':'omit',headers:headers,signal:controller?controller.signal:undefined}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(id!==seq)return;results.innerHTML=d.html||'';summary.textContent=d.summary||'';
-if(window.history&&history.replaceState){var u=pageUrl(p);if(push){history.pushState({hds:root.id},'',u);}else{history.replaceState({hds:root.id},'',u);}}
+if(push!==null&&window.history&&history.replaceState){var u=pageUrl(p);if(push){history.pushState({hds:root.id},'',u);}else{history.replaceState({hds:root.id},'',u);}}
 if(push){root.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});}}).catch(function(e){if(id!==seq||(e&&e.name==='AbortError'))return;lastKey=null;summary.textContent=root.getAttribute('data-hds-error-label')||'';}).then(function(){if(id!==seq)return;root.removeAttribute('aria-busy');results.classList.remove('is-loading');});}
 form.addEventListener('submit',function(e){e.preventDefault();window.clearTimeout(timer);run(1,false,false);});
 if(input){input.addEventListener('input',function(){window.clearTimeout(timer);timer=window.setTimeout(function(){run(1,false,true);},300);});}
 form.addEventListener('change',function(e){if(e.target&&e.target!==input){window.clearTimeout(timer);run(1,false,false);}});
 results.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hds-page]'):null;if(!a)return;e.preventDefault();run(parseInt(a.getAttribute('data-hds-page'),10)||1,true,false);});
-window.addEventListener('popstate',function(){var sp=new URLSearchParams(location.search);var owner=sp.get('dir');if(owner&&('hds-'+owner)!==root.id)return;Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.type==='hidden')return;if(el.type==='checkbox'){el.checked=sp.get(el.name)===el.value;}else if(el.tagName==='SELECT'||el.type==='search'||el.type==='text'){el.value=sp.get(el.name)||el.getAttribute('data-hds-default')||'';}});lastKey=null;run(parseInt(sp.get('dpage')||'1',10),false,false);});
+window.addEventListener('popstate',function(){var sp=new URLSearchParams(location.search),owner=sp.get('dir');if(owner&&('hds-'+owner)!==root.id){sp=new URLSearchParams();}Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.type==='hidden')return;if(el.type==='checkbox'){el.checked=sp.get(el.name)===el.value;}else if(el.tagName==='SELECT'||el.type==='search'||el.type==='text'||el.type==='date'){el.value=sp.get(el.name)||el.getAttribute('data-hds-default')||'';}});lastKey=null;run(parseInt(sp.get('dpage')||'1',10),null,false);});
 }
 function boot(){Array.prototype.forEach.call(document.querySelectorAll('.hds[data-hds-endpoint]'),init);}
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot);}else{boot();}

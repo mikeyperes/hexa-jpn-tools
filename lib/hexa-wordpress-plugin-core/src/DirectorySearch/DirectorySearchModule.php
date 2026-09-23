@@ -3,6 +3,7 @@
 namespace Hexa\PluginCore\DirectorySearch;
 
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
+use Hexa\PluginCore\PublicComponents\PublicComponent;
 
 /**
  * Wires the `[hexa_directory id="…"]` shortcode and the public read-only REST
@@ -51,7 +52,7 @@ final class DirectorySearchModule implements ModuleInterface {
             return false;
         }
 
-        return $profile['public'] || current_user_can( 'read' );
+        return PublicComponent::can_view( $profile['public'] );
     }
 
     /** @param \WP_REST_Request $request */
@@ -63,16 +64,8 @@ final class DirectorySearchModule implements ModuleInterface {
 
         $params  = (array) $request->get_query_params();
         $input   = DirectorySearchRequest::from_input( $params, $profile );
-        $base    = DirectorySearchRenderer::sanitize_base( (string) ( $params['base'] ?? '/' ) );
-        $payload = ( new DirectorySearchRenderer() )->results( $profile, $input, $base );
+        $base    = DirectorySearchRenderer::sanitize_base( PublicComponent::scalar( $params[ PublicComponent::PARAM_BASE ] ?? '/', '/' ) );
 
-        $response = rest_ensure_response( $payload );
-        if ( $profile['public'] && ! is_user_logged_in() ) {
-            $response->header( 'Cache-Control', 'public, max-age=60' );
-            // Cap LiteSpeed Cache's server-side REST lifetime to the advertised 60 s (no-op without LSCWP).
-            do_action( 'litespeed_control_set_ttl', 60 );
-        }
-
-        return $response;
+        return PublicComponent::rest_response( ( new DirectorySearchRenderer() )->results( $profile, $input, $base ), $profile['public'] );
     }
 }
