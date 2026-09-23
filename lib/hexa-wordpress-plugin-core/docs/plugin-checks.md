@@ -134,6 +134,7 @@ echo ( new \Hexa\PluginCore\PluginChecks\PluginInventoryRenderer() )->render(
 
 - Missing WordPress.org and GitHub plugins get an AJAX **Install and activate** action.
 - Installed but inactive plugins get an AJAX **Activate** action.
+- Explicit deactivation preserves the plugin's site or network activation scope. Network-active plugins require `manage_network_plugins`; site-active plugins use ordinary deactivation scope.
 - Pro/manual plugins show an external download/upload link.
 - The **Refresh checks** button refreshes the WordPress plugin update cache through AJAX.
 - The **Install and activate missing** button processes visible install/activate actions sequentially with no page refresh.
@@ -146,3 +147,4 @@ echo ( new \Hexa\PluginCore\PluginChecks\PluginInventoryRenderer() )->render(
 - Missing or otherwise noncompliant required rows get a red left-side marker.
 - Inventory and plugin-check AJAX fragments render buttons without re-emitting shared Core or DynamicButton asset tags inside row markup.
 - Run `php -n tests/plugin-inventory-policy.php` to verify the policy-state contract.
+- Run `php -n tests/plugin-deactivation.php` to verify scoped site/network deactivation.

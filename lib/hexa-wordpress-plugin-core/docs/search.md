@@ -69,3 +69,7 @@ add_filter(
     4
 );
 ```
+
+## Related
+
+`SmartSearch` is an admin typeahead. For public, filterable listing pages over posts or users use `DirectorySearch` (`docs/directory-search.md`).

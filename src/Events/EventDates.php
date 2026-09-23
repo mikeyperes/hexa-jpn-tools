@@ -74,6 +74,15 @@ final class EventDates
         ];
     }
 
+    /** Midnight today in the event timezone: the single cutoff between upcoming and past events. */
+    public static function startOfToday(?int $now = null): int
+    {
+        return (new DateTimeImmutable('@' . (string) ($now ?? time())))
+            ->setTimezone(new DateTimeZone(self::TIMEZONE))
+            ->setTime(0, 0, 0)
+            ->getTimestamp();
+    }
+
     public function calendarWindow(string $period, ?int $now = null): array
     {
         $instant = (new DateTimeImmutable('@' . (string) ($now ?? time())))->setTimezone($this->timezone());

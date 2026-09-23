@@ -169,3 +169,7 @@ Every host release must additionally use the visible frontend workflow to verify
 8. Repeated preparation does not add another `posts_search` callback, and abandoned query objects remain collectible.
 
 Restore the original host option and remove every test fixture after verification.
+
+## Related
+
+Public directory pages with live search over posts or users use `Hexa\PluginCore\DirectorySearch` (`docs/directory-search.md`), which shares this module's term parser and `SearchMatchSql` matcher.

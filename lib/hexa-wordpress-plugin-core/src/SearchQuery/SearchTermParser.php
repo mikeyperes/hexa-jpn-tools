@@ -7,8 +7,11 @@ final class SearchTermParser {
     public const MAX_TERMS = 8;
     public const MAX_TERM_LENGTH = 80;
 
-    /** @return string[] */
-    public static function parse( string $query, string $term_logic = 'all' ): array {
+    /**
+     * @param bool $keep_wildcards Preserve explicit `*` wildcards inside terms for SearchMatchSql.
+     * @return string[]
+     */
+    public static function parse( string $query, string $term_logic = 'all', bool $keep_wildcards = false ): array {
         $query = self::clean( $query );
         if ( '' === $query ) {
             return [];
@@ -16,6 +19,9 @@ final class SearchTermParser {
 
         if ( 'exact' === $term_logic ) {
             $query = self::truncate( self::trim_quotes( $query ) );
+            if ( $keep_wildcards && '' === trim( $query, "* \t" ) ) {
+                return [];
+            }
 
             return '' === $query ? [] : [ $query ];
         }
@@ -33,7 +39,13 @@ final class SearchTermParser {
                 $term = $match[3] ?? '';
             }
 
-            $term = trim( self::clean( $term ), " \t\n\r\0\x0B*\"'" );
+            $term = trim( self::clean( $term ), $keep_wildcards ? " \t\n\r\0\x0B\"'" : " \t\n\r\0\x0B*\"'" );
+            if ( $keep_wildcards ) {
+                $term = (string) preg_replace( '/\*{2,}/', '*', $term );
+                if ( '' === trim( $term, '*' ) ) {
+                    continue;
+                }
+            }
             if ( '' === $term ) {
                 continue;
             }

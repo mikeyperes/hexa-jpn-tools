@@ -120,7 +120,7 @@ $expect(EventController::requestDigest($firstPayload) !== EventController::reque
 $bootstrapPath = $root . '/hexa-jpn-tools.php';
 $bootstrap = (string) file_get_contents($bootstrapPath);
 $expect(str_contains($bootstrap, 'Plugin Name: Hexa JPN Tools'), 'prepared bootstrap has the final display name');
-$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.0.2')"), 'plugin header and version constant use version 1.0.2');
+$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.1.0')"), 'plugin header and version constant use version 1.1.0');
 $expect(str_contains($bootstrap, '\\Hexa\\JpnTools\\Plugin::register();'), 'plugin bootstrap registers the isolated namespaced plugin');
 $expect(str_contains($bootstrap, "hexa_plugin_core_register_package('hexa-jpn-tools'"), 'plugin registers its vendored Hexa WP Core candidate');
 

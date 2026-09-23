@@ -19,6 +19,46 @@ final class Shortcodes
         add_shortcode('jpn_upcoming_event_banner', [$this, 'banner']);
         add_shortcode('jpn_event_venue', [$this, 'venue']);
         add_shortcode('jpn_event_time_range', [$this, 'timeRange']);
+        add_shortcode('jpn_event_photos', [$this, 'eventPhotos']);
+    }
+
+    /**
+     * Additional Photos gallery for the current event; renders nothing when the
+     * ACF gallery is empty, so templates need no visibility plugin.
+     */
+    public function eventPhotos(array|string $attributes = []): string
+    {
+        $attributes = shortcode_atts(['title' => __('Additional Photos', 'hexa-jpn-tools')], $attributes, 'jpn_event_photos');
+        $eventId = (int) get_the_ID();
+        if ($eventId <= 0 || get_post_type($eventId) !== 'event') {
+            return '';
+        }
+
+        $ids = get_post_meta($eventId, 'additional_photos', true);
+        $ids = array_values(array_filter(array_map('intval', is_array($ids) ? $ids : (array) maybe_unserialize($ids))));
+        if ($ids === []) {
+            return '';
+        }
+
+        $this->enqueueStyle();
+        $items = '';
+        foreach ($ids as $attachmentId) {
+            $full = wp_get_attachment_image_url($attachmentId, 'full');
+            $thumb = wp_get_attachment_image_url($attachmentId, 'medium_large');
+            if (!$full || !$thumb) {
+                continue;
+            }
+            $alt = trim((string) get_post_meta($attachmentId, '_wp_attachment_image_alt', true));
+            $items .= '<a class="jpn-event-photos__item" href="' . esc_url($full) . '" data-elementor-open-lightbox="yes"'
+                . ' data-elementor-lightbox-slideshow="jpn-event-' . esc_attr((string) $eventId) . '">'
+                . '<img src="' . esc_url($thumb) . '" alt="' . esc_attr($alt) . '" loading="lazy"></a>';
+        }
+        if ($items === '') {
+            return '';
+        }
+
+        return '<section class="jpn-event-photos"><p class="jpn-event-photos__title">' . esc_html((string) $attributes['title']) . '</p>'
+            . '<div class="jpn-event-photos__grid">' . $items . '</div></section>';
     }
 
     public function photos(array|string $attributes = []): string

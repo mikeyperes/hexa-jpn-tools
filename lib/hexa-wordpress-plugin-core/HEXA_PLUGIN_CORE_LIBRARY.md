@@ -13,7 +13,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.0.6
+Current release: 3.0.7
 ```
 
 Do not rename these.
@@ -57,6 +57,7 @@ src/SchemaTools/        Hexa\PluginCore\SchemaTools
 src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
 src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
+src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
 src/Taxonomies/         Hexa\PluginCore\Taxonomies
 src/Typography/         Hexa\PluginCore\Typography
@@ -109,6 +110,11 @@ Namespace:
 ```text
 Hexa\PluginCore\WpAdminComponents
 ```
+
+Use `DynamicNotice` for the consistent top-of-panel result shown after an AJAX
+settings save or in-place action. Core owns the success, warning, error and
+information structure plus the browser API; host plugins provide only concise
+action-specific text.
 
 Use `CoreUi::collapsible()` for expandable cards. The shared component owns the native `<details>` structure, persistent open/closed state, and visible chevron SVG indicator, so users can tell the card expands.
 
@@ -320,7 +326,7 @@ Namespace:
 Hexa\PluginCore\PluginChecks
 ```
 
-Use `PluginCheckDefinition` arrays for host-owned plugin lists. Use `PluginCheckService` for installed/active/update/auto-update status. Use `PluginInventoryRenderer` when a plugin needs a reusable table UI for plugin status or a plugin library. Use `PluginInventoryAjaxController` for no-refresh refresh, install-and-activate, activate, deactivate, and delete actions. Forbidden rows show Deactivate when active, Activate when inactive, and Delete when removable.
+Use `PluginCheckDefinition` arrays for host-owned plugin lists. Use `PluginCheckService` for installed/active/update/auto-update status. Use `PluginInventoryRenderer` when a plugin needs a reusable table UI for plugin status or a plugin library. Use `PluginInventoryAjaxController` for no-refresh refresh, install-and-activate, activate, deactivate, and delete actions. Forbidden rows show Deactivate when active, Activate when inactive, and Delete when removable. Generic deactivation preserves site or network activation scope and requires network-plugin authority before changing a network-active plugin.
 
 Required rules:
 

@@ -12,6 +12,27 @@ Folder:
 src/WpAdminComponents/
 ```
 
+## Dynamic save notices
+
+`DynamicNotice` renders the shared top-of-panel notification used by AJAX
+settings forms and other in-place admin actions. Hosts supply only the notice
+target and concise action-specific text; Core owns success, warning, error and
+information tones, live-region markup, dismissal, and the browser API.
+
+```php
+use Hexa\PluginCore\WpAdminComponents\DynamicNotice;
+
+echo DynamicNotice::render( [ 'id' => 'plugin-save-notice' ] );
+```
+
+```js
+window.HexaWpCoreDynamicNotice.success(
+    '#plugin-save-notice',
+    'Settings saved',
+    'The new configuration is active.'
+);
+```
+
 ## Purpose
 
 The UI namespace owns shared visual primitives for Hexa plugin admin screens.

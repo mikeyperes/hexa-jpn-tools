@@ -280,17 +280,7 @@ final class SearchQueryEngine {
 
     /** @param object $database */
     private function match_condition( $database, string $column, string $term, string $matching ): string {
-        if ( 'contains' === $matching ) {
-            return $database->prepare( $column . ' LIKE %s', '%' . $database->esc_like( $term ) . '%' );
-        }
-
-        $literal = preg_quote( $term, '/' );
-        $pattern = '(^|[^[:alnum:]_])' . $literal;
-        if ( 'whole' === $matching ) {
-            $pattern .= '([^[:alnum:]_]|$)';
-        }
-
-        return $database->prepare( $column . ' REGEXP %s', $pattern );
+        return SearchMatchSql::condition( $database, $column, $term, $matching );
     }
 
     private static function key( string $value ): string {

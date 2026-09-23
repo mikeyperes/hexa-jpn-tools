@@ -59,7 +59,11 @@ final class PluginCheckService {
         }
 
         $version          = $installed ? (string) ( $plugins[ $plugin_file ]['Version'] ?? '' ) : '';
-        $active           = in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ? $installed : ( $installed && is_plugin_active( $plugin_file ) );
+        $network_active   = ! in_array( $definition->source, [ 'must_use', 'dropin' ], true )
+            && $installed
+            && function_exists( 'is_plugin_active_for_network' )
+            && is_plugin_active_for_network( $plugin_file );
+        $active           = in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ? $installed : ( $installed && ( is_plugin_active( $plugin_file ) || $network_active ) );
         $auto_updates     = (array) get_site_option( 'auto_update_plugins', [] );
         $auto_update      = ! in_array( $definition->source, [ 'must_use', 'dropin' ], true ) && $installed && in_array( $plugin_file, $auto_updates, true );
         $updates          = self::plugin_updates();
@@ -101,6 +105,7 @@ final class PluginCheckService {
             'checks'            => $definition->checks,
             'installed'         => $installed,
             'active'            => $active,
+            'network_active'    => $network_active,
             'auto_update'       => $auto_update,
             'version'           => $version,
             'up_to_date'        => $up_to_date,
@@ -258,6 +263,10 @@ final class PluginCheckService {
             return new \WP_Error( 'hexa_plugin_check_not_installed', 'Plugin is not installed.' );
         }
 
+        if ( ! empty( $status['network_active'] ) && function_exists( 'current_user_can' ) && ! current_user_can( 'manage_network_plugins' ) ) {
+            return new \WP_Error( 'hexa_plugin_check_network_deactivate_forbidden', 'You do not have permission to deactivate network plugins.' );
+        }
+
         if ( empty( $status['active'] ) ) {
             return [
                 'message' => $definition->name . ' is already inactive.',
@@ -265,7 +274,7 @@ final class PluginCheckService {
             ];
         }
 
-        deactivate_plugins( (string) $status['plugin_file'], false, false );
+        deactivate_plugins( (string) $status['plugin_file'], false, ! empty( $status['network_active'] ) );
 
         $next = self::status( $definition );
         if ( ! empty( $next['active'] ) ) {

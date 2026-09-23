@@ -16,6 +16,7 @@ use Hexa\JpnTools\Events\EventQueries;
 use Hexa\JpnTools\Events\EventRelations;
 use Hexa\JpnTools\Frontend\Privacy;
 use Hexa\JpnTools\Frontend\Shortcodes;
+use Hexa\JpnTools\Hosts\HostDirectory;
 use Hexa\JpnTools\Integration\CoreIntegration;
 use Hexa\JpnTools\Migrations\Migration;
 use Hexa\JpnTools\Rest\EventBindings;
@@ -65,6 +66,8 @@ final class Plugin
         (new NotificationDashboard($queries, $dates))->register();
         $relations->register();
         (new Shortcodes($queries, $dates))->register();
+        (new HostDirectory($dates))->register();
+        add_action('wp_enqueue_scripts', [self::class, 'enqueueFrontend']);
         (new Privacy())->register();
 
         $bindings = new EventBindings();
@@ -75,5 +78,11 @@ final class Plugin
         MigrationCommand::register();
 
         do_action('hexa_jpn_tools_booted');
+    }
+
+    /** One small site-wide stylesheet for JPN cards, banners, and directories. */
+    public static function enqueueFrontend(): void
+    {
+        wp_enqueue_style('hexa-jpn-frontend', HEXA_JPN_TOOLS_PLUGIN_URL . 'assets/frontend.css', [], HEXA_JPN_TOOLS_VERSION);
     }
 }

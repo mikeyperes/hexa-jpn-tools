@@ -18,6 +18,7 @@ final class EventRelations
     public function register(): void
     {
         add_action('elementor/query/jpn_home_upcoming_events', [$this, 'configureUpcomingQuery']);
+        add_action('elementor/query/jpn_past_events', [$this, 'configurePastQuery']);
         add_filter('the_content', [$this, 'renderRelatedEvents'], 25);
     }
 
@@ -35,7 +36,7 @@ final class EventRelations
         $query->set('ignore_sticky_posts', true);
         $query->set('meta_query', [[
             'key' => 'start_date_timestamp',
-            'value' => time(),
+            'value' => EventDates::startOfToday(),
             'compare' => '>=',
             'type' => 'NUMERIC',
         ]]);
@@ -47,6 +48,27 @@ final class EventRelations
                 $excluded
             ))));
         }
+    }
+
+    /** Elementor Loop Grid query ID `jpn_past_events`: published events that started before today, newest first. */
+    public function configurePastQuery($query): void
+    {
+        if (!$query instanceof WP_Query) {
+            return;
+        }
+
+        $query->set('post_type', 'event');
+        $query->set('post_status', 'publish');
+        $query->set('meta_key', 'start_date_timestamp');
+        $query->set('orderby', 'meta_value_num');
+        $query->set('order', 'DESC');
+        $query->set('ignore_sticky_posts', true);
+        $query->set('meta_query', [[
+            'key' => 'start_date_timestamp',
+            'value' => EventDates::startOfToday(),
+            'compare' => '<',
+            'type' => 'NUMERIC',
+        ]]);
     }
 
     public function relatedUpcomingExclusions(): array

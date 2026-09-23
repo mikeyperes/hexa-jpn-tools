@@ -43,6 +43,27 @@ selection, plugin update behavior, Core package update behavior, runtime
 identity, and shared safety checks. JPN-specific event and host behavior stays
 under `Hexa\JpnTools`.
 
+## Host directory
+
+`[hexa_directory id="jpn_hosts"]` renders the searchable host directory through
+Hexa WP Core `DirectorySearch`. Core owns search, filters, sorting mechanics,
+pagination, the public REST endpoint
+(`/wp-json/hexa-plugin-core/v1/directory/jpn_hosts`), and live interaction.
+`Hexa\JpnTools\Hosts\HostDirectory` owns the host profile: users with role
+`host`, prefix and `*` wildcard matching over name, slug, website, address,
+and Instagram, an area filter, an upcoming-events toggle, Upcoming first / Most
+events / Recently active / A–Z sorts, event statistics from one aggregate
+query, and the one-per-row card.
+
+## Elementor queries and shortcodes
+
+| Name | Type | Purpose |
+| --- | --- | --- |
+| `jpn_home_upcoming_events` | Loop Grid query ID | Upcoming events, soonest first. |
+| `jpn_past_events` | Loop Grid query ID | Events that started before today, newest first. |
+| `[jpn_event_photos]` | Shortcode | Current event's Additional Photos gallery; renders nothing when empty. |
+| `[jpn_event_time_range]` | Shortcode | Current event's time range. |
+
 ## Verification
 
 ```bash

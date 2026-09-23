@@ -8,6 +8,7 @@ use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageConfig;
 use Hexa\PluginCore\CoreRuntime\PluginContext;
+use Hexa\PluginCore\DirectorySearch\DirectorySearchModule;
 use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
 use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
 use Hexa\PluginCore\PluginUpdates\UpdaterConfig;
@@ -42,6 +43,10 @@ final class CoreIntegration
         self::$bootstrap = (new CoreBootstrap($context))
             ->add_module(new GitHubPluginUpdater(self::updaterConfig()))
             ->add_module(new UpdaterAjaxController(self::updaterConfig()));
+
+        if (class_exists(DirectorySearchModule::class)) {
+            self::$bootstrap->add_module(new DirectorySearchModule());
+        }
 
         if (is_admin() || (function_exists('wp_doing_ajax') && wp_doing_ajax())) {
             self::$bootstrap->add_module(new CorePackageAjaxController(self::corePackageConfig()));
