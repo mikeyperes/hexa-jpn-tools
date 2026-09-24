@@ -36,7 +36,9 @@ final class PhotoDownloads
     }
 
     /**
-     * The next $days days' event photos (full size), in date order, each with its file name.
+     * The next $days days' event photos, in date order, each with its file name: `url` is the large
+     * size the phone button saves (light enough to prepare when the page opens), `path` the full
+     * original the ZIP holds.
      *
      * @return array<int, array{url:string, path:string, name:string}>
      */
@@ -45,13 +47,15 @@ final class PhotoDownloads
         $files = [];
         foreach ($this->queries->nextDays($days) as $event) {
             $attachmentId = (int) get_post_thumbnail_id($event->ID);
-            $url = $attachmentId > 0 ? (string) wp_get_attachment_image_url($attachmentId, 'full') : '';
+            $url = $attachmentId > 0 ? (string) wp_get_attachment_image_url($attachmentId, 'large') : '';
             $path = $attachmentId > 0 ? (string) get_attached_file($attachmentId) : '';
             if ($url === '' || $path === '' || !is_readable($path)) {
                 continue;
             }
             $start = (int) get_post_meta($event->ID, 'start_date_timestamp', true);
-            $title = trim(preg_replace('/[\\\\\/:*?"<>|]+/', '-', wp_strip_all_tags(get_the_title($event->ID))) ?? '');
+            // The raw title: get_the_title() returns display HTML (&#038;, curly-quote entities).
+            $raw = html_entity_decode(wp_strip_all_tags((string) get_post_field('post_title', $event->ID, 'raw')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $title = trim(preg_replace('/[\\\\\/:*?"<>|]+/', '-', $raw) ?? '');
             $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION)) ?: 'jpg';
             $name = trim(sprintf(
                 '%02d %s %s',
