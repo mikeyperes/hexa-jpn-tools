@@ -15,6 +15,7 @@ use Hexa\JpnTools\Events\EventCalendar;
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventQueries;
 use Hexa\JpnTools\Events\EventRelations;
+use Hexa\JpnTools\Frontend\PhotoDownloads;
 use Hexa\JpnTools\Frontend\Privacy;
 use Hexa\JpnTools\Frontend\Shortcodes;
 use Hexa\JpnTools\Hosts\HostDirectory;
@@ -66,7 +67,9 @@ final class Plugin
         (new EventExports($queries))->register();
         (new NotificationDashboard($queries, $dates))->register();
         $relations->register();
-        (new Shortcodes($queries, $dates))->register();
+        $downloads = new PhotoDownloads($queries, $dates);
+        $downloads->register();
+        (new Shortcodes($queries, $dates, $downloads))->register();
         (new HostDirectory($dates))->register();
         (new EventCalendar())->register();
         add_action('wp_enqueue_scripts', [self::class, 'enqueueFrontend']);

@@ -9,7 +9,7 @@ use Hexa\JpnTools\Events\EventQueries;
 
 final class Shortcodes
 {
-    public function __construct(private EventQueries $queries, private EventDates $dates)
+    public function __construct(private EventQueries $queries, private EventDates $dates, private ?PhotoDownloads $downloads = null)
     {
     }
 
@@ -142,14 +142,18 @@ final class Shortcodes
 
     public function photos(array|string $attributes = []): string
     {
-        $attributes = shortcode_atts(['days' => 7], $attributes, 'events-photos');
+        $attributes = shortcode_atts(['days' => 7, 'download' => 'no'], $attributes, 'events-photos');
         $events = $this->queries->nextDays((int) $attributes['days']);
         if ($events === []) {
             return '<p>' . esc_html__('No events found for this period.', 'hexa-jpn-tools') . '</p>';
         }
 
         $this->enqueueStyle();
-        $output = '<div class="events-photos">';
+        // download="yes": a "Save all photos" button and a ZIP link above the photos.
+        $toolbar = $this->downloads !== null && in_array(strtolower((string) $attributes['download']), ['yes', '1', 'true'], true)
+            ? $this->downloads->toolbar((int) $attributes['days'])
+            : '';
+        $output = $toolbar . '<div class="events-photos">';
         foreach ($events as $event) {
             $image = get_the_post_thumbnail($event->ID, 'medium_large');
             if ($image === '') {
