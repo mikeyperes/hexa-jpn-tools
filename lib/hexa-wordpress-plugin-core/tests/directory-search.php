@@ -176,7 +176,7 @@ $expect( str_contains( $post_where, "hds_t.name LIKE '%shabbat%'" ), 'Declared t
 $expect( '/x' === DirectorySearchRenderer::sanitize_base( '//evil.example/x' ), 'Protocol-relative bases keep only their same-site path.' );
 $expect( '/' === DirectorySearchRenderer::sanitize_base( 'javascript:alert(1)' ), 'Non-path bases collapse to the site root.' );
 $expect( '/' === DirectorySearchRenderer::sanitize_base( '/<>/evil.example' ) || ! str_starts_with( DirectorySearchRenderer::sanitize_base( '/<>/evil.example' ), '//' ), 'Stripping characters cannot produce a protocol-relative base.' );
-$expect( '/hosts/?lang=he' === DirectorySearchRenderer::sanitize_base( '/hosts/?lang=he&dq=x&dpage=3&dfilter[area]=1&dir=jpn_hosts' ), 'Page query arguments survive while directory arguments are removed.' );
+$expect( '/hosts/?lang=he' === DirectorySearchRenderer::sanitize_base( '/hosts/?lang=he&dq=x&dpage=3&dfilter[area]=1&hds=jpn_hosts&dir=jpn_hosts' ), 'Page query arguments survive while directory arguments are removed.' );
 $expect( 255 >= strlen( DirectorySearchRenderer::sanitize_base( '/' . str_repeat( 'a', 5000 ) ) ), 'Base paths are length-bounded.' );
 $expect( [] === SearchTermParser::parse( '"**"', 'exact', true ), 'An exact query made only of wildcards applies no search.' );
 

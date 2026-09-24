@@ -17,7 +17,10 @@ final class DirectorySearchRenderer {
     public const REST_NAMESPACE = PublicComponent::REST_NAMESPACE;
 
     /** Hidden field naming the directory that owns the URL state. */
-    public const PARAM_DIRECTORY = 'dir';
+    public const PARAM_DIRECTORY = 'hds';
+
+    /** Former owner parameter; still honored, but common web firewalls (ModSecurity/Imunify360) block `dir=`. */
+    public const PARAM_DIRECTORY_LEGACY = 'dir';
 
     private static bool $assets_printed = false;
 
@@ -32,7 +35,8 @@ final class DirectorySearchRenderer {
         }
 
         $input = PublicComponent::input( $input );
-        if ( isset( $input[ self::PARAM_DIRECTORY ] ) && PublicComponent::scalar( $input[ self::PARAM_DIRECTORY ] ) !== $profile['id'] ) {
+        $owner = $input[ self::PARAM_DIRECTORY ] ?? ( $input[ self::PARAM_DIRECTORY_LEGACY ] ?? null );
+        if ( null !== $owner && PublicComponent::scalar( $owner ) !== $profile['id'] ) {
             $input = []; // URL state belongs to another directory on this page.
         }
 
@@ -129,7 +133,7 @@ final class DirectorySearchRenderer {
      * page's own query arguments (directory parameters removed).
      */
     public static function sanitize_base( string $url ): string {
-        return PublicComponent::sanitize_base( $url, [ DirectorySearchRequest::PARAM_QUERY, DirectorySearchRequest::PARAM_PAGE, DirectorySearchRequest::PARAM_SORT, DirectorySearchRequest::PARAM_FILTER, self::PARAM_DIRECTORY ] );
+        return PublicComponent::sanitize_base( $url, [ DirectorySearchRequest::PARAM_QUERY, DirectorySearchRequest::PARAM_PAGE, DirectorySearchRequest::PARAM_SORT, DirectorySearchRequest::PARAM_FILTER, self::PARAM_DIRECTORY, self::PARAM_DIRECTORY_LEGACY ] );
     }
 
     /** @return array{html:string,summary:string,total:int,page:int,pages:int} */
@@ -254,7 +258,7 @@ form.addEventListener('submit',function(e){e.preventDefault();window.clearTimeou
 if(input){input.addEventListener('input',function(){window.clearTimeout(timer);timer=window.setTimeout(function(){run(1,false,true);},300);});}
 form.addEventListener('change',function(e){if(e.target&&e.target!==input){window.clearTimeout(timer);run(1,false,false);}});
 results.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hds-page]'):null;if(!a)return;e.preventDefault();run(parseInt(a.getAttribute('data-hds-page'),10)||1,true,false);});
-window.addEventListener('popstate',function(){var sp=new URLSearchParams(location.search),owner=sp.get('dir');if(owner&&('hds-'+owner)!==root.id){sp=new URLSearchParams();}Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.type==='hidden')return;if(el.type==='checkbox'){el.checked=sp.get(el.name)===el.value;}else if(el.tagName==='SELECT'||el.type==='search'||el.type==='text'||el.type==='date'){el.value=sp.get(el.name)||el.getAttribute('data-hds-default')||'';}});lastKey=null;run(parseInt(sp.get('dpage')||'1',10),null,false);});
+window.addEventListener('popstate',function(){var sp=new URLSearchParams(location.search),owner=sp.get('hds')||sp.get('dir');if(owner&&('hds-'+owner)!==root.id){sp=new URLSearchParams();}Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.type==='hidden')return;if(el.type==='checkbox'){el.checked=sp.get(el.name)===el.value;}else if(el.tagName==='SELECT'||el.type==='search'||el.type==='text'||el.type==='date'){el.value=sp.get(el.name)||el.getAttribute('data-hds-default')||'';}});lastKey=null;run(parseInt(sp.get('dpage')||'1',10),null,false);});
 }
 function boot(){Array.prototype.forEach.call(document.querySelectorAll('.hds[data-hds-endpoint]'),init);}
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot);}else{boot();}

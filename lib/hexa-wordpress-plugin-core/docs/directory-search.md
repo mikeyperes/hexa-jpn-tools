@@ -110,7 +110,7 @@ shareable URLs, and REST calls:
 | `dpage` | Page number (1–1000). |
 | `dsort` | A declared sort key. |
 | `dfilter[key]` | A declared filter value; select values must be declared options; date ranges use `dfilter[key][from]` and `dfilter[key][to]`. |
-| `dir` | The profile id that owns the URL state, so several directories can share a page. |
+| `hds` | The profile id that owns the URL state, so several directories can share a page (the former `dir` is still read; many web firewalls block it). |
 
 ## REST Endpoint
 

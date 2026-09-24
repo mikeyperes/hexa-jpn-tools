@@ -103,6 +103,8 @@ Version 2.1.4 keeps Getting Started parent-step and full-checklist runs availabl
 
 Version 3.0.0 establishes the coordinated major release for the expanded Core data-normalization, operations, provisioning, checklist-state, fleet-synchronization, and reusable admin infrastructure shipped in this source tree.
 
+Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
+
 Version 3.2.0 adds `Hexa\PluginCore\Calendar`, a lightweight library-free month-grid calendar (`[hexa_calendar]`, `GET /wp-json/hexa-plugin-core/v1/calendar/{profile}`) whose items link to profile-defined URLs, and `Hexa\PluginCore\QueryFilter`, the one shared visitor-filter structure (taxonomy, custom field/ACF, date range, callback, and host-registered types) now used by both `Calendar` and `DirectorySearch`. Shared public-component helpers move into `Hexa\PluginCore\PublicComponents`; the `DirectorySearch` public API is unchanged (the former filter constants and `DirectorySearchRequest::filter_options()` remain as deprecated aliases) and gains date-range filters.
 
 Version 3.1.0 adds `Hexa\PluginCore\DirectorySearch`, a declarative public directory search over published posts or role-scoped users (all/any/exact terms, whole/prefix/contains matching, `*` wildcards, meta/taxonomy/callback filters, field/callback sorts, card templates, `[hexa_directory]`, and `GET /wp-json/hexa-plugin-core/v1/directory/{profile}`), and moves term matching into the shared `SearchQuery\SearchMatchSql` helper used by the native results engine.
