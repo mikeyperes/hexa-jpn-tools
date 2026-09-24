@@ -572,3 +572,133 @@ a.jpn-host__chip--link:focus-visible {
         white-space: normal;
     }
 }
+
+/* Event card parts ([jpn_event_badges], [jpn_event_facts], [jpn_event_actions]) for the Facts Card loop item. */
+.jpn-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.jpn-badge {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .18em;
+    line-height: 1.4;
+    padding: 3px 8px;
+    text-transform: uppercase;
+}
+
+.jpn-badge--featured {
+    background: #25d366;
+    color: #0a150d;
+}
+
+.jpn-badge--kids {
+    border: 1px solid #f5c542;
+    color: #f5c542;
+}
+
+.jpn-facts {
+    border: 1px solid rgba(255, 255, 255, .08);
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0;
+}
+
+.jpn-facts > div {
+    border-left: 1px solid rgba(255, 255, 255, .08);
+    min-width: 0;
+    padding: 12px 14px;
+}
+
+.jpn-facts > div:first-child {
+    border-left: 0;
+}
+
+.jpn-facts dt {
+    color: #25d366;
+    font-size: 11px;
+    letter-spacing: .25em;
+    text-transform: uppercase;
+}
+
+.jpn-facts dd {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.jpn-facts dd span {
+    color: #9aa0a6;
+    font-weight: 400;
+}
+
+.jpn-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.jpn-btn {
+    align-items: center;
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 900;
+    gap: 6px;
+    justify-content: center;
+    letter-spacing: .2em;
+    min-height: 44px;
+    padding: 0 18px;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background-color .2s, border-color .2s, color .2s;
+    white-space: nowrap;
+}
+
+.jpn-btn--primary,
+.jpn-btn--primary:visited {
+    background: #25d366;
+    color: #0a150d;
+}
+
+.jpn-btn--primary:hover,
+.jpn-btn--primary:focus-visible {
+    background: #3ee07e;
+    color: #0a150d;
+}
+
+.jpn-btn--ghost,
+.jpn-btn--ghost:visited {
+    border: 1px solid rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+.jpn-btn--ghost:hover,
+.jpn-btn--ghost:focus-visible {
+    border-color: #25d366;
+    color: #25d366;
+}
+
+@media (max-width: 900px) {
+    .jpn-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .jpn-facts > div:nth-child(3) {
+        border-left: 0;
+    }
+
+    .jpn-facts > div:nth-child(n+3) {
+        border-top: 1px solid rgba(255, 255, 255, .08);
+    }
+}
+
+@media (max-width: 767px) {
+    .jpn-card-actions .jpn-btn {
+        flex: 1;
+    }
+}

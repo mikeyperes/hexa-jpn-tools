@@ -117,10 +117,21 @@ $expect(EventController::requestDigest($firstPayload) === EventController::reque
 $secondPayload['fields']['related_post_ids'] = [1, 2];
 $expect(EventController::requestDigest($firstPayload) !== EventController::requestDigest($secondPayload), 'request digest preserves list order');
 
+$dates = new EventDates();
+$sep25 = (new DateTimeImmutable('2026-09-25 18:55:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
+$sep27 = (new DateTimeImmutable('2026-09-27 21:00:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
+$sep25End = (new DateTimeImmutable('2026-09-25 22:00:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
+$sep26Midnight = (new DateTimeImmutable('2026-09-26 00:00:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
+$expect($dates->when($sep25) === ['date' => 'Fri, Sep 25', 'time' => '6:55 PM'], 'card when shows one day and the start time');
+$expect($dates->when($sep25, $sep25End)['date'] === 'Fri, Sep 25', 'same-day end keeps one day');
+$expect($dates->when($sep25, $sep26Midnight + 7200)['date'] === 'Fri, Sep 25', 'timed event ending at 2 AM stays on its night');
+$expect($dates->when($sep25, $sep27)['date'] === 'Fri, Sep 25 – Sun, Sep 27', 'multi-day event shows first and last day');
+$expect($dates->when($sep25, $sep26Midnight, true) === ['date' => 'Fri, Sep 25 – Sat, Sep 26', 'time' => ''], 'date-only event has no time');
+
 $bootstrapPath = $root . '/hexa-jpn-tools.php';
 $bootstrap = (string) file_get_contents($bootstrapPath);
 $expect(str_contains($bootstrap, 'Plugin Name: Hexa JPN Tools'), 'prepared bootstrap has the final display name');
-$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.2.1')"), 'plugin header and version constant use version 1.2.1');
+$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.3.0')"), 'plugin header and version constant use version 1.3.0');
 $expect(str_contains($bootstrap, '\\Hexa\\JpnTools\\Plugin::register();'), 'plugin bootstrap registers the isolated namespaced plugin');
 $expect(str_contains($bootstrap, "hexa_plugin_core_register_package('hexa-jpn-tools'"), 'plugin registers its vendored Hexa WP Core candidate');
 

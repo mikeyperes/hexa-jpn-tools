@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.3.0 =
+* Adds `[jpn_event_badges]`, `[jpn_event_facts]` and `[jpn_event_actions]` for the Facts Card event loop item: Featured/Kids badges, a labelled When / Where / Host / Who grid, and RSVP / Details buttons.
 
 = 1.2.1 =
 * Fixes host directory live search and pagination on servers whose web firewall blocks the `dir` URL parameter (vendors Hexa WP Core 3.2.1).

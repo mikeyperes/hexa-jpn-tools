@@ -77,6 +77,9 @@ Days are not clickable; each event links to its permalink.
 | `jpn_past_events` | Loop Grid query ID | Events that started before today, newest first. |
 | `[jpn_event_photos]` | Shortcode | Current event's Additional Photos gallery; renders nothing when empty. |
 | `[jpn_event_time_range]` | Shortcode | Current event's time range. |
+| `[jpn_event_badges]` | Shortcode | Current event's Featured / Kids badges; renders nothing when neither is set. |
+| `[jpn_event_facts]` | Shortcode | Current event's labelled When / Where / Host / Who grid (Facts Card loop item). |
+| `[jpn_event_actions]` | Shortcode | Current event's RSVP (registration link, when set) and Details buttons. |
 
 ## Verification
 

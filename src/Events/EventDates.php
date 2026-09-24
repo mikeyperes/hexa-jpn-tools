@@ -96,6 +96,27 @@ final class EventDates
         };
     }
 
+    /**
+     * Card "When" value: the day (or first – last day for multi-day events) and
+     * the start time, which is empty for date-only events.
+     *
+     * @return array{date:string,time:string}
+     */
+    public function when(int $start, int $end = 0, bool $dateOnly = false): array
+    {
+        $date = $this->formatTimestamp($start, 'D, M j');
+        if ($end > $start) {
+            // A date-only end stored at local midnight names its own day; a timed
+            // event ending before 6 AM belongs to the night it started.
+            $last = $this->formatTimestamp($dateOnly ? $end : max($start, $end - 6 * 3600), 'D, M j');
+            if ($last !== $date) {
+                $date .= ' – ' . $last;
+            }
+        }
+
+        return ['date' => $date, 'time' => $dateOnly ? '' : $this->formatTimestamp($start, 'g:i A')];
+    }
+
     public function formatTimestamp(int $timestamp, string $format): string
     {
         return (new DateTimeImmutable('@' . (string) $timestamp))

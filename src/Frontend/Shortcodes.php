@@ -20,6 +20,85 @@ final class Shortcodes
         add_shortcode('jpn_event_venue', [$this, 'venue']);
         add_shortcode('jpn_event_time_range', [$this, 'timeRange']);
         add_shortcode('jpn_event_photos', [$this, 'eventPhotos']);
+        add_shortcode('jpn_event_badges', [$this, 'badges']);
+        add_shortcode('jpn_event_facts', [$this, 'facts']);
+        add_shortcode('jpn_event_actions', [$this, 'actions']);
+    }
+
+    /** Featured / Kids badges for the current event card; empty when neither flag is set. */
+    public function badges(): string
+    {
+        $eventId = $this->currentEventId();
+        if ($eventId === 0) {
+            return '';
+        }
+
+        $badges = array_filter([
+            'featured' => $this->flag($eventId, 'featured_event') ? '★ ' . __('Featured', 'hexa-jpn-tools') : '',
+            'kids' => $this->flag($eventId, 'kids_event') ? __('Kids', 'hexa-jpn-tools') : '',
+        ]);
+        if ($badges === []) {
+            return '';
+        }
+
+        $this->enqueueStyle();
+        $html = '';
+        foreach ($badges as $type => $label) {
+            $html .= '<span class="jpn-badge jpn-badge--' . esc_attr($type) . '">' . esc_html($label) . '</span>';
+        }
+        return '<div class="jpn-badges">' . $html . '</div>';
+    }
+
+    /** Labelled When / Where / Host / Who facts for the current event card; empty facts are omitted. */
+    public function facts(): string
+    {
+        $eventId = $this->currentEventId();
+        if ($eventId === 0) {
+            return '';
+        }
+
+        $when = '';
+        $start = (int) get_post_meta($eventId, 'start_date_timestamp', true);
+        if ($start > 0) {
+            $parts = $this->dates->when(
+                $start,
+                (int) get_post_meta($eventId, 'end_date_timestamp', true),
+                get_post_meta($eventId, 'start_date_precision', true) === 'date'
+            );
+            $when = esc_html($parts['date']) . ($parts['time'] !== '' ? '<br><span>' . esc_html($parts['time']) . '</span>' : '');
+        }
+
+        $host = get_userdata((int) get_post_meta($eventId, 'event_host', true));
+        $facts = array_filter([
+            __('When', 'hexa-jpn-tools') => $when,
+            __('Where', 'hexa-jpn-tools') => esc_html($this->eventWhere($eventId)),
+            __('Host', 'hexa-jpn-tools') => $host ? esc_html($host->display_name) : '',
+            __('Who', 'hexa-jpn-tools') => esc_html($this->flag($eventId, 'kids_event') ? __('Kids & families', 'hexa-jpn-tools') : __('All ages', 'hexa-jpn-tools')),
+        ], static fn(string $value): bool => $value !== '');
+
+        $this->enqueueStyle();
+        $html = '';
+        foreach ($facts as $label => $value) {
+            $html .= '<div><dt>' . esc_html((string) $label) . '</dt><dd>' . $value . '</dd></div>';
+        }
+        return '<dl class="jpn-facts">' . $html . '</dl>';
+    }
+
+    /** RSVP (the event's registration link, when set) and Details (the event page) buttons. */
+    public function actions(): string
+    {
+        $eventId = $this->currentEventId();
+        if ($eventId === 0) {
+            return '';
+        }
+
+        $this->enqueueStyle();
+        $link = trim((string) get_post_meta($eventId, 'link', true));
+        $html = $link !== ''
+            ? '<a class="jpn-btn jpn-btn--primary" href="' . esc_url($this->normalizeUrl($link, '')) . '" target="_blank" rel="noopener">' . esc_html__('RSVP', 'hexa-jpn-tools') . ' <span aria-hidden="true">↗</span></a>'
+            : '';
+        $html .= '<a class="jpn-btn jpn-btn--ghost" href="' . esc_url((string) get_permalink($eventId)) . '">' . esc_html__('Details', 'hexa-jpn-tools') . ' <span aria-hidden="true">→</span></a>';
+        return '<div class="jpn-card-actions">' . $html . '</div>';
     }
 
     /**
@@ -29,8 +108,8 @@ final class Shortcodes
     public function eventPhotos(array|string $attributes = []): string
     {
         $attributes = shortcode_atts(['title' => __('Additional Photos', 'hexa-jpn-tools')], $attributes, 'jpn_event_photos');
-        $eventId = (int) get_the_ID();
-        if ($eventId <= 0 || get_post_type($eventId) !== 'event') {
+        $eventId = $this->currentEventId();
+        if ($eventId === 0) {
             return '';
         }
 
@@ -145,12 +224,9 @@ final class Shortcodes
         if ($location !== '') {
             return $location;
         }
-        $areaId = (int) get_post_meta($eventId, 'area', true);
-        if ($areaId > 0) {
-            $term = get_term($areaId, 'area');
-            if ($term && !is_wp_error($term)) {
-                return $term->name;
-            }
+        $area = $this->areaName($eventId);
+        if ($area !== '') {
+            return $area;
         }
         if (str_contains($title, ' - ')) {
             $parts = array_map('trim', explode(' - ', $title));
@@ -160,6 +236,31 @@ final class Shortcodes
             }
         }
         return __('Event Details', 'hexa-jpn-tools');
+    }
+
+    /** Where the event happens: the Code.Hexa "where" label, else its area. */
+    private function eventWhere(int $eventId): string
+    {
+        $where = trim((string) get_post_meta($eventId, 'jpn_event_where_label', true));
+        return $where !== '' ? $where : $this->areaName($eventId);
+    }
+
+    private function areaName(int $eventId): string
+    {
+        $areaId = (int) get_post_meta($eventId, 'area', true);
+        $term = $areaId > 0 ? get_term($areaId, 'area') : null;
+        return $term && !is_wp_error($term) ? html_entity_decode((string) $term->name, ENT_QUOTES, 'UTF-8') : '';
+    }
+
+    private function currentEventId(): int
+    {
+        $eventId = (int) get_the_ID();
+        return $eventId > 0 && get_post_type($eventId) === 'event' ? $eventId : 0;
+    }
+
+    private function flag(int $eventId, string $key): bool
+    {
+        return (string) get_post_meta($eventId, $key, true) === '1';
     }
 
     private function normalizeUrl(string $url, string $fallback): string
