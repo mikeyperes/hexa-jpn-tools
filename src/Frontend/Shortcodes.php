@@ -155,7 +155,7 @@ final class Shortcodes
             : '';
         $output = $toolbar . '<div class="events-photos">';
         foreach ($events as $event) {
-            $image = get_the_post_thumbnail($event->ID, 'medium_large');
+            $image = get_the_post_thumbnail($event->ID, 'large');
             if ($image === '') {
                 continue;
             }

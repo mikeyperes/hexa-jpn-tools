@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.4.2 =
+* Events photo feed: use the large WordPress image rendition for sharper branded feed images while avoiding full-size originals.
 
 = 1.4.1 =
 * Photo downloads: file names use the plain event title (no HTML entities); the phone button prepares the large size so the page stays light on mobile data; the ZIP keeps the originals.
