@@ -159,6 +159,7 @@ final class CalendarProfile {
             'apply'       => 'Apply',
             'reset'       => 'Clear filters',
             'more'        => '+%d more',
+            'less'        => 'Show less',
             'count_one'   => '%d event',
             'count_many'  => '%d events',
             'count_none'  => 'No events',

@@ -18,7 +18,7 @@ final class EventAdmin
 
     public function register(): void
     {
-        add_action('acf/save_post', [$this, 'saveDerivedDates'], 20);
+        \Hexa\PluginCore\Fields\Hooks::on('save_post', [$this, 'saveDerivedDates'], 20);
         add_action('save_post_event', [$this, 'saveDerivedDatesFromPost'], 100, 3);
         add_action('save_post_event', [$this, 'setDefaultImage'], 110, 3);
         add_action('pre_get_posts', [$this, 'includeEventsOnAuthorArchives']);
@@ -26,10 +26,10 @@ final class EventAdmin
         add_action('add_meta_boxes_event', [$this, 'removeRankMathBox'], 100);
         add_action('post_submitbox_misc_actions', [$this, 'renderFeaturedImageUrl']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-        add_filter('acf/prepare_field/name=start_date_timestamp', [$this, 'lockDerivedField']);
-        add_filter('acf/prepare_field/name=end_date_timestamp', [$this, 'lockDerivedField']);
-        add_filter('acf/prepare_field/name=start_date_display', [$this, 'lockDerivedField']);
-        add_filter('acf/prepare_field/name=end_date_display', [$this, 'lockDerivedField']);
+        \Hexa\PluginCore\Fields\Hooks::on('prepare_field/name=start_date_timestamp', [$this, 'lockDerivedField']);
+        \Hexa\PluginCore\Fields\Hooks::on('prepare_field/name=end_date_timestamp', [$this, 'lockDerivedField']);
+        \Hexa\PluginCore\Fields\Hooks::on('prepare_field/name=start_date_display', [$this, 'lockDerivedField']);
+        \Hexa\PluginCore\Fields\Hooks::on('prepare_field/name=end_date_display', [$this, 'lockDerivedField']);
 
         if (!is_readable(WPMU_PLUGIN_DIR . '/jpn-event-admin-thumbnails.php')) {
             add_filter('manage_event_posts_columns', [$this, 'eventColumns']);

@@ -138,7 +138,7 @@ final class EntityProfileCardRenderer {
     }
 
     private function acf_value( string $name, string $context ): mixed {
-        return function_exists( 'get_field' ) ? get_field( $name, $context ) : null;
+        return \Hexa\PluginCore\Fields\Field::get( $name, $context );
     }
 
     private function acf_array( string $name, string $context ): array {

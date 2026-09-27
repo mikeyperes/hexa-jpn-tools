@@ -263,7 +263,7 @@ $expect( str_contains( $html, '<h2 class="hcal-title" tabindex="-1">September 20
 $expect( str_contains( $html, '<a class="hcal-item is-featured badclass" href="https://example.test/talk/"' ), 'Each item links to its own URL with sanitized host classes.' );
 $expect( str_contains( $html, '<span class="hcal-time">7:00pm</span><span class="hcal-name">Talk &#091;x&#093;</span>' ), 'Items show time and title, inert to shortcode parsing.' );
 $expect( str_contains( $html, 'Late &lt;b&gt;show&lt;/b&gt;' ), 'Titles are escaped.' );
-$expect( str_contains( $html, '<details class="hcal-more"><summary>+1 more</summary>' ), 'Items beyond the per-day limit collapse behind a count.' );
+$expect( str_contains( $html, '<details class="hcal-more"><summary><span class="hcal-more-closed">+1 more</span><span class="hcal-more-open">Show less</span></summary>' ), 'Overflow keeps a native disclosure with distinct collapsed-count and expanded-action labels.' );
 $expect( str_contains( $html, '<span class="hcal-item"><span class="hcal-name">Holiday</span></span>' ), 'An all-day item without a URL renders without a link or time.' );
 $expect( ! preg_match( '/<li class="hcal-day[^"]*"[^>]*(onclick|href|tabindex|role="button")/', $html ), 'Days themselves are not interactive.' );
 $expect( str_contains( $html, '<li class="hcal-day is-today" aria-current="date">' ), 'Today is marked for styling and assistive technology.' );

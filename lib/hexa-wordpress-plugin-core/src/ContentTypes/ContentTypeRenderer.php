@@ -166,6 +166,7 @@ final class ContentTypeRenderer {
                     <div><dt>Attached CPT</dt><dd><span class="hpc-code"><?php echo esc_html( $post_type_key ); ?></span></dd></div>
                     <div><dt>Field count</dt><dd><?php echo esc_html( (string) $field_count ); ?></dd></div>
                     <div><dt>Dependencies</dt><dd><?php echo esc_html( $group['dependencies'] ? implode( ', ', $group['dependencies'] ) : 'None declared' ); ?></dd></div>
+                    <div><dt>Field storage</dt><dd><?php echo esc_html( 'native' === \Hexa\PluginCore\Fields\Acf::mode() ? 'Native WordPress fields (ACF is not active)' : 'ACF' ); ?></dd></div>
                 </dl>
             </section>
 

@@ -15,8 +15,8 @@ final class AcfFields
 
     public function register(): void
     {
-        add_action('acf/init', [$this, 'registerFields'], 5);
-        add_filter('acf/format_value/name=start_date', [$this, 'formatStartDate'], 20, 2);
+        \Hexa\PluginCore\Fields\Hooks::on('init', [$this, 'registerFields'], 5);
+        \Hexa\PluginCore\Fields\Hooks::on('format_value/name=start_date', [$this, 'formatStartDate'], 20, 2);
     }
 
     public function formatStartDate(mixed $value, mixed $postId): mixed
@@ -31,11 +31,7 @@ final class AcfFields
 
     public function registerFields(): void
     {
-        if (!function_exists('acf_add_local_field_group')) {
-            return;
-        }
-
-        acf_add_local_field_group([
+        \Hexa\PluginCore\Fields\FieldGroups::add([
             'key' => 'group_6768f6933c3ea',
             'title' => 'Event',
             'fields' => [
@@ -64,7 +60,7 @@ final class AcfFields
             'show_in_rest' => 0,
         ]);
 
-        acf_add_local_field_group([
+        \Hexa\PluginCore\Fields\FieldGroups::add([
             'key' => 'group_jpn_event_host_link',
             'title' => 'Event - Host Link (JPN)',
             'fields' => [[
@@ -87,7 +83,7 @@ final class AcfFields
             'show_in_rest' => 0,
         ]);
 
-        acf_add_local_field_group([
+        \Hexa\PluginCore\Fields\FieldGroups::add([
             'key' => 'group_jpn_host_meta',
             'title' => 'Host - JPN Meta',
             'fields' => [

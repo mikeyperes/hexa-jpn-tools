@@ -83,6 +83,7 @@ function acf_get_field( string $name ): ?array {
     return 'cost' === $name ? [ 'name' => 'cost', 'choices' => [ 'free' => 'Free', 'paid' => 'Paid' ] ] : null;
 }
 
+require __DIR__ . '/support/fields.php';
 foreach ( [ 'PublicComponents/ProfileValues', 'QueryFilter/QueryFilterType', 'QueryFilter/MetaFilterType', 'QueryFilter/TaxonomyFilterType', 'QueryFilter/DateRangeFilterType', 'QueryFilter/CallbackFilterType', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet' ] as $class ) {
     require $root . '/src/' . $class . '.php';
 }

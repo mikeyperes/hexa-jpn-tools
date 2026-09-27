@@ -46,6 +46,7 @@ src/DataNormalization/  Hexa\PluginCore\DataNormalization
 src/EntitySources/      Hexa\PluginCore\EntitySources
 src/FaqSets/            Hexa\PluginCore\FaqSets
 src/FieldStructures/    Hexa\PluginCore\FieldStructures
+src/Fields/             Hexa\PluginCore\Fields
 src/FrontendForms/      Hexa\PluginCore\FrontendForms
 src/IntegrationTests/   Hexa\PluginCore\IntegrationTests
 src/LogFiles/           Hexa\PluginCore\LogFiles
@@ -106,6 +107,7 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put admin tab abstractions in `src/WpAdminTabs`.
 - Put reusable visual primitives in `src/WpAdminComponents`.
 - Put reusable ACF field-group registration, toggles, settings panels, AJAX, and field-structure displays in `src/FieldStructures`; hosts own their field arrays.
+- `src/Fields` is the one custom-field API. Hosts register ACF-format groups with `Fields\FieldGroups::add()`/`ready()`, read and write through `Fields\Field`, add options pages with `Fields\OptionsPages`, render forms with `Fields\Form`, and hook ACF lifecycle events with `Fields\Hooks::on()`. Never call `get_field()`, `update_field()`, `acf_add_local_field_group()`, `acf_add_options_page()`, `acf_form()` or `add_action( 'acf/...' )` directly, and never declare ACF Pro as a requirement: with ACF active these APIs delegate to ACF, without it Core stores, formats and edits the same data natively.
 - Put FAQ normalization, source adapters, reusable HTML, and FAQPage graph helpers in `src/FaqSets`.
 - Put normalized public brand identities in `src/BrandProfiles`; product and service data remains host-owned.
 - Put canonical public field schemas and rich-text normalization in `src/FrontendForms`.

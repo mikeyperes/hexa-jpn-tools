@@ -11,11 +11,8 @@ final class FaqSourceResolver {
 
     /** @return array<int,array{question:string,answer:string}> */
     public function acf( string|int $context, string $field_name = 'faq', array $mapping = [] ): array {
-        if ( ! function_exists( 'get_field' ) ) {
-            return [];
-        }
         $mapping = array_merge( [ 'question' => 'question', 'answer' => 'answer' ], $mapping );
-        return $this->rows( get_field( $field_name, $context ), $mapping );
+        return $this->rows( \Hexa\PluginCore\Fields\Field::get( $field_name, $context ), $mapping );
     }
 
     /** @return array<int,array{question:string,answer:string}> */

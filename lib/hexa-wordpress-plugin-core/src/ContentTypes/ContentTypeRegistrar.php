@@ -41,11 +41,8 @@ final class ContentTypeRegistrar {
         }
     }
 
+    /** Registers enabled field groups through Fields\FieldGroups (ACF or native). */
     public function register_acf_groups(): void {
-        if ( ! function_exists( 'acf_add_local_field_group' ) ) {
-            return;
-        }
-
         foreach ( $this->registry->resolved_definitions() as $definition ) {
             if ( empty( $definition['enabled'] ) ) {
                 continue;
@@ -65,7 +62,7 @@ final class ContentTypeRegistrar {
                     $acf['title'] = $group['label'];
                 }
                 $acf['location'] = $this->replace_post_type_placeholders( (array) ( $acf['location'] ?? [] ), (string) $definition['post_type']['key'] );
-                acf_add_local_field_group( $acf );
+                \Hexa\PluginCore\Fields\FieldGroups::add( $acf );
             }
         }
     }

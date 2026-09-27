@@ -42,6 +42,7 @@ function acf_add_local_field_group( array $definition ): void {
 }
 
 $root = dirname( __DIR__ );
+require __DIR__ . '/support/fields.php';
 require $root . '/src/CoreContracts/ModuleInterface.php';
 require $root . '/src/ContentTypes/ContentTypeDefinition.php';
 require $root . '/src/ContentTypes/ContentTypeSettingsStore.php';

@@ -117,11 +117,7 @@ final class AcfGalleryDetailsModule implements ModuleInterface {
         if ( $attachment_id < 1 || '' === $context ) {
             return new \WP_Error( 'hexa_acf_gallery_invalid_removal', 'A valid gallery image and context are required.' );
         }
-        if ( ! function_exists( 'get_field' ) || ! function_exists( 'update_field' ) ) {
-            return new \WP_Error( 'hexa_acf_gallery_acf_unavailable', 'Advanced Custom Fields is unavailable.' );
-        }
-
-        $value = get_field( $this->field_key(), $context, false );
+        $value = \Hexa\PluginCore\Fields\Field::get( $this->field_key(), $context, false );
         $ids   = MediaGalleryDetailsRenderer::attachment_ids( is_array( $value ) ? $value : [] );
         if ( ! in_array( $attachment_id, $ids, true ) ) {
             return [
@@ -134,7 +130,7 @@ final class AcfGalleryDetailsModule implements ModuleInterface {
         }
 
         $remaining = array_values( array_filter( $ids, static fn( int $id ): bool => $id !== $attachment_id ) );
-        if ( false === update_field( $this->field_key(), $remaining, $context ) ) {
+        if ( false === \Hexa\PluginCore\Fields\Field::update( $this->field_key(), $remaining, $context ) ) {
             return new \WP_Error( 'hexa_acf_gallery_update_failed', 'The gallery value could not be updated.' );
         }
 
@@ -169,8 +165,8 @@ final class AcfGalleryDetailsModule implements ModuleInterface {
         if ( is_string( $resolver ) && '' !== $resolver ) {
             return $this->normalize_context( $resolver );
         }
-        if ( function_exists( 'acf_get_form_data' ) ) {
-            $context = $this->normalize_context( (string) acf_get_form_data( 'post_id' ) );
+        if ( null !== \Hexa\PluginCore\Fields\Form::data( 'post_id' ) ) {
+            $context = $this->normalize_context( (string) \Hexa\PluginCore\Fields\Form::data( 'post_id' ) );
             if ( '' !== $context ) {
                 return $context;
             }

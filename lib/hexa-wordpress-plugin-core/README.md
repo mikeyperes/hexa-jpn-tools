@@ -105,6 +105,30 @@ Version 3.0.0 establishes the coordinated major release for the expanded Core da
 
 Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
 
+Version 3.4.9 resolves the published fields of trashed ACF admin-screen groups by key or name, as `acf_get_field()` does, while never listing or rendering those groups.
+
+Version 3.4.8 passes every native location-rule result through ACF's location filters (`location/match_rule/type=<param>`, `location/match_rule`, `location/rule_match/<param>`, `location/rule_match`), as `acf_match_location_rule()` does, so host visibility filters work without ACF.
+
+Version 3.4.7 adds `hexa_fields_on()` to `bootstrap.php` for field hooks registered while plugins load (before Core's classes can be autoloaded; the migration tool emits it for file-level hooks), and applies the `load_field_groups` filter to native group lists as ACF does.
+
+Version 3.4.6 reads field groups created in the ACF admin screen (`acf-field-group`/`acf-field` posts) when ACF is not active, exactly as ACF does: their fields resolve and format, active ones render on their screens, and code-registered groups with the same key win. A missing value now takes the field's or its type's `default_value`, as `acf_get_value()` does. `Field::all()` follows `get_field_objects()` exactly (stored-value order; a value is listed when its reference resolves to a field of the same name), page-link and post fields resolve only posts `acf_get_posts()` returns, and WYSIWYG output runs ACF's `acf_the_content` filter chain.
+
+Version 3.4.5 adds `Form::field()`, the equivalent of `acf_render_field_wrap()`: one field outside a form, posted under `acf[<key>]` in both modes, and maps it in `bin/migrate-to-fields.php`.
+
+Version 3.4.4 makes native Fields read exactly as ACF reads: a name resolves through its stored field-key reference (a never-saved name returns the raw value or null, as `get_field()` does; only `update()` also matches registered names), and option references use ACF's `_options_<name>` storage name.
+
+Version 3.4.3 derives a missing field-group key from its title and a missing field key from its name, exactly as ACF does, and ships `tests/support/fields.php` so host-plugin unit tests can run Fields against their own ACF stubs.
+
+Version 3.4.2 makes native `Field::objects()`/`all()` list exactly what ACF lists: every top-level field with a stored `_name` reference on the object (verified field-for-field against ACF on hexaprwire.com's real releases and outlet records).
+
+Version 3.4.1 lets host-defined location rules (`Hooks::on( 'location/rule_match/<param>', ... )`) decide where native field groups appear, as ACF does.
+
+Version 3.4.0 adds `Hexa\PluginCore\Fields`, the one custom-field API for every Hexa plugin: field-group registration, `Field::get()`/`update()` and row loops, options pages, forms and ACF lifecycle hooks, all with ACF-identical signatures. With ACF active every call delegates to ACF; without it Core stores, formats and edits the same data natively in ACF's storage layout, so ACF Pro is no longer a requirement. Content types, field-structure registries, the settings panel, entity sources, FAQ sets, the gallery module and query filters now use it. See `docs/fields.md`.
+
+Version 3.3.0 makes content-type field groups work without ACF. `ContentTypes\NativeFieldGroups` registers each enabled group as a native meta box and post meta when ACF is not active, storing values under the same meta keys ACF uses so existing data remains readable and carries over if ACF is activated later. The Content Model screen shows the active field storage.
+
+Version 3.2.2 gives calendar overflow disclosures distinct collapsed and expanded labels, so the control changes from the event count to `Show less` while open and supports host-defined `labels.less` text.
+
 Version 3.2.0 adds `Hexa\PluginCore\Calendar`, a lightweight library-free month-grid calendar (`[hexa_calendar]`, `GET /wp-json/hexa-plugin-core/v1/calendar/{profile}`) whose items link to profile-defined URLs, and `Hexa\PluginCore\QueryFilter`, the one shared visitor-filter structure (taxonomy, custom field/ACF, date range, callback, and host-registered types) now used by both `Calendar` and `DirectorySearch`. Shared public-component helpers move into `Hexa\PluginCore\PublicComponents`; the `DirectorySearch` public API is unchanged (the former filter constants and `DirectorySearchRequest::filter_options()` remain as deprecated aliases) and gains date-range filters.
 
 Version 3.1.0 adds `Hexa\PluginCore\DirectorySearch`, a declarative public directory search over published posts or role-scoped users (all/any/exact terms, whole/prefix/contains matching, `*` wildcards, meta/taxonomy/callback filters, field/callback sorts, card templates, `[hexa_directory]`, and `GET /wp-json/hexa-plugin-core/v1/directory/{profile}`), and moves term matching into the shared `SearchQuery\SearchMatchSql` helper used by the native results engine.

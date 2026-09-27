@@ -10,6 +10,7 @@ Use this namespace when multiple host plugins need the same CPT registration, se
 - `ContentTypeSettingsStore`: resolves defaults and legacy options and persists labels, slug, enable state, and field-group toggles.
 - `ContentTypeRegistry`: module and definition registry.
 - `ContentTypeRegistrar`: idempotent CPT, taxonomy, and ACF registration.
+- Field groups register through `Hexa\PluginCore\Fields\FieldGroups`, so they work with ACF or natively without it (see [fields.md](fields.md)). `NativeFieldGroups` remains only as the deprecated 3.3.0 compatibility view.
 - `ContentTypeAjaxController`: guarded AJAX persistence and rewrite flushing.
 - `ContentTypeRenderer`: shared hierarchical management UI. Every CPT is a collapsed accordion whose header contains its title and functional enable switch. Its ACF field-group cards are separate collapsed siblings placed immediately after and outside the CPT accordion, each with its own title and enable switch. ACF siblings intentionally use a smaller, quieter secondary treatment so the CPT remains the dominant level. Imported field rows show `label — name — type`, and each row includes a collapsed JSON breakdown sourced from the actual ACF definition. Text-only host inventories remain supported as a compatibility fallback.
 
@@ -36,5 +37,7 @@ $registry->add(
 );
 $bootstrap->add_module( $registry );
 ```
+
+Field groups therefore work with or without ACF. Hosts should read values through `DataNormalization\FieldReader` (ACF first, post meta otherwise) instead of calling `get_field()` directly, and must not declare ACF as a hard dependency for groups that only use the supported types.
 
 Use `registration_mode => external` only when the current plugin extends a CPT owned elsewhere. Test with `php tests/content-types.php`, then verify registration, labels, slug, ACF groups, and existing content on the exact WordPress editor and archive URLs.

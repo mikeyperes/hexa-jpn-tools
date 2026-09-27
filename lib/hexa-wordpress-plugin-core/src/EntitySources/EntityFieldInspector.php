@@ -6,11 +6,7 @@ final class EntityFieldInspector {
     /** @param array<string,mixed> $entity @return array<int,array<string,mixed>> */
     public function inspect( array $entity ): array {
         $groups = [ $this->wordpress_group( $entity ) ];
-        if ( ! function_exists( 'get_field_objects' ) ) {
-            return $groups;
-        }
-
-        $objects = get_field_objects( $entity['context'], false, true );
+        $objects = \Hexa\PluginCore\Fields\Field::objects( $entity['context'], false, true );
         if ( ! is_array( $objects ) ) {
             return $groups;
         }
@@ -22,7 +18,7 @@ final class EntityFieldInspector {
             }
             $parent = (string) ( $field['parent'] ?? 'acf-other' );
             if ( ! isset( $acf_groups[ $parent ] ) ) {
-                $group = function_exists( 'acf_get_field_group' ) ? acf_get_field_group( $parent ) : null;
+                $group = \Hexa\PluginCore\Fields\FieldGroups::get_group( $parent );
                 $acf_groups[ $parent ] = [
                     'key' => $parent, 'label' => is_array( $group ) ? (string) ( $group['title'] ?? 'Additional Fields' ) : 'Additional Fields',
                     'source' => $this->field_source( is_array( $group ) ? $group : [], $field ), 'fields' => [],

@@ -32,6 +32,7 @@ function get_post_meta(int $postId, string $key, bool $single = false): mixed
     return $meta[$postId][$key] ?? '';
 }
 
+require_once dirname(__DIR__) . '/lib/hexa-wordpress-plugin-core/tests/support/fields.php';
 require dirname(__DIR__) . '/src/Events/EventDates.php';
 require dirname(__DIR__) . '/src/Content/AcfFields.php';
 

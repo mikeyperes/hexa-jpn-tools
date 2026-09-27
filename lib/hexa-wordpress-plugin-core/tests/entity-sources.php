@@ -48,6 +48,7 @@ function get_user_meta( int $user_id, string $key, bool $single = false ): mixed
 function get_post_meta( int $post_id, string $key, bool $single = false ): mixed { return ''; }
 
 $root = dirname( __DIR__ );
+require __DIR__ . '/support/fields.php';
 require $root . '/src/EntitySources/CanonicalEntityResolver.php';
 require $root . '/src/EntitySources/PrimaryEntityManager.php';
 

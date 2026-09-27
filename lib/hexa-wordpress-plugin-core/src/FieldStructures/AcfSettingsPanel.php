@@ -25,14 +25,14 @@ final class AcfSettingsPanel implements ModuleInterface {
     }
 
     public function prepare_form(): void {
-        if ( $this->is_host_page() && function_exists( 'acf_form_head' ) ) {
-            acf_form_head();
+        if ( $this->is_host_page() ) {
+            \Hexa\PluginCore\Fields\Form::head();
         }
     }
 
     public function enqueue(): void {
-        if ( $this->is_host_page() && function_exists( 'acf_enqueue_scripts' ) ) {
-            acf_enqueue_scripts();
+        if ( $this->is_host_page() ) {
+            \Hexa\PluginCore\Fields\Form::enqueue();
         }
     }
 
@@ -40,11 +40,8 @@ final class AcfSettingsPanel implements ModuleInterface {
         ob_start();
         CoreUi::render_assets();
         $assets = (string) ob_get_clean();
-        if ( ! function_exists( 'acf_form' ) ) {
-            return $assets . CoreUi::card( [ 'title' => (string) $this->config['title'], 'body_html' => '<p>Advanced Custom Fields Pro is required for these settings.</p>' ] );
-        }
         ob_start();
-        acf_form(
+        \Hexa\PluginCore\Fields\Form::render(
             [
                 'post_id' => $this->config['post_id'], 'field_groups' => array_values( (array) $this->config['field_groups'] ),
                 'form' => true, 'submit_value' => (string) $this->config['submit_value'],

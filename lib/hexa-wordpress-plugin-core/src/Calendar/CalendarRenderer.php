@@ -210,7 +210,8 @@ final class CalendarRenderer {
                 $hidden  = array_slice( $items, $profile['max_per_day'] );
                 $html   .= $this->list( $profile, $request, $visible, $timezone );
                 if ( [] !== $hidden ) {
-                    $html .= '<details class="hcal-more"><summary>' . esc_html( sprintf( $profile['labels']['more'], count( $hidden ) ) ) . '</summary>'
+                    $html .= '<details class="hcal-more"><summary><span class="hcal-more-closed">' . esc_html( sprintf( $profile['labels']['more'], count( $hidden ) ) ) . '</span>'
+                        . '<span class="hcal-more-open">' . esc_html( $profile['labels']['less'] ) . '</span></summary>'
                         . $this->list( $profile, $request, $hidden, $timezone ) . '</details>';
                 }
             }
@@ -328,6 +329,7 @@ final class CalendarRenderer {
             . '.hcal-time{display:block;color:var(--hcal-muted);font-size:11px;font-variant-numeric:tabular-nums}'
             . '.hcal-name{display:-webkit-box;overflow:hidden;font-weight:600;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
             . '.hcal-more summary{padding:2px 6px;color:var(--hcal-muted);font-size:12px;cursor:pointer;list-style:none}.hcal-more summary::-webkit-details-marker{display:none}'
+            . '.hcal-more:not([open])>summary>.hcal-more-open,.hcal-more[open]>summary>.hcal-more-closed{display:none}'
             . '.hcal-more .hcal-items{margin-top:3px}'
             . '.hcal-empty{margin:14px 0 0;padding:20px;border:1px dashed var(--hcal-border);border-radius:var(--hcal-radius);color:var(--hcal-muted);text-align:center}'
             . '.hcal-body{transition:opacity .15s}.hcal-body.is-loading{opacity:.55}'

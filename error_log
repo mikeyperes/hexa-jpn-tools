@@ -1,0 +1,22 @@
+[27-Sep-2026 08:29:03 UTC] PHP Fatal error:  Uncaught Error: Class "Hexa\PluginCore\Fields\Hooks" not found in /Users/mp/Projects/hexa-jpn-tools/src/Content/AcfFields.php:18
+Stack trace:
+#0 /Users/mp/Projects/hexa-jpn-tools/tests/date-only-card-rendering.php(39): Hexa\JpnTools\Content\AcfFields->register()
+#1 {main}
+  thrown in /Users/mp/Projects/hexa-jpn-tools/src/Content/AcfFields.php on line 18
+[27-Sep-2026 08:29:03 UTC] PHP Fatal error:  Uncaught RuntimeException: Run this fixture with WP-CLI. in /Users/mp/Projects/hexa-jpn-tools/tests/wp-rest-fixture.php:13
+Stack trace:
+#0 {main}
+  thrown in /Users/mp/Projects/hexa-jpn-tools/tests/wp-rest-fixture.php on line 13
+[27-Sep-2026 08:29:15 UTC] PHP Fatal error:  Uncaught Error: Class "Hexa\PluginCore\Fields\Hooks" not found in /Users/mp/Projects/hexa-jpn-tools/src/Content/AcfFields.php:18
+Stack trace:
+#0 /Users/mp/Projects/hexa-jpn-tools/tests/date-only-card-rendering.php(39): Hexa\JpnTools\Content\AcfFields->register()
+#1 {main}
+  thrown in /Users/mp/Projects/hexa-jpn-tools/src/Content/AcfFields.php on line 18
+[27-Sep-2026 08:29:35 UTC] PHP Fatal error:  Uncaught RuntimeException: Run this fixture with WP-CLI. in /Users/mp/Projects/hexa-jpn-tools/tests/wp-rest-fixture.php:13
+Stack trace:
+#0 {main}
+  thrown in /Users/mp/Projects/hexa-jpn-tools/tests/wp-rest-fixture.php on line 13
+[27-Sep-2026 08:29:36 UTC] PHP Fatal error:  Uncaught RuntimeException: Run this fixture with WP-CLI. in /Users/mp/Projects/hexa-jpn-tools/tests/wp-rest-fixture.php:13
+Stack trace:
+#0 {main}
+  thrown in /Users/mp/Projects/hexa-jpn-tools/tests/wp-rest-fixture.php on line 13

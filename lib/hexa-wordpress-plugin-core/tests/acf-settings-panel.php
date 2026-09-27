@@ -11,6 +11,7 @@ function wp_unslash( string $value ): string { return stripslashes( $value ); }
 function acf_form_head(): void { ++$GLOBALS['acf_settings_panel_calls']['head']; }
 function acf_enqueue_scripts(): void { ++$GLOBALS['acf_settings_panel_calls']['enqueue']; }
 
+require __DIR__ . '/support/fields.php';
 require_once dirname( __DIR__ ) . '/src/CoreContracts/ModuleInterface.php';
 require_once dirname( __DIR__ ) . '/src/FieldStructures/AcfSettingsPanel.php';
 

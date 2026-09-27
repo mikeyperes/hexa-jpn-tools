@@ -81,7 +81,7 @@ CalendarRegistry::register( 'events', [
 | `timezone` | site | IANA identifier; days, times, and date filters (unless a filter declares its own `timezone`) use it. |
 | `week_start` | site `start_of_week` | 0 (Sunday) – 6. |
 | `months_back`, `months_ahead` | 12, 12 | Visitors (and crawlers) can open only this window; month links are `rel="nofollow"`. Max 60. |
-| `max_per_day` | 3 | Extra items collapse behind `+N more` (native `<details>`). |
+| `max_per_day` | 3 | Extra items collapse behind `+N more` (native `<details>`). When expanded, the control reads `Show less`; collapsing restores the count. Override these strings through `labels.more` and `labels.less`. |
 | `max_span_days` | 7 | Longer items appear once, on their first day inside the month (or first visible day when they lie wholly outside it), labeled “Until …”. |
 | `max_items` | 500 | Per grid window (max 2,000). |
 | `link` | `permalink` | Where each item goes; see above. `link_target` `_blank` opens a new tab. |

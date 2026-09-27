@@ -53,7 +53,7 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
 
     public function register(): void {
         add_filter( 'acf/load_field_group', [ $this, 'apply_managed_state' ], 999 );
-        add_action( 'acf/init', [ $this, 'register_groups' ], (int) $this->config['hook_priority'] );
+        \Hexa\PluginCore\Fields\FieldGroups::ready( [ $this, 'register_groups' ], (int) $this->config['hook_priority'] );
         ( new AcfFieldGroupAjaxController( $this, $this->config ) )->register();
     }
 
@@ -77,10 +77,8 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
         return $field_group;
     }
 
+    /** Registers enabled groups through Fields\FieldGroups (ACF or native). */
     public function register_groups(): void {
-        if ( ! function_exists( 'acf_add_local_field_group' ) ) {
-            return;
-        }
         foreach ( $this->resolved_definitions() as $definition ) {
             if ( empty( $definition['enabled'] ) || empty( $definition['available'] ) ) {
                 continue;
@@ -97,7 +95,7 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
             if ( empty( $group['title'] ) ) {
                 $group['title'] = $definition['label'];
             }
-            acf_add_local_field_group( $group );
+            \Hexa\PluginCore\Fields\FieldGroups::add( $group );
         }
     }
 

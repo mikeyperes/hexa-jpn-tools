@@ -45,6 +45,9 @@ final class CoreBootstrap {
             ( new CorePackageFleetSyncModule() )->register();
         }
         IntegrationTestRuntime::register_host( $this->context );
+        if ( class_exists( \Hexa\PluginCore\Fields\Database::class ) ) {
+            \Hexa\PluginCore\Fields\Database::boot();
+        }
 
         foreach ( $this->modules as $module ) {
             $module->register();

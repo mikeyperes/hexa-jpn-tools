@@ -81,11 +81,9 @@ final class CanonicalEntityResolver {
         }
 
         $context = $entity['context'] ?? ( 'user' === $entity['kind'] ? 'user_' . (int) $entity['id'] : (int) $entity['id'] );
-        if ( function_exists( 'get_field' ) ) {
-            $value = get_field( $field, $context );
-            if ( self::has_value( $value ) ) {
-                return $value;
-            }
+        $value = \Hexa\PluginCore\Fields\Field::get( $field, $context );
+        if ( self::has_value( $value ) ) {
+            return $value;
         }
 
         if ( 'user' === $entity['kind'] ) {
@@ -135,7 +133,7 @@ final class CanonicalEntityResolver {
         if ( isset( $settings['entity_type'] ) && 'auto' !== $settings['entity_type'] && in_array( $settings['entity_type'], self::TYPES, true ) ) {
             return (string) $settings['entity_type'];
         }
-        $field_type = function_exists( 'get_field' ) ? self::key( (string) get_field( 'entity_type', $context ) ) : '';
+        $field_type = self::key( (string) \Hexa\PluginCore\Fields\Field::get( 'entity_type', $context ) );
         return in_array( $field_type, [ 'person', 'organization', 'publication' ], true ) ? $field_type : $fallback;
     }
 
@@ -146,7 +144,7 @@ final class CanonicalEntityResolver {
 
     private static function attached_user_id( \WP_Post $post ): int {
         foreach ( [ 'attached_user', 'profile_user', 'person_user', 'author_user', 'founder_user', 'verified_user', 'user' ] as $field ) {
-            $value = function_exists( 'get_field' ) ? get_field( $field, $post->ID ) : null;
+            $value = \Hexa\PluginCore\Fields\Field::get( $field, $post->ID );
             if ( null === $value || false === $value || '' === $value ) {
                 $value = function_exists( 'get_post_meta' ) ? get_post_meta( $post->ID, $field, true ) : null;
             }

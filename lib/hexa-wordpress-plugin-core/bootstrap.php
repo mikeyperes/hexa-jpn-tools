@@ -373,3 +373,21 @@ if ( ! function_exists( 'hexa_plugin_core_register_package' ) ) {
         HexaPluginCorePackageRegistry::register_candidate( $host, $core_root, $requirements );
     }
 }
+
+if ( ! function_exists( 'hexa_fields_on' ) ) {
+    /**
+     * `Hexa\PluginCore\Fields\Hooks::on()` for code that runs while plugins
+     * load, before Core's classes can be autoloaded: the registration is made
+     * as soon as Core is resolved on `plugins_loaded`.
+     */
+    function hexa_fields_on( string $hook, callable $callback, int $priority = 10, int $accepted_args = 1 ): void {
+        $register = static function () use ( $hook, $callback, $priority, $accepted_args ): void {
+            \Hexa\PluginCore\Fields\Hooks::on( $hook, $callback, $priority, $accepted_args );
+        };
+        if ( class_exists( \Hexa\PluginCore\Fields\Hooks::class ) ) {
+            $register();
+            return;
+        }
+        add_action( 'plugins_loaded', $register, 0 );
+    }
+}

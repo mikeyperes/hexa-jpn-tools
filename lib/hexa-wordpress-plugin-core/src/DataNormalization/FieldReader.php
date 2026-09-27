@@ -4,7 +4,7 @@ declare( strict_types=1 );
 
 namespace Hexa\PluginCore\DataNormalization;
 
-/** Cached ACF-first reader for post and user fields. */
+/** Cached reader for post and user fields: Fields\Field (ACF or native) first, raw meta otherwise. */
 final class FieldReader {
     /** @var array<string,mixed> */
     private array $cache = [];
@@ -40,11 +40,7 @@ final class FieldReader {
         mixed $default = '',
         bool $empty_is_missing = false
     ): mixed {
-        if ( ! function_exists( 'get_field' ) ) {
-            return $default;
-        }
-
-        $value = get_field( $name, $context );
+        $value = \Hexa\PluginCore\Fields\Field::get( $name, $context );
         $missing = $empty_is_missing
             ? empty( $value )
             : null === $value || '' === $value || false === $value;
@@ -65,11 +61,9 @@ final class FieldReader {
         if ( array_key_exists( $name, $this->cache ) ) {
             return $this->cache[ $name ];
         }
-        if ( function_exists( 'get_field' ) ) {
-            $value = get_field( $name, $this->context() );
-            if ( ValueNormalizer::present( $value ) ) {
-                return $this->cache[ $name ] = $value;
-            }
+        $value = \Hexa\PluginCore\Fields\Field::get( $name, $this->context() );
+        if ( ValueNormalizer::present( $value ) ) {
+            return $this->cache[ $name ] = $value;
         }
         if ( 'user' === $this->kind ) {
             $value = function_exists( 'get_user_meta' ) ? get_user_meta( $this->object_id, $name, true ) : null;

@@ -89,9 +89,6 @@ final class FieldStructureManager {
     }
 
     public static function acfGroupAvailable( string $group_key ): bool {
-        if ( ! function_exists( "acf_get_field_group" ) || "" === $group_key ) {
-            return false;
-        }
-        return (bool) acf_get_field_group( $group_key );
+        return "" !== $group_key && null !== \Hexa\PluginCore\Fields\FieldGroups::get_group( $group_key );
     }
 }

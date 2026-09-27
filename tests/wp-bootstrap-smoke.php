@@ -66,9 +66,9 @@ $rewriteRules = (array) get_option('rewrite_rules', []);
 $expect(isset($rewriteRules['event/([^/]+)/?$']), 'plugin upgrade refreshes the event permalink rule');
 
 (new Hexa\JpnTools\Content\AcfFields())->registerFields();
-$expect(function_exists('acf_get_local_field_group') && is_array(acf_get_local_field_group('group_6768f6933c3ea')), 'historical Event ACF group is registered locally');
-$expect(is_array(acf_get_local_field_group('group_jpn_event_host_link')), 'event host ACF group is registered locally');
-$expect(is_array(acf_get_local_field_group('group_jpn_host_meta')), 'host metadata ACF group is registered locally');
+$expect(is_array(\Hexa\PluginCore\Fields\FieldGroups::get_group('group_6768f6933c3ea')), 'historical Event ACF group is registered locally');
+$expect(is_array(\Hexa\PluginCore\Fields\FieldGroups::get_group('group_jpn_event_host_link')), 'event host ACF group is registered locally');
+$expect(is_array(\Hexa\PluginCore\Fields\FieldGroups::get_group('group_jpn_host_meta')), 'host metadata ACF group is registered locally');
 
 $expect(shortcode_exists('events-photos'), 'events photos shortcode is registered');
 $expect(shortcode_exists('jpn_upcoming_event_banner'), 'upcoming event banner shortcode is registered');

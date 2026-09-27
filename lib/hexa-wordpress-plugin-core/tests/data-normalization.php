@@ -27,6 +27,7 @@ function get_the_title( int $id ): string { return 'Attachment title'; }
 function wp_get_attachment_caption( int $id ): string { return 'Attachment caption'; }
 
 $root = dirname( __DIR__ );
+require __DIR__ . '/support/fields.php';
 require $root . '/src/DataNormalization/ValueNormalizer.php';
 require $root . '/src/DataNormalization/FieldReader.php';
 require $root . '/src/DataNormalization/MediaNormalizer.php';

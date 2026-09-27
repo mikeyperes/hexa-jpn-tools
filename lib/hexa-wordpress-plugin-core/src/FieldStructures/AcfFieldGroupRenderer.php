@@ -31,7 +31,7 @@ final class AcfFieldGroupRenderer {
     private function card( array $definition, string $persist ): string {
         $enabled = ! empty( $definition['enabled'] );
         $available = ! empty( $definition['available'] );
-        $registered = $available && function_exists( 'acf_get_field_group' ) && '' !== $definition['group_key'] && (bool) acf_get_field_group( $definition['group_key'] );
+        $registered = $available && '' !== $definition['group_key'] && null !== \Hexa\PluginCore\Fields\FieldGroups::get_group( $definition['group_key'] );
         $meta = CoreUi::pill( $enabled ? 'Enabled' : 'Disabled', $enabled ? 'success' : 'warning' )
             . CoreUi::pill( $registered ? 'Registered' : ( $available ? 'Not registered' : 'Superseded' ), $registered ? 'success' : ( $available && $enabled ? 'danger' : 'dark' ) );
         $details = '';

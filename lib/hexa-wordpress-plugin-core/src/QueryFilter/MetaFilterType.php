@@ -40,7 +40,7 @@ final class MetaFilterType extends QueryFilterType {
 
     public function keyword_options( array $filter, string $keyword, array $scope ): array {
         if ( 'acf' === $keyword ) {
-            $field = function_exists( 'acf_get_field' ) ? acf_get_field( $filter['meta_key'] ) : null;
+            $field = \Hexa\PluginCore\Fields\FieldGroups::get_field( (string) $filter['meta_key'] );
 
             return is_array( $field ) && is_array( $field['choices'] ?? null ) ? array_map( 'strval', $field['choices'] ) : [];
         }

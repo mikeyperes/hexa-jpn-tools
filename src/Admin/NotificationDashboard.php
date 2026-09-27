@@ -15,16 +15,13 @@ final class NotificationDashboard
 
     public function register(): void
     {
-        add_action('acf/init', [$this, 'registerOptionsPage']);
-        add_action('acf/save_post', [$this, 'refreshMessage'], 20);
+        \Hexa\PluginCore\Fields\Hooks::on('init', [$this, 'registerOptionsPage']);
+        \Hexa\PluginCore\Fields\Hooks::on('save_post', [$this, 'refreshMessage'], 20);
     }
 
     public function registerOptionsPage(): void
     {
-        if (!function_exists('acf_add_options_page')) {
-            return;
-        }
-        acf_add_options_page([
+        \Hexa\PluginCore\Fields\OptionsPages::add([
             'page_title' => __('Notifications Dashboard', 'hexa-jpn-tools'),
             'menu_slug' => 'notifications-dashboard',
             'capability' => 'manage_options',
@@ -36,20 +33,19 @@ final class NotificationDashboard
     {
         if ($postId !== 'options'
             || sanitize_key((string) ($_GET['page'] ?? '')) !== 'notifications-dashboard'
-            || !current_user_can('manage_options')
-            || !function_exists('update_field')) {
+            || !current_user_can('manage_options')) {
             return;
         }
 
         $compiled = $this->compile($this->queries->forPeriod('week'));
-        update_field('whatsapp_notification_body', $compiled['body'], 'option');
-        update_field('whatsapp_notification_output', $compiled['message'], 'option');
+        \Hexa\PluginCore\Fields\Field::update('whatsapp_notification_body', $compiled['body'], 'option');
+        \Hexa\PluginCore\Fields\Field::update('whatsapp_notification_output', $compiled['message'], 'option');
     }
 
     public function compile(array $events): array
     {
-        $header = function_exists('get_field') ? (string) get_field('whatsapp_notification_header', 'option') : '';
-        $footer = function_exists('get_field') ? (string) get_field('whatsapp_notification_footer', 'option') : '';
+        $header = (string) \Hexa\PluginCore\Fields\Field::get('whatsapp_notification_header', 'option');
+        $footer = (string) \Hexa\PluginCore\Fields\Field::get('whatsapp_notification_footer', 'option');
         $parts = [];
         foreach ($events as $event) {
             $parts[] = $this->eventText($event);

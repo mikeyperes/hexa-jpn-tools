@@ -13,6 +13,7 @@ function add_action( string $hook, callable $callback, int $priority = 10 ): voi
 function add_filter( string $hook, callable $callback, int $priority = 10 ): void { $GLOBALS['acf_group_test_filters'][ $hook ][ $priority ] = $callback; }
 function acf_add_local_field_group( array $group ): void { $GLOBALS['acf_group_test_registered'][] = $group; }
 
+require __DIR__ . '/support/fields.php';
 require_once dirname( __DIR__ ) . '/src/CoreContracts/ModuleInterface.php';
 require_once dirname( __DIR__ ) . '/src/FieldStructures/AcfFieldGroupSettingsStore.php';
 require_once dirname( __DIR__ ) . '/src/FieldStructures/AcfFieldGroupAjaxController.php';
