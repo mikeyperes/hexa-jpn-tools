@@ -10,6 +10,7 @@ use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageConfig;
 use Hexa\PluginCore\CoreRuntime\PluginContext;
 use Hexa\PluginCore\DirectorySearch\DirectorySearchModule;
+use Hexa\PluginCore\Map\MapModule;
 use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
 use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
 use Hexa\PluginCore\PluginUpdates\UpdaterConfig;
@@ -51,6 +52,10 @@ final class CoreIntegration
 
         if (class_exists(CalendarModule::class)) {
             self::$bootstrap->add_module(new CalendarModule());
+        }
+
+        if (class_exists(MapModule::class)) {
+            self::$bootstrap->add_module(new MapModule());
         }
 
         if (is_admin() || (function_exists('wp_doing_ajax') && wp_doing_ajax())) {

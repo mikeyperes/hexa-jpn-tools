@@ -61,6 +61,7 @@ hexa-wordpress-plugin-core/
     SchemaTools/        -> Hexa\PluginCore\SchemaTools
     DirectorySearch/    -> Hexa\PluginCore\DirectorySearch
     Calendar/           -> Hexa\PluginCore\Calendar
+    Map/                -> Hexa\PluginCore\Map
     QueryFilter/        -> Hexa\PluginCore\QueryFilter
     PublicComponents/   -> Hexa\PluginCore\PublicComponents
     SearchDisplay/      -> Hexa\PluginCore\SearchDisplay
@@ -104,6 +105,22 @@ Version 2.1.4 keeps Getting Started parent-step and full-checklist runs availabl
 Version 3.0.0 establishes the coordinated major release for the expanded Core data-normalization, operations, provisioning, checklist-state, fleet-synchronization, and reusable admin infrastructure shipped in this source tree.
 
 Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
+
+Version 3.5.0 adds `Hexa\PluginCore\Map`, a brandable public location map (`[hexa_map id="…"]`). Hosts register a profile of posts or users with a street address field; Core geocodes new and changed addresses in the background with keyless services (US Census, OpenStreetMap Nominatim), stores the coordinates on each item, and renders a lazily loaded MapLibre map on free OpenFreeMap tiles with clustered pins, highlighted pins, a group filter, item cards, and a plain link list. Every color, including the base map, comes from `--hmap-*` CSS tokens. Full protocol: `docs/map.md`.
+
+Version 3.4.16 refreshes WordPress's URL rules once whenever a `ContentTypeRegistry`'s post types, their URL bases or the permalink structure change, including right after the host plugin is activated through REST, WP-CLI or an updater. Before, new post type URLs returned 404 until Settings > Permalinks was re-saved.
+
+Version 3.4.15 makes `PluginBridge` choose the release zip for the running PHP: the `-php74.zip` build below PHP 8.2, the normal zip otherwise, installed into the same plugin folder.
+
+Version 3.4.14 lets Hexa plugins run on PHP 7.4 without giving up modern source. `bin/build-php74-release.sh <plugin-git-dir> <ref> <folder> <out.zip>` rewrites a plugin and its bundled Core to PHP 7.4 syntax with Rector (`bin/rector-php74.php`), lints every file on PHP 7.4 and zips it; attach it to the release as `<folder>-<version>-php74.zip`. The GitHub updater reads the branch source's `Requires PHP`: sites on older PHP get that PHP 7.4 build, or, when a release has none, an offer that states the real requirement so WordPress refuses it instead of installing code the site cannot parse. Sites on current PHP keep the branch source.
+
+Version 3.4.13 makes `PluginBridge` load on PHP 8.1 (its install step returned a PHP 8.2-only `true` type).
+
+Version 3.4.12 adds `PluginBridge`: once any Hexa plugin that bundles Core is on a site, an administrator Application Password can install or update other allowed plugins from their GitHub release zips over REST (`hexa-plugin-core/v1/plugins/github`), without wp-admin.
+
+Version 3.4.11 makes the migration tool emit `hexa_fields_on()` for every ACF hook registration, since a registration inside a function can still run while plugins load, before Core's classes are autoloadable. Runtime code is unchanged from 3.4.10.
+
+Version 3.4.10 fires ACF's `include_fields` registration moment natively (just before `init`, as ACF does), so groups registered with `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` exist without ACF.
 
 Version 3.4.9 resolves the published fields of trashed ACF admin-screen groups by key or name, as `acf_get_field()` does, while never listing or rendering those groups.
 
@@ -192,6 +209,7 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
 - `DirectorySearch`: declarative public directory search over posts or users with filters, sorts, card templates, a public REST endpoint, and a server-rendered shortcode that upgrades to live search.
 - `Calendar`: lightweight public month-grid calendar profiles over dated posts (or a host provider) with linked items, shared filters, bounded month navigation, a public REST endpoint, and a server-rendered shortcode.
+- `Map`: brandable public location maps over posts or users with background geocoding, clustered pins, a group filter, item cards, and a shortcode.
 - `QueryFilter`: the shared declarative visitor-filter structure (taxonomy, custom field/ACF, date range, callback, extensible types) with SQL, parsing, controls, and URL arguments.
 - `PublicComponents`: shared profile sanitizers, profile stores, URL/base-path helpers, shortcode-inert output, and public REST caching for public components.
 - `SystemEnvironment`: safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting.
@@ -739,6 +757,10 @@ Use `Hexa\PluginCore\DirectorySearch` for public listing pages (directories of p
 ## Calendar
 
 Use `Hexa\PluginCore\Calendar` for a lightweight public month-grid calendar. Register a profile with `CalendarRegistry::register()` (post types, start/end date fields, link, filters), add `CalendarModule` to `CoreBootstrap`, and place `[hexa_calendar id="…"]`. Days are not interactive; each item links to the URL the profile defines. Full protocol: `docs/calendar.md`.
+
+## Map
+
+Use `Hexa\PluginCore\Map` for a brandable location map. Register a profile with `MapRegistry::register()` (posts or users, address field, geocoders, group, card data), add `MapModule` to `CoreBootstrap`, place `[hexa_map id="…"]`, and set the `--hmap-*` color tokens in the page builder. Addresses are geocoded in the background and stored on each item. Full protocol: `docs/map.md`.
 
 ## Query Filters
 

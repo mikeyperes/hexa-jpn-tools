@@ -61,8 +61,7 @@ ACF stores groups created in its admin screen as `acf-field-group` and `acf-fiel
 | --- | --- |
 | `acf_add_local_field_group( $g )` | `FieldGroups::add( $g )` |
 | `add_action( 'acf/init', $cb, $p )` | `FieldGroups::ready( $cb, $p )` or `Hooks::on( 'init', $cb, $p )` |
-| `add_filter( 'acf/<hook>', ... )` | `Hooks::on( '<hook>', ... )` |
-| the same, at file level while plugins load | `hexa_fields_on( '<hook>', ... )` (defined in `bootstrap.php`; registers on `plugins_loaded`) |
+| `add_filter( 'acf/<hook>', ... )` | `hexa_fields_on( '<hook>', ... )` (defined in `bootstrap.php`; safe while plugins load, equal to `Hooks::on()` afterwards) |
 | `get_field()` / `update_field()` / `have_rows()` ... | `Field::get()` / `Field::update()` / `Field::have_rows()` ... |
 | `acf_add_options_page()` / `acf_add_options_sub_page()` | `OptionsPages::add()` / `OptionsPages::add_sub()` |
 | `acf_form_head()` / `acf_form()` | `Form::head()` / `Form::render()` |

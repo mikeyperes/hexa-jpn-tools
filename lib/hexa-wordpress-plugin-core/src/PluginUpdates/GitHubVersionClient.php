@@ -28,7 +28,77 @@ final class GitHubVersionClient {
         return $version;
     }
 
+    /**
+     * The "Requires PHP" of the source the updater offers (the branch's main
+     * plugin file), or '' when it declares none or cannot be read.
+     */
+    public function remote_requires_php( bool $force = false ): string {
+        $transient_key = $this->config->cache_key( 'github_requires_php' );
+        $cached        = get_site_transient( $transient_key );
+
+        if ( false !== $cached && ! $force ) {
+            return (string) $cached;
+        }
+
+        $body = $this->main_file_from_ref( $this->config->github_branch(), $force );
+        if ( false === $body ) {
+            return '';
+        }
+
+        $requires = self::extract_requires_php( $body );
+        set_site_transient( $transient_key, $requires, 30 * MINUTE_IN_SECONDS );
+
+        return $requires;
+    }
+
+    /**
+     * URL of the release's PHP 7.4 build (`<folder>-<version>-php74.zip`, made
+     * by bin/build-php74-release.sh) for this version, or '' when none exists.
+     */
+    public function compat_package_url( string $version ): string {
+        $transient_key = $this->config->cache_key( 'github_php74_' . md5( $version ) );
+        $cached        = get_site_transient( $transient_key );
+
+        if ( false !== $cached ) {
+            return (string) $cached;
+        }
+
+        $url = '';
+        foreach ( [ 'v' . $version, $version ] as $tag ) {
+            $response = wp_remote_get( 'https://api.github.com/repos/' . $this->config->github_repo() . '/releases/tags/' . rawurlencode( $tag ), $this->request_args( 15 ) );
+            if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+                continue;
+            }
+            $release = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+            $url     = is_array( $release ) ? self::compat_asset_url( $this->config->github_repo(), $release ) : '';
+            break;
+        }
+
+        set_site_transient( $transient_key, $url, 30 * MINUTE_IN_SECONDS );
+
+        return $url;
+    }
+
+    /** @param array<string,mixed> $release GitHub release API object. */
+    public static function compat_asset_url( string $repo, array $release ): string {
+        foreach ( (array) ( $release['assets'] ?? [] ) as $asset ) {
+            $name = strtolower( (string) ( $asset['name'] ?? '' ) );
+            $url  = (string) ( $asset['browser_download_url'] ?? '' );
+            if ( str_ends_with( $name, '-php74.zip' ) && str_starts_with( $url, 'https://github.com/' . $repo . '/releases/download/' ) ) {
+                return $url;
+            }
+        }
+
+        return '';
+    }
+
     public function version_from_ref( string $ref, bool $cache_bust = false ): string|false {
+        $body = $this->main_file_from_ref( $ref, $cache_bust );
+
+        return false === $body ? false : self::extract_version( $body );
+    }
+
+    private function main_file_from_ref( string $ref, bool $cache_bust = false ): string|false {
         $url = trailingslashit( 'https://raw.githubusercontent.com/' . $this->config->github_repo() . '/' . trim( $ref, '/' ) )
             . $this->config->plugin_starter_file();
 
@@ -42,7 +112,7 @@ final class GitHubVersionClient {
             return false;
         }
 
-        return self::extract_version( (string) wp_remote_retrieve_body( $response ) );
+        return (string) wp_remote_retrieve_body( $response );
     }
 
     public function repo_data( bool $force = false ): object|false {
@@ -124,6 +194,14 @@ final class GitHubVersionClient {
     public function clear_cache(): void {
         delete_site_transient( $this->config->cache_key( 'github_version' ) );
         delete_site_transient( $this->config->cache_key( 'github_repo' ) );
+    }
+
+    public static function extract_requires_php( string $plugin_file_contents ): string {
+        if ( preg_match( '/^[\s\*]*Requires PHP:\s*([0-9][0-9.]*)/mi', $plugin_file_contents, $matches ) ) {
+            return trim( $matches[1] );
+        }
+
+        return '';
     }
 
     public static function extract_version( string $plugin_file_contents ): string|false {

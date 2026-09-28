@@ -46,8 +46,52 @@ final class ContentTypeRegistry implements ModuleInterface {
     public function register(): void {
         $registrar = new ContentTypeRegistrar( $this );
         add_action( 'init', [ $registrar, 'register_post_types' ], (int) $this->config['hook_priority'] );
+        add_action( 'wp_loaded', [ $this, 'sync_rewrite_rules' ] );
         \Hexa\PluginCore\Fields\FieldGroups::ready( [ $registrar, 'register_acf_groups' ], (int) $this->config['hook_priority'] );
         ( new ContentTypeAjaxController( $this, $this->config ) )->register();
+    }
+
+    /**
+     * Refresh WordPress's URL rules once when this registry's post types or
+     * their URL bases change: after the host plugin is activated by any route
+     * (wp-admin, WP-CLI, REST, an updater), when a type is enabled or disabled,
+     * or when the permalink structure changes. Without it, new post type URLs
+     * 404 until someone re-saves Settings > Permalinks.
+     */
+    public function sync_rewrite_rules(): bool {
+        if ( ! function_exists( 'flush_rewrite_rules' ) ) {
+            return false;
+        }
+
+        $signature = md5( (string) wp_json_encode( $this->rewrite_signature() ) );
+        $option    = (string) $this->config['option_name'] . '_rewrite_signature';
+        if ( get_option( $option, '' ) === $signature ) {
+            return false;
+        }
+
+        flush_rewrite_rules( false );
+        update_option( $option, $signature, false );
+
+        return true;
+    }
+
+    /** @return array<string,mixed> */
+    private function rewrite_signature(): array {
+        $types = [];
+        foreach ( $this->resolved_definitions() as $definition ) {
+            if ( empty( $definition['enabled'] ) || 'external' === $definition['registration_mode'] ) {
+                continue;
+            }
+            $args = $definition['post_type']['args'];
+            $types[ $definition['post_type']['key'] ] = [
+                'slug'       => false === ( $args['rewrite'] ?? true ) ? false : $definition['post_type']['rewrite_slug'],
+                'archive'    => $args['has_archive'] ?? null,
+                'taxonomies' => array_values( array_map( static fn( array $taxonomy ): array => [ $taxonomy['key'] ?? '', $taxonomy['rewrite_slug'] ?? '', ! empty( $taxonomy['enabled_default'] ) ], (array) $definition['taxonomies'] ) ),
+            ];
+        }
+        ksort( $types );
+
+        return [ 'structure' => (string) get_option( 'permalink_structure', '' ), 'types' => $types ];
     }
 
     /** @return array<int,array<string,mixed>> */

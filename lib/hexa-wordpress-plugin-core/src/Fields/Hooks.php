@@ -11,6 +11,9 @@ namespace Hexa\PluginCore\Fields;
  * Qualified hooks such as `prepare_field/name=title` work the same way.
  */
 final class Hooks {
+    /** ACF's registration moments, fired natively in this order during `init`. */
+    private const LIFECYCLE = [ 'include_fields', 'init' ];
+
     private static bool $init_scheduled = false;
     private static bool $init_fired = false;
 
@@ -18,11 +21,11 @@ final class Hooks {
         $hook = ltrim( $hook, '/' );
         add_filter( 'acf/' . $hook, $callback, $priority, $accepted_args );
         add_filter( 'hexa_fields/' . $hook, $callback, $priority, $accepted_args );
-        if ( 'init' !== $hook ) {
+        if ( ! in_array( $hook, self::LIFECYCLE, true ) ) {
             return;
         }
-        // `init` (acf/init) is where hosts register fields: run late registrations at once.
-        if ( Acf::active() ? did_action( 'acf/init' ) && ! doing_action( 'acf/init' ) : self::$init_fired && ! doing_action( 'hexa_fields/init' ) ) {
+        // `include_fields` and `init` are where hosts register fields: run late registrations at once.
+        if ( Acf::active() ? did_action( 'acf/' . $hook ) && ! doing_action( 'acf/' . $hook ) : self::$init_fired && ! doing_action( 'hexa_fields/' . $hook ) ) {
             $callback();
             return;
         }
@@ -32,14 +35,16 @@ final class Hooks {
         }
     }
 
-    /** Fires `hexa_fields/init` once, at ACF's timing, when ACF is not active. */
+    /** Fires `hexa_fields/include_fields` then `hexa_fields/init` once, at ACF's timing, when ACF is not active. */
     public static function fire_init(): void {
         if ( self::$init_fired ) {
             return;
         }
         self::$init_fired = true;
         if ( ! Acf::active() ) {
-            do_action( 'hexa_fields/init' );
+            foreach ( self::LIFECYCLE as $hook ) {
+                do_action( 'hexa_fields/' . $hook );
+            }
         }
     }
 

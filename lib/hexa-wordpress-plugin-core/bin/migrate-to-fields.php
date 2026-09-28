@@ -164,8 +164,9 @@ function migrate( string $source, array $map, array $guards ): array {
             $arg = next_index( $tokens, $next );
             if ( null !== $arg && is_array( $tokens[ $arg ] ) && T_CONSTANT_ENCAPSED_STRING === $tokens[ $arg ][0] && preg_match( '/^([\'"])acf\//', $tokens[ $arg ][1] ) ) {
                 $method = str_starts_with( $name, 'remove' ) ? 'off' : 'on';
-                // While plugins load, Core's classes are not autoloadable yet: bootstrap.php's hexa_fields_on() defers.
-                $load_safe = 'on' === $method && ! $in_function;
+                // A registration can run while plugins load (even inside a function), before Core's
+                // classes are autoloadable; bootstrap.php's hexa_fields_on() works at any time.
+                $load_safe = 'on' === $method;
                 $out .= $load_safe ? '\\hexa_fields_on' : '\\Hexa\\PluginCore\\Fields\\Hooks::' . $method;
                 for ( $j = $i + 1; $j < $arg; $j++ ) {
                     $out .= is_array( $tokens[ $j ] ) ? $tokens[ $j ][1] : $tokens[ $j ];

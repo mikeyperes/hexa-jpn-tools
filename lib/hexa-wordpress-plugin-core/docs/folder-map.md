@@ -61,6 +61,7 @@ The package version is stored in the root `VERSION` file. Root `bootstrap.php` s
 | `src/SearchQuery/` | `Hexa\PluginCore\SearchQuery` | Bounded term parsing, normalized native-search settings, selected source SQL, exact-query hook scoping, and guarded search-template adapters. |
 | `src/DirectorySearch/` | `Hexa\PluginCore\DirectorySearch` | Declarative public directory search profiles over posts or users, bounded SQL, public REST endpoint, and the server-rendered live-search shortcode. |
 | `src/Calendar/` | `Hexa\PluginCore\Calendar` | Lightweight public month-grid calendar profiles, bounded month query, linked items, REST month fragments, shortcode, inline assets, and month-cache invalidation. |
+| `src/Map/` | `Hexa\PluginCore\Map` | Brandable public location maps: host profiles over posts or users, keyless background geocoding with stored coordinates, MapLibre map with clusters, group filter, item cards, shortcode, inline assets, and payload caching. |
 | `src/QueryFilter/` | `Hexa\PluginCore\QueryFilter` | Shared declarative visitor filters (taxonomy, custom field/ACF, date range, callback, extensible types): normalization, parsing, SQL, controls, and URL arguments. |
 | `src/PublicComponents/` | `Hexa\PluginCore\PublicComponents` | Shared public-component profile sanitizers and stores, base-path and URL helpers, shortcode-inert output, and public REST caching. |
 | `src/SmartSearch/` | `Hexa\PluginCore\SmartSearch` | Smart search/X-Search AJAX endpoints and reusable typeahead renderers. |

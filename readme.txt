@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.5.0
+Stable tag: 1.6.0
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,10 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.6.0 =
+* Adds the host map [hexa_map id="jpn_hosts"] on Hexa WP Core Map: every host with a street address, placed automatically (US Census geocoder, OpenStreetMap fallback) and re-placed when the address changes, with area filter, pulsing pins for hosts with upcoming events, and a card with the next events.
+* Bundles Hexa WP Core 3.5.0.
 
 = 1.5.0 =
 * ACF Pro is no longer required: event, host and notification fields, the notifications options page and their hooks run on Hexa WP Core 3.4.9 Fields (ACF when active, native otherwise).

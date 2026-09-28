@@ -69,19 +69,21 @@ final class GitHubPluginUpdater implements ModuleInterface {
             $current_version = $transient->checked[ $this->config->plugin_basename() ];
         }
 
+        $package = $this->package_for( (string) $remote_version );
+
         $plugin_info = (object) [
             'id'            => $this->config->github_url(),
             'slug'          => $this->config->proper_folder_name(),
             'plugin'        => $this->config->plugin_basename(),
             'new_version'   => $remote_version,
             'url'           => $this->config->github_url(),
-            'package'       => $this->package_url(),
+            'package'       => $package['package'],
             'icons'         => [],
             'banners'       => [],
             'banners_rtl'   => [],
             'tested'        => $this->config->get( 'tested' ),
             'requires'      => $this->config->get( 'requires' ),
-            'requires_php'  => $this->config->get( 'requires_php', '' ),
+            'requires_php'  => $package['requires_php'],
             'compatibility' => new \stdClass(),
         ];
 
@@ -109,6 +111,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
 
         $remote_version = $this->client->remote_version();
         $github_data    = $this->client->repo_data();
+        $package        = $this->package_for( (string) ( $remote_version ?: $this->config->version() ) );
 
         return (object) [
             'name'           => $this->config->plugin_name(),
@@ -118,6 +121,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
             'author_profile' => $this->config->get( 'homepage', '' ),
             'homepage'       => $this->config->get( 'homepage', $this->config->github_url() ),
             'requires'       => $this->config->get( 'requires' ),
+            'requires_php'   => $package['requires_php'],
             'tested'         => $this->config->get( 'tested' ),
             'downloaded'     => 0,
             'last_updated'   => $github_data && ! empty( $github_data->updated_at ) ? date( 'Y-m-d', strtotime( $github_data->updated_at ) ) : '',
@@ -125,7 +129,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
                 'description' => $this->config->get( 'description', '' ),
                 'changelog'   => $github_data && ! empty( $github_data->description ) ? $github_data->description : 'See GitHub repository for changelog.',
             ],
-            'download_link'  => $this->package_url(),
+            'download_link'  => $package['package'],
         ];
     }
 
@@ -265,6 +269,28 @@ final class GitHubPluginUpdater implements ModuleInterface {
 
     private function package_url(): string {
         return $this->config->zip_url();
+    }
+
+    /**
+     * The package this site can run. The branch source declares its own
+     * "Requires PHP"; a site on older PHP gets the release's PHP 7.4 build
+     * instead, or, when that release has none, an offer that states the real
+     * requirement so WordPress refuses it rather than installing code the site
+     * cannot parse.
+     *
+     * @return array{package:string,requires_php:string}
+     */
+    private function package_for( string $version ): array {
+        $requires = $this->client->remote_requires_php() ?: (string) $this->config->get( 'requires_php', '' );
+
+        if ( '' !== $requires && version_compare( PHP_VERSION, $requires, '<' ) ) {
+            $compat = $this->client->compat_package_url( $version );
+            if ( '' !== $compat ) {
+                return [ 'package' => $compat, 'requires_php' => '7.4' ];
+            }
+        }
+
+        return [ 'package' => $this->package_url(), 'requires_php' => $requires ];
     }
 
     private function capture_activation_scope(): string {

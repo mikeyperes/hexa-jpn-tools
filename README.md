@@ -69,6 +69,17 @@ chosen days) / Kids events / Featured filters, and each event's time, title,
 area, and badges.
 Days are not clickable; each event links to its permalink.
 
+## Host map
+
+`[hexa_map id="jpn_hosts"]` renders the host map through Hexa WP Core `Map`.
+Core owns geocoding and storing coordinates (user meta `hexa_map_geo`), the
+MapLibre map on OpenFreeMap tiles, clustering, the area filter, the card
+markup, caching, and interaction. `Hexa\JpnTools\Hosts\HostMap` owns the
+profile: users with the `host` role, their `address` field, their `area`
+term as the filter group, and the card data (address, event totals, up to
+three upcoming or recent events from the host directory). Hosts with upcoming
+events pulse. Colors are `--hmap-*` tokens set in Elementor, not here.
+
 ## Elementor queries and shortcodes
 
 | Name | Type | Purpose |

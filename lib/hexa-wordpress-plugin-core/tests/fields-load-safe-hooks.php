@@ -31,4 +31,12 @@ in_array( $callback, $GLOBALS['hooks']['acf/prepare_field'] ?? [], true ) && in_
 hexa_fields_on( 'save_post', $callback );
 in_array( $callback, $GLOBALS['hooks']['hexa_fields/save_post'] ?? [], true ) || $fail( 'Once Core is loaded, hexa_fields_on() registers at once.' );
 
+// include_fields is an ACF lifecycle moment too: registering on it schedules the native init.
+$GLOBALS['hooks'] = [];
+$fresh = new ReflectionClass( \Hexa\PluginCore\Fields\Hooks::class );
+$fresh->setStaticPropertyValue( 'init_scheduled', false );
+$fresh->setStaticPropertyValue( 'init_fired', false );
+hexa_fields_on( 'include_fields', $callback );
+in_array( [ \Hexa\PluginCore\Fields\Hooks::class, 'fire_init' ], $GLOBALS['hooks']['init'] ?? [], true ) || $fail( 'Registering on include_fields schedules the native lifecycle on init.' );
+
 echo "PASS: hexa_fields_on() defers field hooks until Core is loaded.\n";

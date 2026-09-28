@@ -19,6 +19,7 @@ use Hexa\JpnTools\Frontend\PhotoDownloads;
 use Hexa\JpnTools\Frontend\Privacy;
 use Hexa\JpnTools\Frontend\Shortcodes;
 use Hexa\JpnTools\Hosts\HostDirectory;
+use Hexa\JpnTools\Hosts\HostMap;
 use Hexa\JpnTools\Integration\CoreIntegration;
 use Hexa\JpnTools\Migrations\Migration;
 use Hexa\JpnTools\Rest\EventBindings;
@@ -70,7 +71,9 @@ final class Plugin
         $downloads = new PhotoDownloads($queries, $dates);
         $downloads->register();
         (new Shortcodes($queries, $dates, $downloads))->register();
-        (new HostDirectory($dates))->register();
+        $hosts = new HostDirectory($dates);
+        $hosts->register();
+        (new HostMap($hosts, $dates))->register();
         (new EventCalendar())->register();
         add_action('wp_enqueue_scripts', [self::class, 'enqueueFrontend']);
         (new Privacy())->register();
