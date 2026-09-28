@@ -159,6 +159,7 @@ MapRegistry::register( 'hosts', [
     'group'     => [ 'meta' => 'area', 'taxonomy' => 'area' ],
     'prepare'   => static fn( array $ids ): array => array_fill_keys( $ids, [ 'upcoming' => 2 ] ),
     'highlight' => static fn( int $id, array $data ): bool => $data['upcoming'] > 0,
+    'next'      => static fn( int $id, array $data ): int => 10 === $id ? 1790003600 : 0,
     'card'      => static fn( int $id, array $data ): array => [ 'list_label' => 'Upcoming', 'list' => [ [ 'label' => 'Oct 4', 'text' => '<b>Shabbat</b> [x]', 'url' => 'https://example.com/e/' ] ], 'cta' => 'View host' ],
     'cache_ttl' => 0,
     'labels'    => [ 'count_one' => '%d host', 'count_many' => '%d hosts' ],
@@ -187,6 +188,12 @@ $expect( str_contains( $html, '<details class="hmap-list">' ) && substr_count( $
 $expect( ! str_contains( $html, 'No Address' ), 'Items without an address stay off the map.' );
 $expect( in_array( 'litespeed_tag_add', MapTestStore::$actions, true ), 'Pages with a public map are tagged for purging.' );
 $expect( '' === ( new MapRenderer() )->render( 'missing' ), 'An unknown profile renders nothing.' );
+$expect( str_contains( $html, '<div class="hmap-windows" role="group" aria-label="Filter by date"><button type="button" class="hmap-chip" data-hmap-hours="0" aria-pressed="true">Any time</button>' ) && str_contains( $html, 'data-hmap-hours="24" aria-pressed="false">24 hours <span></span>' ) && str_contains( $html, 'data-hmap-hours="336"' ), 'A profile with `next` gets Any time / 24 hours / 48 hours / 1 week / 2 weeks chips.' );
+$expect( 1790003600 === $points[1]['n'] && 0 === $points[0]['n'], 'Points carry each item\'s next start time for the browser-side date filter.' );
+$expect( str_contains( MapRenderer::js(), "p.n <= now + h * 3600" ) && str_contains( MapRenderer::js(), 'Date.now()' ), 'The date filter runs on the visitor\'s clock, so cached pages stay correct.' );
+$plain = MapProfile::normalize( 'plain', [ 'source' => 'users', 'roles' => [ 'host' ], 'address' => 'address' ] );
+$expect( null === $plain['next'] && [ 24 => '24 hours', 48 => '48 hours', 168 => '1 week', 336 => '2 weeks' ] === $plain['windows'], 'Default windows; no date chips without `next`.' );
+$expect( [ 12 => '12h', 72 => '3 days' ] === MapProfile::normalize( 'w', [ 'source' => 'users', 'roles' => [ 'h' ], 'address' => 'a', 'windows' => [ 72 => '3 days', 12 => '12h', -1 => 'bad', 5 => '' ] ] )['windows'], 'Custom windows are validated and sorted.' );
 $expect( strlen( (string) gzencode( MapRenderer::css() . MapRenderer::js(), 9 ) ) < 6000, 'Map assets stay small (the map library itself loads lazily from its CDN).' );
 
 echo "PASS: map contract ({$assertions} assertions).\n";

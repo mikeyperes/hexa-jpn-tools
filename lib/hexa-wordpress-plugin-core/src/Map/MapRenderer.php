@@ -49,7 +49,8 @@ final class MapRenderer {
             . ' data-hmap="' . esc_attr( (string) wp_json_encode( $config ) ) . '"'
             . ' data-hmap-points="' . esc_attr( (string) wp_json_encode( $payload['points'] ) ) . '">'
             . '<div class="hmap-bar">' . $this->filter( $profile, $payload['groups'], $count, $dom_id )
-            . '<p class="hmap-status" role="status" aria-live="polite">' . esc_html( $this->count( $labels, $count ) ) . '</p></div>'
+            . '<p class="hmap-status" role="status" aria-live="polite">' . esc_html( $this->count( $labels, $count ) ) . '</p>'
+            . $this->windows( $profile ) . '</div>'
             . '<div class="hmap-stage"><div class="hmap-canvas" role="region" aria-label="' . esc_attr( $labels['region'] ) . '"></div>'
             . '<p class="hmap-loading">' . esc_html( $labels['loading'] ) . '</p></div>'
             . $payload['list']
@@ -84,6 +85,7 @@ final class MapRenderer {
                 'lo'   => round( $item['lng'], 6 ),
                 'g'    => $item['group'],
                 'live' => null !== $profile['highlight'] && (bool) call_user_func( $profile['highlight'], $item['id'], $item['data'] ),
+                'n'    => null !== $profile['next'] ? max( 0, (int) call_user_func( $profile['next'], $item['id'], $item['data'] ) ) : 0,
                 'h'    => $this->card( $profile, $item ),
             ];
             if ( '' !== $item['group'] ) {
@@ -179,6 +181,28 @@ final class MapRenderer {
         return $html . '</div>';
     }
 
+    /**
+     * Date filter chips: only items whose next dated entry starts within the chosen
+     * number of hours. The browser applies it against its own clock, so a cached
+     * page stays correct; chip counts are filled in by the script.
+     *
+     * @param array<string,mixed> $profile
+     */
+    private function windows( array $profile ): string {
+        if ( null === $profile['next'] || [] === $profile['windows'] ) {
+            return '';
+        }
+        $prefix = $profile['labels']['when_prefix'];
+        $html   = '<div class="hmap-windows" role="group" aria-label="' . esc_attr( $profile['labels']['when'] ) . '">'
+            . ( '' !== $prefix ? '<span class="hmap-windows__label" aria-hidden="true">' . esc_html( $prefix ) . '</span>' : '' )
+            . '<button type="button" class="hmap-chip" data-hmap-hours="0" aria-pressed="true">' . esc_html( $profile['labels']['when_all'] ) . '</button>';
+        foreach ( $profile['windows'] as $hours => $label ) {
+            $html .= '<button type="button" class="hmap-chip" data-hmap-hours="' . esc_attr( (string) $hours ) . '" aria-pressed="false">' . esc_html( $label ) . ' <span></span></button>';
+        }
+
+        return $html . '</div>';
+    }
+
     /** @param array<string,string> $labels */
     private function count( array $labels, int $count ): string {
         return sprintf( 1 === $count ? $labels['count_one'] : $labels['count_many'], $count );
@@ -198,6 +222,10 @@ final class MapRenderer {
 .hmap{--hmap-height:520px;--hmap-radius:8px;--hmap-text:#f2f4f3;--hmap-muted:#9aa3a0;--hmap-border:rgba(255,255,255,.12);--hmap-surface:#111614;--hmap-land:#0d1110;--hmap-water:#16222a;--hmap-park:#121a15;--hmap-building:#171d1b;--hmap-road:#1f2724;--hmap-road-major:#2c3632;--hmap-boundary:#3a4541;--hmap-label:#7d8783;--hmap-accent:#4f9dff;--hmap-accent-fg:#06121f;--hmap-live:var(--hmap-accent);--hmap-glow:rgba(79,157,255,.18);position:relative;color:var(--hmap-text);font:inherit}
 .hmap-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;margin:0 0 14px}
 .hmap-groups{display:flex;flex-wrap:wrap;gap:8px}
+.hmap-windows{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}
+.hmap-windows{align-items:center}
+.hmap-windows__label{margin-right:4px;color:var(--hmap-muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.hmap-windows .hmap-chip{min-height:34px;padding:0 12px;font-size:13px}
 .hmap-chip{appearance:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--hmap-border);border-radius:999px;background:var(--hmap-surface);color:var(--hmap-text);font:inherit;font-size:14px;line-height:1;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
 .hmap-chip span{color:var(--hmap-muted);font-size:12px}
 .hmap-chip:hover{border-color:var(--hmap-accent)}
@@ -318,7 +346,24 @@ CSS;
     var status = el.querySelector('.hmap-status');
     var controls = el.querySelectorAll('[data-hmap-group]');
     var select = el.querySelector('.hmap-select');
+    var hourControls = el.querySelectorAll('[data-hmap-hours]');
+    var state = { g: '', h: 0 };
     var shown = all;
+    function within(p, h) {
+      if (h <= 0) { return true; }
+      var now = Date.now() / 1000;
+      return p.n > 0 && p.n >= now - 86400 && p.n <= now + h * 3600;
+    }
+    function pick() {
+      return all.filter(function (p) { return (state.g === '' || p.g === state.g) && within(p, state.h); });
+    }
+    function counts() {
+      Array.prototype.forEach.call(hourControls, function (b) {
+        var h = +b.getAttribute('data-hmap-hours'), span = b.querySelector('span');
+        if (span) { span.textContent = all.filter(function (p) { return (state.g === '' || p.g === state.g) && within(p, h); }).length; }
+      });
+    }
+    counts();
     load(cfg.library).then(function (gl) {
       var t = tokens(el);
       var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -378,19 +423,24 @@ CSS;
         map.on('mouseenter', id, function () { map.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', id, function () { map.getCanvas().style.cursor = ''; });
       });
-      function choose(group) {
-        shown = group === '' ? all : all.filter(function (p) { return p.g === group; });
+      function apply() {
+        shown = pick();
         popup.remove();
         if (map.getSource('hmap')) { map.getSource('hmap').setData(fc(shown)); }
-        Array.prototype.forEach.call(controls, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-hmap-group') === group ? 'true' : 'false'); });
-        if (select) { select.value = select.querySelector('option[value="' + CSS.escape(group) + '"]') ? group : ''; }
+        Array.prototype.forEach.call(controls, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-hmap-group') === state.g ? 'true' : 'false'); });
+        Array.prototype.forEach.call(hourControls, function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-hmap-hours') === state.h ? 'true' : 'false'); });
+        if (select) { select.value = select.querySelector('option[value="' + CSS.escape(state.g) + '"]') ? state.g : ''; }
         if (status) { status.textContent = (shown.length === 1 ? cfg.labels.one : cfg.labels.many).replace('%d', shown.length); }
-        fit(map, shown, group === '' ? cfg.view : { bounds: true, fitZoom: cfg.view.fitZoom }, true);
+        counts();
+        fit(map, shown, state.g === '' && state.h === 0 ? cfg.view : { bounds: true, fitZoom: cfg.view.fitZoom }, true);
       }
       Array.prototype.forEach.call(controls, function (b) {
-        b.addEventListener('click', function () { choose(b.getAttribute('data-hmap-group')); });
+        b.addEventListener('click', function () { state.g = b.getAttribute('data-hmap-group'); apply(); });
       });
-      if (select) { select.addEventListener('change', function () { choose(select.value); }); }
+      Array.prototype.forEach.call(hourControls, function (b) {
+        b.addEventListener('click', function () { state.h = +b.getAttribute('data-hmap-hours'); apply(); });
+      });
+      if (select) { select.addEventListener('change', function () { state.g = select.value; apply(); }); }
     }).catch(function () {
       el.classList.add('is-failed');
       var list = el.querySelector('.hmap-list');

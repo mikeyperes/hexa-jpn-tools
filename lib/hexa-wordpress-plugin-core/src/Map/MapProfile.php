@@ -20,6 +20,9 @@ final class MapProfile {
     public const MAX_ITEMS = 2000;
     public const MAX_CACHE_TTL = 86400;
 
+    /** Date filter choices (hours => label), shown when the profile supplies `next`. */
+    public const DEFAULT_WINDOWS = [ 24 => '24 hours', 48 => '48 hours', 168 => '1 week', 336 => '2 weeks' ];
+
     public const DEFAULT_STYLE = 'https://tiles.openfreemap.org/styles/dark';
     public const LIBRARY_VERSION = '5.24.0';
 
@@ -78,6 +81,8 @@ final class MapProfile {
             'card'          => ProfileValues::callback( $config['card'] ?? null ),
             'render_item'   => ProfileValues::callback( $config['render_item'] ?? null ),
             'highlight'     => ProfileValues::callback( $config['highlight'] ?? null ),
+            'next'          => ProfileValues::callback( $config['next'] ?? null ),
+            'windows'       => self::windows( $config['windows'] ?? self::DEFAULT_WINDOWS ),
             'view'          => [
                 'center'  => $center,
                 'zoom'    => self::number( $view['zoom'] ?? 9, 0, 22, 9 ),
@@ -147,6 +152,19 @@ final class MapProfile {
         return [ (float) $lng, (float) $lat ];
     }
 
+    /** @param mixed $value @return array<int,string> Hours => label, ascending, at most 8. */
+    private static function windows( $value ): array {
+        $windows = [];
+        foreach ( is_array( $value ) ? $value : [] as $hours => $label ) {
+            if ( is_numeric( $hours ) && (int) $hours > 0 && (int) $hours <= 8760 && is_string( $label ) && '' !== trim( $label ) ) {
+                $windows[ (int) $hours ] = trim( $label );
+            }
+        }
+        ksort( $windows );
+
+        return array_slice( $windows, 0, 8, true );
+    }
+
     /** @param mixed $value */
     private static function number( $value, float $min, float $max, float $default ): float {
         return is_numeric( $value ) ? max( $min, min( $max, (float) $value ) ) : $default;
@@ -166,6 +184,9 @@ final class MapProfile {
             'loading'    => 'Loading map…',
             'all'        => 'All',
             'filter'     => 'Filter the map',
+            'when'       => 'Filter by date',
+            'when_all'   => 'Any time',
+            'when_prefix' => '',
             'more'       => 'More…',
             'count_one'  => '%d location',
             'count_many' => '%d locations',

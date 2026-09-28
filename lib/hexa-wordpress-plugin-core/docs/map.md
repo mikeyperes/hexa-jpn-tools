@@ -106,13 +106,15 @@ selector .hmap {
 | `card` | group, address, CTA | `fn( int $id, array $data, array $item ): array` with `kicker`, `meta`, `list_label`, `list`, `cta`. Core escapes and renders it. |
 | `render_item` | none | `fn( int $id, array $data, array $item ): string` full card markup (escape it yourself). |
 | `highlight` | none | `fn( int $id, array $data ): bool` pulsing pin (reduced motion disables the pulse). |
+| `next` | none | `fn( int $id, array $data ): int` Unix start of the item's next dated entry (0 when none). Enables the date filter chips. |
+| `windows` | 24 h, 48 h, 1 week, 2 weeks | Date filter choices as `hours => label`. The browser keeps items whose `next` starts within that many hours of its own clock (and not more than a day ago), combined with the group filter, so cached pages stay correct; each chip shows its count. |
 | `view` | zoom 9 | `center` `[lat, lng]` and `zoom` for the "All" view (without a center the map fits every pin), `fit_zoom` caps zoom when a group is chosen, `max_zoom`. |
 | `style` | OpenFreeMap dark | Any https MapLibre style using the OpenMapTiles schema is recolored by the tokens. |
 | `library` | MapLibre from unpkg | `['js' => https URL, 'css' => https URL]` to self-host. |
 | `cluster` | `true` | Cluster nearby pins; a cluster zooms in on click. |
 | `max_items` | `500` | Upper bound 2000. |
 | `heading_level` | `3` | Card title heading. |
-| `labels` | English | `region`, `loading`, `all`, `filter`, `more`, `count_one`, `count_many`, `list`, `cta`. |
+| `labels` | English | `region`, `loading`, `all`, `filter`, `more`, `when`, `when_all`, `when_prefix` (optional lead-in before the date chips), `count_one`, `count_many`, `list`, `cta`. |
 | `cache_ttl` | `3600` | Seconds the rendered payload is cached (per content generation); also caps the LiteSpeed page lifetime. |
 | `cache_version` / `class` / `public` | — | As in the other public components. |
 

@@ -38,6 +38,8 @@ final class HostMap
             'group' => ['meta' => 'area', 'taxonomy' => 'area'],
             'prepare' => [$this->directory, 'prepare'],
             'highlight' => static fn (int $id, array $host): bool => (int) ($host['stats']['upcoming'] ?? 0) > 0,
+            // Start of the host's next event: drives the "24 hours / 48 hours / 1 week / 2 weeks" chips.
+            'next' => static fn (int $id, array $host): int => (int) ($host['stats']['upcoming'] ?? 0) > 0 ? (int) ($host['stats']['next_ts'] ?? 0) : 0,
             'card' => [$this, 'card'],
             'view' => ['center' => [26.2, -80.19], 'zoom' => 8.4, 'fit_zoom' => 13],
             'labels' => [
@@ -45,6 +47,9 @@ final class HostMap
                 'loading' => __('Loading map…', 'hexa-jpn-tools'),
                 'all' => __('All', 'hexa-jpn-tools'),
                 'filter' => __('Filter hosts by area', 'hexa-jpn-tools'),
+                'when' => __('Filter hosts by their next event', 'hexa-jpn-tools'),
+                'when_all' => __('Any time', 'hexa-jpn-tools'),
+                'when_prefix' => __('Events in the next', 'hexa-jpn-tools'),
                 'more' => __('More areas…', 'hexa-jpn-tools'),
                 'count_one' => __('%d host', 'hexa-jpn-tools'),
                 'count_many' => __('%d hosts', 'hexa-jpn-tools'),

@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,10 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.0 =
+* Host map date filter: "Events in the next 24 hours / 48 hours / 1 week / 2 weeks" chips with counts, combined with the area filter (each host's next event start).
+* Bundles Hexa WP Core 3.6.0.
 
 = 1.7.0 =
 * Adds the latest events video: `wp hexa-jpn video publish <file.mp4> --caption=…` stores the campaign's exported slideshow in the Media Library and the "Latest Video" option fields (replacing the previous export), and `[jpn_latest_video]` shows it with a live "Last updated X ago" line.

@@ -78,7 +78,9 @@ markup, caching, and interaction. `Hexa\JpnTools\Hosts\HostMap` owns the
 profile: users with the `host` role, their `address` field, their `area`
 term as the filter group, and the card data (address, event totals, up to
 three upcoming or recent events from the host directory). Hosts with upcoming
-events pulse. Colors are `--hmap-*` tokens set in Elementor, not here.
+events pulse, and `next` (the host's next event start) drives the
+"Events in the next 24 hours / 48 hours / 1 week / 2 weeks" chips. Colors are
+`--hmap-*` tokens set in Elementor, not here.
 
 ## Latest events video
 
