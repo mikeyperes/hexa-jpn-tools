@@ -10,6 +10,7 @@ use Hexa\JpnTools\Admin\HostRole;
 use Hexa\JpnTools\Admin\NotificationDashboard;
 use Hexa\JpnTools\Content\AcfFields;
 use Hexa\JpnTools\Content\ContentTypes;
+use Hexa\JpnTools\Content\LatestVideo;
 use Hexa\JpnTools\Cli\MigrationCommand;
 use Hexa\JpnTools\Events\EventCalendar;
 use Hexa\JpnTools\Events\EventDates;
@@ -75,6 +76,7 @@ final class Plugin
         $hosts->register();
         (new HostMap($hosts, $dates))->register();
         (new EventCalendar())->register();
+        (new LatestVideo())->register();
         add_action('wp_enqueue_scripts', [self::class, 'enqueueFrontend']);
         (new Privacy())->register();
 

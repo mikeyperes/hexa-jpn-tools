@@ -80,6 +80,19 @@ term as the filter group, and the card data (address, event totals, up to
 three upcoming or recent events from the host directory). Hosts with upcoming
 events pulse. Colors are `--hmap-*` tokens set in Elementor, not here.
 
+## Latest events video
+
+The campaign video step publishes each export with
+`wp hexa-jpn video publish <file.mp4> --caption="<window> · <n> events"`
+(`wp hexa-jpn video status` shows the current one). The file goes into the
+Media Library and the option fields `jpn_latest_video`,
+`jpn_latest_video_updated` and `jpn_latest_video_caption` (Notifications
+Dashboard → Latest Video); the previous export this command created is
+deleted and LiteSpeed pages tagged `jpn_latest_video` are purged.
+`[jpn_latest_video]` renders the player with "Last updated X ago" above it
+(Hexa WP Core `RelativeTime`, recomputed in the browser so cached pages stay
+accurate). Styling lives in Elementor.
+
 ## Elementor queries and shortcodes
 
 | Name | Type | Purpose |
