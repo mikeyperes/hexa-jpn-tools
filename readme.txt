@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.0
+Stable tag: 1.8.1
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.1 =
+* Map filter chips no longer turn pink on hover/focus (theme button styles); aligned count badges. Bundles Hexa WP Core 3.6.1.
 
 = 1.8.0 =
 * Host map date filter: "Events in the next 24 hours / 48 hours / 1 week / 2 weeks" chips with counts, combined with the area filter (each host's next event start).

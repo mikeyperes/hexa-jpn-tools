@@ -13,7 +13,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.6.0
+Current release: 3.6.1
 ```
 
 Do not rename these.
@@ -1726,3 +1726,7 @@ php tests/core-package-fleet.php
 php tests/wordpress-operations.php
 php tests/litespeed-cache.php
 ```
+
+## User profile route
+
+Call `\Hexa\PluginCore\Users\UserProfileBridge::register()` from `hexa_plugin_core_package_selected` to expose `GET/POST /wp-json/hexa-plugin-core/v1/users/{id}/profile` (needs `list_users` and `edit_user`). GET returns `rows`, safe `meta`, `legacy_avatar_url` and `avatar_provider`. POST accepts `native` (display_name, first_name, last_name, nickname, user_url, description, user_email), `meta`, `fields` and `avatar: {media_id}`, then returns the fresh profile plus `written`. Role, login, password, capability and session keys are always refused.
