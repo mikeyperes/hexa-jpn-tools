@@ -224,14 +224,14 @@ final class MapRenderer {
 .hmap-groups{display:flex;flex-wrap:wrap;gap:8px}
 .hmap-windows{display:flex;flex-wrap:wrap;gap:8px;flex-basis:100%}
 .hmap-windows{align-items:center}
-.hmap-windows__label{margin-right:4px;color:var(--hmap-muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
-.hmap-windows .hmap-chip{min-height:34px;padding:0 12px;font-size:13px}
-.hmap-chip{appearance:none;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid var(--hmap-border);border-radius:999px;background:var(--hmap-surface);color:var(--hmap-text);font:inherit;font-size:14px;line-height:1;cursor:pointer;transition:border-color .2s,background .2s,color .2s}
-.hmap-chip span{color:var(--hmap-muted);font-size:12px}
-.hmap-chip:hover{border-color:var(--hmap-accent)}
-.hmap-chip[aria-pressed=true]{background:var(--hmap-accent);border-color:var(--hmap-accent);color:var(--hmap-accent-fg)}
-.hmap-chip[aria-pressed=true] span{color:inherit;opacity:.75}
-.hmap-chip:focus-visible,.hmap-select:focus-visible{outline:2px solid var(--hmap-accent);outline-offset:2px}
+.hmap-windows__label{margin-right:6px;color:var(--hmap-muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.hmap .hmap-chip,.hmap .hmap-chip:hover,.hmap .hmap-chip:focus,.hmap .hmap-chip:active{appearance:none;display:inline-flex;align-items:center;gap:8px;min-height:38px;margin:0;padding:0 8px 0 14px;border:1px solid var(--hmap-border);border-radius:999px;background:var(--hmap-surface);box-shadow:none;color:var(--hmap-text);font:inherit;font-size:14px;font-weight:500;line-height:1;text-decoration:none;text-transform:none;letter-spacing:0;cursor:pointer;transition:border-color .15s,background-color .15s,color .15s}
+.hmap .hmap-chip:not(:has(span)){padding-right:14px}
+.hmap .hmap-chip:hover{border-color:var(--hmap-accent);background:var(--hmap-surface);color:var(--hmap-text)}
+.hmap .hmap-chip span{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--hmap-muted);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.hmap .hmap-chip[aria-pressed=true],.hmap .hmap-chip[aria-pressed=true]:hover,.hmap .hmap-chip[aria-pressed=true]:focus{border-color:var(--hmap-accent);background:var(--hmap-accent);color:var(--hmap-accent-fg);font-weight:700}
+.hmap .hmap-chip[aria-pressed=true] span{background:rgba(0,0,0,.2);color:var(--hmap-accent-fg)}
+.hmap .hmap-chip:focus-visible,.hmap-select:focus-visible{outline:2px solid var(--hmap-accent);outline-offset:2px}
 .hmap .hmap-select{flex:0 0 auto;width:auto;min-height:40px;max-width:100%;padding:0 34px 0 14px;border:1px solid var(--hmap-border);border-radius:999px;background:var(--hmap-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center;color:var(--hmap-text);font:inherit;font-size:14px;appearance:none;cursor:pointer}
 .hmap-status{margin:0 0 0 auto;color:var(--hmap-muted);font-size:13px;letter-spacing:.04em}
 .hmap-stage{position:relative;height:var(--hmap-height);border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);overflow:hidden;background:var(--hmap-land);box-shadow:0 30px 80px -40px var(--hmap-glow),inset 0 0 0 1px rgba(255,255,255,.02)}

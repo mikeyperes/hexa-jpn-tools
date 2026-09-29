@@ -106,6 +106,8 @@ Version 3.0.0 establishes the coordinated major release for the expanded Core da
 
 Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
 
+Version 3.6.2 hardens the Map filter chips against theme button styles (hover, focus and active states no longer inherit a theme's button colors, such as Hello Elementor's pink) and shows chip counts as aligned tabular-number badges.
+
 Version 3.6.1 adds `Hexa\PluginCore\Users\UserProfileBridge`: `GET/POST hexa-plugin-core/v1/users/{id}/profile` reads one user with safe meta and the avatar provider, and writes native profile fields, meta, fields and the avatar for a user with `list_users` and `edit_user`. It never changes role, login, password or session data, and serves a local avatar when no avatar plugin is active. Host plugins switch it on with `UserProfileBridge::register()`, so Application Password and signed HWS Base Tools connections can manage author profiles.
 
 Version 3.6.0 adds a date filter to `Hexa\PluginCore\Map`: profiles that supply `next` (each item's next dated start) get "Any time · 24 hours · 48 hours · 1 week · 2 weeks" chips with live counts, applied in the browser against the visitor's clock and combined with the group filter. Windows are configurable. Docs: `docs/map.md`.
