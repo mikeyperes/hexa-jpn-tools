@@ -106,6 +106,8 @@ Version 3.0.0 establishes the coordinated major release for the expanded Core da
 
 Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
 
+Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
+
 Version 3.7.1 sets the Map asset budget to 6.5 KB gzipped (the 3.7.0 selection code added about 0.8 KB), so the Core suite passes again.
 
 Version 3.7.0 makes choosing a location on a `Map` smooth: each pin has an invisible 22px target and clicks pick the nearest pin, hovering enlarges the pin with a ring and shows the location's name, the chosen pin stays highlighted, clicking another pin swaps the card in place, clicking empty map closes it, and the map glides so the card opens fully in view. Cached map payloads are keyed by a payload version so shape changes never serve stale data.

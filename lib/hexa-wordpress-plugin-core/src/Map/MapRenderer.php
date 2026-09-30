@@ -383,7 +383,7 @@ CSS;
       map.touchZoomRotate.disableRotation();
       el.hmapMap = map;
       map.addControl(new gl.NavigationControl({ showCompass: false }), 'top-right');
-      var popup = new gl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '300px', offset: 14, className: 'hmap-popup' });
+      var popup = new gl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '300px', offset: 14, anchor: 'bottom', className: 'hmap-popup' });
       map.on('style.load', function () {
         tint(map, t);
         map.addSource('hmap', { type: 'geojson', data: fc(shown), cluster: cfg.cluster, clusterRadius: 44, clusterMaxZoom: 13 });
@@ -454,15 +454,22 @@ CSS;
         var p = shown[i];
         if (!p) { return; }
         tip.remove();
-        popup.setLngLat([p.lo, p.la]).setHTML(p.h);
+        var c = map.getContainer(), w = c.clientWidth, h = c.clientHeight;
+        // The card always opens above its pin and never exceeds the map: narrow maps (phones) get a
+        // narrower card, and a card taller than the map scrolls inside itself.
+        popup.setMaxWidth(Math.min(300, w - 24) + 'px').setLngLat([p.lo, p.la]).setHTML(p.h);
         if (!popup.isOpen()) { popup.addTo(map); }
+        var box = popup.getElement(), body = box.querySelector('.maplibregl-popup-content');
+        if (body) { body.style.maxHeight = Math.max(140, h - 64) + 'px'; body.style.overflowY = 'auto'; }
         mark(selId, 'sel', false);
         selId = i;
         mark(selId, 'sel', true);
-        // Glide so the pin sits low in the frame and its card opens fully in view.
-        var c = map.getContainer(), q = map.project([p.lo, p.la]), w = c.clientWidth, h = c.clientHeight;
-        var tx = Math.max(170, Math.min(w - 170, q.x)), ty = Math.max(q.y, Math.min(h - 40, Math.max(360, h * 0.62)));
-        if (tx !== q.x || ty !== q.y) {
+        // Glide just enough that the whole card is inside the map: room above the pin for the card's
+        // height, and room on each side for half its width.
+        var q = map.project([p.lo, p.la]), cw = box.offsetWidth, ch = box.offsetHeight + 16;
+        var tx = cw + 24 >= w ? w / 2 : Math.max(cw / 2 + 12, Math.min(w - cw / 2 - 12, q.x));
+        var ty = Math.max(ch + 12, Math.min(h - 20, q.y));
+        if (Math.abs(tx - q.x) > 1 || Math.abs(ty - q.y) > 1) {
           map.easeTo({ center: map.unproject([w / 2 + (q.x - tx), h / 2 + (q.y - ty)]), duration: 450 });
         }
       }

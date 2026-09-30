@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.3
+Stable tag: 1.8.4
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.4 =
+* Host map: a host's card always opens above its pin and fits inside the map, including on phones. Bundles Hexa WP Core 3.7.2.
 
 = 1.8.3 =
 * Host map: smoother pin selection (bigger tap targets, nearest-pin clicks, hover highlight with the host name, selected pin, card kept in view). Bundles Hexa WP Core 3.7.1.

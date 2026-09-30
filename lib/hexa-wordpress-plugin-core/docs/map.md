@@ -31,7 +31,9 @@ interaction. The host owns only the profile values and each item's card data.
   service can place is not retried until it changes.
 - Smooth selection: every pin has a generous invisible target and a click picks
   the nearest pin; hover enlarges it and shows the item's name; the chosen pin
-  stays highlighted and the map glides so its card opens fully in view. The map
+  stays highlighted and its card always opens above the pin, sized to the map
+  (taller content scrolls inside it) while the map glides so the whole card is
+  in view, on phones as on desktop. The map
   instance is exposed as `element.hmapMap` for site extensions.
 - Accessible and crawlable: the count is a live region, filters are real
   buttons, one-finger scrolling passes through on touch screens, and every
