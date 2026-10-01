@@ -108,6 +108,10 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.8.0 adds one `link_behavior` setting to the `Calendar` and `Map` components: `page` (follow the link, the default), `new_tab`, or `lightbox`, which shows the linked post in an in-page dialog (`ItemLink`, `ItemLightbox`, `GET /wp-json/hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`), so visitors can click through a calendar or a map without leaving the page. Docs: `docs/item-link.md`.
+
+Version 3.7.3 serializes `wp-config.php` INI and constant values with PHP literals, preventing quote-bearing input from escaping the generated assignment while preserving numeric and boolean scalar behavior.
+
 Version 3.7.1 sets the Map asset budget to 6.5 KB gzipped (the 3.7.0 selection code added about 0.8 KB), so the Core suite passes again.
 
 Version 3.7.0 makes choosing a location on a `Map` smooth: each pin has an invisible 22px target and clicks pick the nearest pin, hovering enlarges the pin with a ring and shows the location's name, the chosen pin stays highlighted, clicking another pin swaps the card in place, clicking empty map closes it, and the map glides so the card opens fully in view. Cached map payloads are keyed by a payload version so shape changes never serve stale data.

@@ -12,11 +12,16 @@ use Hexa\PluginCore\Calendar\CalendarRegistry;
  *
  * Core owns the month grid, query, filters, navigation, caching, and
  * interaction. This class owns which event fields drive the calendar, the
- * JPN filter vocabulary, and how one event reads inside a day.
+ * JPN filter vocabulary, and how one event reads inside a day; a click
+ * opens the event in Core's lightbox (EventLightbox).
  */
 final class EventCalendar
 {
     public const PROFILE = 'jpn_events';
+
+    public function __construct(private EventLightbox $lightbox)
+    {
+    }
 
     public function register(): void
     {
@@ -24,7 +29,7 @@ final class EventCalendar
             return;
         }
 
-        CalendarRegistry::register(self::PROFILE, [
+        CalendarRegistry::register(self::PROFILE, $this->lightbox->profile() + [
             'post_types' => ['event'],
             'start' => ['meta' => 'start_date_timestamp', 'format' => 'timestamp'],
             // Date-only events store their last day at local midnight; Core's end_midnight 'auto' keeps that day for all-day events.
@@ -80,7 +85,7 @@ final class EventCalendar
                 'continues' => __('Continues', 'hexa-jpn-tools'),
                 'until' => __('Until %s', 'hexa-jpn-tools'),
                 'reset' => __('Clear filters', 'hexa-jpn-tools'),
-            ],
+            ] + $this->lightbox->labels(),
             'cache_ttl' => 300,
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-calendar',

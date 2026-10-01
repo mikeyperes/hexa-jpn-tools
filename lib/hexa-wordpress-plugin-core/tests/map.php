@@ -83,6 +83,8 @@ function get_term( int $id, string $taxonomy ): ?MapTestTerm {
 require $root . '/src/PublicComponents/ProfileValues.php';
 require $root . '/src/PublicComponents/ProfileStore.php';
 require $root . '/src/PublicComponents/PublicComponent.php';
+require $root . '/src/PublicComponents/ItemLink.php';
+require $root . '/src/PublicComponents/ItemLightbox.php';
 require $root . '/src/Map/MapProfile.php';
 require $root . '/src/Map/MapRegistry.php';
 require $root . '/src/Map/MapGeocoder.php';

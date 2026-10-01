@@ -513,6 +513,15 @@ a.jpn-host__chip--link:focus-visible {
     --hcal-radius: 4px;
     --hcal-gap: 14px;
     --hcal-cell-h: 124px;
+    /* Event lightbox (Core dialog), same palette as the map's. */
+    --hlb-bg: #0C120E;
+    --hlb-fg: #F1F4F1;
+    --hlb-muted: #8F978F;
+    --hlb-border: rgba(255, 255, 255, .1);
+    --hlb-accent: #25D366;
+    --hlb-radius: 4px;
+    --hlb-width: 880px;
+    --hlb-backdrop: rgba(2, 6, 4, .82);
     color: #fff;
 }
 
@@ -700,6 +709,86 @@ a.jpn-host__chip--link:focus-visible {
 @media (max-width: 767px) {
     .jpn-card-actions .jpn-btn {
         flex: 1;
+    }
+}
+
+/* Event in Hexa WP Core's lightbox (calendar and host map): flyer beside the card parts, stacked on phones. */
+.jpn-lightbox {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+.jpn-lightbox--no-image {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.jpn-lightbox__media {
+    align-self: start;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, .08);
+}
+
+.jpn-lightbox__image {
+    display: block;
+    height: auto;
+    max-height: 70vh;
+    object-fit: contain;
+    width: 100%;
+}
+
+.jpn-lightbox__body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+}
+
+.jpn-lightbox__title {
+    color: #fff;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: .01em;
+    line-height: 1.15;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.jpn-lightbox__excerpt {
+    color: #c9cfcb;
+    font-size: 15px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.jpn-lightbox .jpn-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.jpn-lightbox .jpn-facts > div:nth-child(3) {
+    border-left: 0;
+}
+
+.jpn-lightbox .jpn-facts > div:nth-child(n+3) {
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.jpn-lightbox .jpn-card-actions .jpn-btn {
+    flex: 1;
+}
+
+@media (max-width: 700px) {
+    .jpn-lightbox {
+        gap: 16px;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .jpn-lightbox__image {
+        max-height: 46vh;
+    }
+
+    .jpn-lightbox__title {
+        font-size: 20px;
     }
 }
 

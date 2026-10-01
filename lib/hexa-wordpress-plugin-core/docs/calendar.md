@@ -84,7 +84,8 @@ CalendarRegistry::register( 'events', [
 | `max_per_day` | 3 | Extra items collapse behind `+N more` (native `<details>`). When expanded, the control reads `Show less`; collapsing restores the count. Override these strings through `labels.more` and `labels.less`. |
 | `max_span_days` | 7 | Longer items appear once, on their first day inside the month (or first visible day when they lie wholly outside it), labeled “Until …”. |
 | `max_items` | 500 | Per grid window (max 2,000). |
-| `link` | `permalink` | Where each item goes; see above. `link_target` `_blank` opens a new tab. |
+| `link` | `permalink` | Where each item goes; see above. |
+| `link_behavior` / `lightbox` | `page` | What a click does: `page`, `new_tab`, or `lightbox` (the item opens in an in-page dialog). See `docs/item-link.md`. The legacy `link_target` `_blank` still opens a new tab. |
 | `title` | post title | Optional `fn( int $id, array $item ): string`. |
 | `time_format` | site `time_format` | Items at local midnight are all-day and show no time. |
 | `filters` | none | Shared QueryFilter definitions. Date-range controls take the request's month window as limits unless they declare `min`/`max`; give a date range `end_meta_key` so ongoing items match. |

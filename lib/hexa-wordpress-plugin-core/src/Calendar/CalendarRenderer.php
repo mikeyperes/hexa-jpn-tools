@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\Calendar;
 
+use Hexa\PluginCore\PublicComponents\ItemLightbox;
+use Hexa\PluginCore\PublicComponents\ItemLink;
 use Hexa\PluginCore\PublicComponents\ProfileValues;
 use Hexa\PluginCore\PublicComponents\PublicComponent;
 use Hexa\PluginCore\QueryFilter\DateRangeFilterType;
@@ -15,7 +17,9 @@ use Hexa\PluginCore\QueryFilter\QueryFilterSet;
  * rel="nofollow" and stay inside the profile's month range, so crawlers
  * cannot walk an endless calendar. When JavaScript runs, month changes and
  * filters swap only the month fragment through the REST endpoint. Days are
- * not interactive; each item links to its own URL.
+ * not interactive; each item links to its own URL, and the profile's
+ * `link_behavior` decides whether a click follows it, opens a new tab, or
+ * opens the item in a lightbox.
  */
 final class CalendarRenderer {
     /** Month-cache generation option, bumped by CalendarModule when calendar content changes. */
@@ -61,6 +65,7 @@ final class CalendarRenderer {
             . ' data-hcal-home="' . esc_attr( $range['current'] ) . '"'
             . ' data-hcal-today="' . esc_attr( $today->format( 'Y-m-d' ) ) . '"'
             . ' data-hcal-tz="' . esc_attr( $timezone->getName() ) . '"'
+            . ItemLink::root_attributes( $profile )
             . ' data-hcal-error="' . esc_attr( $labels['error'] ) . '">';
 
         if ( [] !== $profile['filters'] ) {
@@ -81,7 +86,7 @@ final class CalendarRenderer {
             . '<div class="hcal-body">' . $payload['html'] . '</div></div>';
 
         // Titles and visitor dates are echoed; keep them inert to a later do_shortcode() pass.
-        return $this->assets() . PublicComponent::inert( $html );
+        return $this->assets() . ItemLightbox::assets( $profile['link_behavior'] ) . PublicComponent::inert( $html );
     }
 
     /**
@@ -261,8 +266,11 @@ final class CalendarRenderer {
             return '<span class="' . esc_attr( $classes ) . '">' . $inner . '</span>';
         }
 
+        // Posts-source items are posts; a provider may name the post behind an item with `post_id`.
+        $post_id = 'posts' === $profile['source'] ? (int) $item['id'] : (int) ( $item['post_id'] ?? ( 'lightbox' === $profile['link_behavior']['mode'] ? ItemLink::post_id( (string) $item['url'] ) : 0 ) );
+
         return '<a class="' . esc_attr( $classes ) . '" href="' . esc_url( (string) $item['url'] ) . '" title="' . esc_attr( wp_strip_all_tags( (string) $item['title'] ) ) . '"'
-            . ( '_blank' === $profile['link_target'] ? ' target="_blank" rel="noopener"' : '' ) . '>' . $inner . '</a>';
+            . ItemLink::attributes( $profile, 'calendar', $post_id ) . '>' . $inner . '</a>';
     }
 
     private function count_label( array $labels, int $total ): string {
@@ -352,7 +360,7 @@ var body=root.querySelector('.hcal-body'),form=root.querySelector('.hcal-filters
 if(!body||!endpoint||!window.fetch||!window.URLSearchParams)return;
 try{var eu=new URL(endpoint,location.href);if(eu.origin!==location.origin||eu.href.indexOf('hexa-plugin-core/v1/calendar/')<0)return;}catch(e){return;}
 var id=root.getAttribute('data-hcal-id'),base=root.getAttribute('data-hcal-base')||location.pathname,nonce=root.getAttribute('data-hcal-nonce');
-var month=root.getAttribute('data-hcal-month'),reset=root.querySelector('.hcal-reset'),seq=0,controller=null;
+var month=root.getAttribute('data-hcal-month'),reset=root.querySelector('.hcal-reset'),seq=0,controller=null,shown=location.search;
 root.classList.add('is-live');
 function each(fn){if(form)Array.prototype.forEach.call(form.elements,fn);}
 function filters(){var p=new URLSearchParams();each(function(el){if(!el.name||el.disabled||el.type==='hidden'||el.type==='submit')return;if(el.type==='checkbox'&&!el.checked)return;var v=(el.value||'').trim();if(v!=='')p.append(el.name,v);});return p;}
@@ -367,7 +375,7 @@ fetch(endpoint+(endpoint.indexOf('?')>-1?'&':'?')+rp.toString(),{credentials:non
 body.innerHTML=d.html||'';month=d.month||m||month;root.setAttribute('data-hcal-month',month);if(status)status.textContent=d.status||'';
 var mi=form&&form.querySelector('input[name="cmonth"]');if(mi)mi.value=month;if(reset)reset.hidden=f.toString()==='';
 if(focus){var t=body.querySelector('a.'+focus)||body.querySelector('.hcal-title');if(t)t.focus();}
-if(push!==null&&window.history&&history.replaceState){p.set('cmonth',month);var u=pageUrl(p);if(push){history.pushState({hcal:id},'',u);}else{history.replaceState({hcal:id},'',u);}}
+if(push!==null&&window.history&&history.replaceState){p.set('cmonth',month);var u=pageUrl(p);if(push){history.pushState({hcal:id},'',u);}else{history.replaceState({hcal:id},'',u);}shown=location.search;}
 }).catch(function(e){if(n!==seq||(e&&e.name==='AbortError'))return;if(status)status.textContent=root.getAttribute('data-hcal-error')||'';}).then(function(){if(n!==seq)return;root.removeAttribute('aria-busy');body.classList.remove('is-loading');});}
 body.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hcal-month]'):null;if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button)return;e.preventDefault();run(a.getAttribute('data-hcal-month'),true);});
 if(form){form.addEventListener('submit',function(e){e.preventDefault();run(month,false);});form.addEventListener('change',function(){run(month,false);});}
@@ -375,7 +383,8 @@ if(reset){reset.addEventListener('click',function(e){e.preventDefault();restore(
 var today=root.getAttribute('data-hcal-today'),now='';
 try{now=new Intl.DateTimeFormat('en-CA',{timeZone:root.getAttribute('data-hcal-tz'),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}catch(e){}
 if(/^\d{4}-\d{2}-\d{2}$/.test(now)&&now!==today){var sp0=new URLSearchParams(location.search),mine=!sp0.get('cal')||sp0.get('cal')===id;root.setAttribute('data-hcal-home',now.slice(0,7));run(mine&&sp0.get('cmonth')?month:now.slice(0,7),null);}
-window.addEventListener('popstate',function(){var sp=new URLSearchParams(location.search),owner=sp.get('cal');if(owner&&owner!==id){sp=new URLSearchParams();}
+// Only an address change is a calendar change: history entries other components add (a lightbox) leave the month alone.
+window.addEventListener('popstate',function(){if(location.search===shown)return;shown=location.search;var sp=new URLSearchParams(location.search),owner=sp.get('cal');if(owner&&owner!==id){sp=new URLSearchParams();}
 restore(sp);run(sp.get('cmonth')||root.getAttribute('data-hcal-home'),null);});
 }
 function boot(){Array.prototype.forEach.call(document.querySelectorAll('.hcal[data-hcal-endpoint]'),init);}

@@ -3,6 +3,7 @@
 namespace Hexa\PluginCore\Map;
 
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
+use Hexa\PluginCore\PublicComponents\ItemLightbox;
 
 /**
  * Wires the `[hexa_map id="…"]` shortcode, background geocoding, and map
@@ -28,6 +29,7 @@ final class MapModule implements ModuleInterface {
         self::$registered = true;
 
         add_shortcode( self::SHORTCODE, [ $this, 'shortcode' ] );
+        ItemLightbox::component( 'map', [ MapRegistry::class, 'get' ] );
         add_action( self::CRON_HOOK, [ $this, 'geocode' ] );
         add_action( 'init', [ $this, 'schedule' ] );
 

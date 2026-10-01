@@ -2,6 +2,7 @@
 
 namespace Hexa\PluginCore\Map;
 
+use Hexa\PluginCore\PublicComponents\ItemLink;
 use Hexa\PluginCore\PublicComponents\ProfileValues;
 
 /**
@@ -9,7 +10,9 @@ use Hexa\PluginCore\PublicComponents\ProfileValues;
  *
  * A profile says which items appear (published posts of selected types, or
  * users with selected roles), where each item's street address is stored,
- * how items are grouped for the visitor filter, and what an item's card says.
+ * how items are grouped for the visitor filter, what an item's card says, and
+ * what a click on a card link does (`link_behavior`: page, new tab, or
+ * lightbox; see ItemLink).
  * Core owns geocoding and storing coordinates, the map, clustering, the
  * filter, the card markup, caching, and the interaction.
  */
@@ -79,6 +82,7 @@ final class MapProfile {
             'title'         => ProfileValues::callback( $config['title'] ?? null ),
             'link'          => ProfileValues::callback( $config['link'] ?? null ),
             'card'          => ProfileValues::callback( $config['card'] ?? null ),
+            'link_behavior' => ItemLink::normalize( $config, $post_types ),
             'render_item'   => ProfileValues::callback( $config['render_item'] ?? null ),
             'highlight'     => ProfileValues::callback( $config['highlight'] ?? null ),
             'next'          => ProfileValues::callback( $config['next'] ?? null ),
@@ -192,6 +196,6 @@ final class MapProfile {
             'count_many' => '%d locations',
             'list'       => 'List of every location on the map',
             'cta'        => 'View details',
-        ], $labels );
+        ] + ItemLink::LABELS, $labels );
     }
 }

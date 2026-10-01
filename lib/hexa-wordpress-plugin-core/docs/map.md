@@ -110,6 +110,7 @@ selector .hmap {
 | `prepare` | none | `fn( int[] $ids ): array` batch data for placed items, passed to `title`, `link`, `card`, `highlight`, `render_item`. |
 | `title` / `link` | name / profile URL | Users: display name and author URL; posts: title and permalink. Or `fn( int $id, array $data )`. |
 | `card` | group, address, CTA | `fn( int $id, array $data, array $item ): array` with `kicker`, `meta`, `list_label`, `list`, `cta`. Core escapes and renders it. |
+| `link_behavior` / `lightbox` | `page` | What a click on a card link does: `page`, `new_tab`, or `lightbox` (a linked post opens in an in-page dialog; rows may name their post with `id`). See `docs/item-link.md`. |
 | `render_item` | none | `fn( int $id, array $data, array $item ): string` full card markup (escape it yourself). |
 | `highlight` | none | `fn( int $id, array $data ): bool` pulsing pin (reduced motion disables the pulse). |
 | `next` | none | `fn( int $id, array $data ): int` Unix start of the item's next dated entry (0 when none). Enables the date filter chips. |

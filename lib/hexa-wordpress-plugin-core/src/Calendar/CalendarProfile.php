@@ -2,6 +2,7 @@
 
 namespace Hexa\PluginCore\Calendar;
 
+use Hexa\PluginCore\PublicComponents\ItemLink;
 use Hexa\PluginCore\PublicComponents\ProfileValues;
 use Hexa\PluginCore\QueryFilter\DateRangeFilterType;
 use Hexa\PluginCore\QueryFilter\QueryFilterSet;
@@ -11,8 +12,9 @@ use Hexa\PluginCore\QueryFilter\QueryFilterSet;
  *
  * A profile says which items appear (published posts of selected types with a
  * start date and optional end date in custom fields or the post date, or a
- * host `provider` callback), where each item links, which filters visitors
- * may use, and how an item reads. Core owns the month grid, the bounded
+ * host `provider` callback), where each item links and what a click does
+ * (`link_behavior`: page, new tab, or lightbox; see ItemLink), which filters
+ * visitors may use, and how an item reads. Core owns the month grid, the bounded
  * query, the endpoint, the markup, and the interaction.
  */
 final class CalendarProfile {
@@ -74,6 +76,7 @@ final class CalendarProfile {
             }
         }
         unset( $filter );
+        $link_behavior = ItemLink::normalize( $config, $post_types );
 
         return [
             'id'            => $id,
@@ -91,7 +94,8 @@ final class CalendarProfile {
             'max_span_days' => ProfileValues::bounded_int( $config['max_span_days'] ?? 7, 7, 1, 62 ),
             'end_midnight'  => ProfileValues::choice( $config['end_midnight'] ?? 'auto', self::END_MIDNIGHT, 'auto' ),
             'link'          => self::link( $config['link'] ?? self::LINK_PERMALINK ),
-            'link_target'   => '_blank' === ( $config['link_target'] ?? '' ) ? '_blank' : '',
+            'link_behavior' => $link_behavior,
+            'link_target'   => 'new_tab' === $link_behavior['mode'] ? '_blank' : '',
             'title'         => ProfileValues::callback( $config['title'] ?? null ),
             'time_format'   => $time_format,
             'filters'       => $filters,
@@ -168,6 +172,6 @@ final class CalendarProfile {
             'until'       => 'Until %s',
             'all_day'     => '',
             'error'       => 'The calendar could not load. Please try again.',
-        ], $labels );
+        ] + ItemLink::LABELS, $labels );
     }
 }

@@ -3,6 +3,7 @@
 namespace Hexa\PluginCore\Calendar;
 
 use Hexa\PluginCore\CoreContracts\ModuleInterface;
+use Hexa\PluginCore\PublicComponents\ItemLightbox;
 use Hexa\PluginCore\PublicComponents\PublicComponent;
 
 /**
@@ -27,6 +28,7 @@ final class CalendarModule implements ModuleInterface {
 
         add_shortcode( self::SHORTCODE, [ $this, 'shortcode' ] );
         add_action( 'rest_api_init', [ $this, 'register_routes' ] );
+        ItemLightbox::component( 'calendar', [ CalendarRegistry::class, 'get' ] );
 
         foreach ( [ 'save_post', 'before_delete_post', 'trashed_post', 'untrashed_post', 'set_object_terms' ] as $hook ) {
             add_action( $hook, [ $this, 'post_changed' ] );

@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\Map;
 
+use Hexa\PluginCore\PublicComponents\ItemLightbox;
+use Hexa\PluginCore\PublicComponents\ItemLink;
 use Hexa\PluginCore\PublicComponents\PublicComponent;
 
 /**
@@ -12,14 +14,15 @@ use Hexa\PluginCore\PublicComponents\PublicComponent;
  * component nears the viewport. Colors come from `--hmap-*` CSS custom
  * properties on the component, so a page builder restyles the map, its
  * pins, and its cards without code. Item cards are Core markup filled from
- * the profile's `card` data, or the profile's own `render_item` markup.
+ * the profile's `card` data, or the profile's own `render_item` markup; the
+ * profile's `link_behavior` decides what a click on a card link does.
  */
 final class MapRenderer {
     /** LiteSpeed Cache tag on every page that renders a public map; purged when map content changes. */
     public const CACHE_TAG = 'hexa_map';
 
     /** Bumped whenever the cached point shape changes, so older cached payloads are never served. */
-    public const PAYLOAD_VERSION = 2;
+    public const PAYLOAD_VERSION = 3;
 
     private static bool $assets_printed = false;
 
@@ -50,7 +53,8 @@ final class MapRenderer {
 
         $html = '<div class="hmap ' . esc_attr( $profile['class'] ) . '" id="' . esc_attr( $dom_id ) . '"'
             . ' data-hmap="' . esc_attr( (string) wp_json_encode( $config ) ) . '"'
-            . ' data-hmap-points="' . esc_attr( (string) wp_json_encode( $payload['points'] ) ) . '">'
+            . ' data-hmap-points="' . esc_attr( (string) wp_json_encode( $payload['points'] ) ) . '"'
+            . ItemLink::root_attributes( $profile ) . '>'
             . '<div class="hmap-bar">' . $this->filter( $profile, $payload['groups'], $count, $dom_id )
             . '<p class="hmap-status" role="status" aria-live="polite">' . esc_html( $this->count( $labels, $count ) ) . '</p>'
             . $this->windows( $profile ) . '</div>'
@@ -60,7 +64,7 @@ final class MapRenderer {
             . '</div>';
 
         // Titles and addresses are echoed; keep them inert to a later do_shortcode() pass.
-        return $this->assets() . PublicComponent::inert( $html );
+        return $this->assets() . ItemLightbox::assets( $profile['link_behavior'] ) . PublicComponent::inert( $html );
     }
 
     /**
@@ -95,7 +99,7 @@ final class MapRenderer {
             if ( '' !== $item['group'] ) {
                 $groups[ $item['group'] ] = ( $groups[ $item['group'] ] ?? 0 ) + 1;
             }
-            $list .= '<li>' . ( '' !== $item['url'] ? '<a href="' . esc_url( $item['url'] ) . '">' . esc_html( $item['title'] ) . '</a>' : esc_html( $item['title'] ) )
+            $list .= '<li>' . ( '' !== $item['url'] ? '<a href="' . esc_url( $item['url'] ) . '"' . $this->link( $profile, $item ) . '>' . esc_html( $item['title'] ) . '</a>' : esc_html( $item['title'] ) )
                 . ( '' !== $item['group'] ? ' <span>· ' . esc_html( $item['group'] ) . '</span>' : '' ) . '</li>';
         }
         uksort( $groups, static fn( string $a, string $b ): int => ( $groups[ $b ] <=> $groups[ $a ] ) ?: strcasecmp( $a, $b ) );
@@ -135,7 +139,8 @@ final class MapRenderer {
         if ( '' !== (string) $card['kicker'] ) {
             $html .= '<p class="hmap-card__kicker">' . esc_html( (string) $card['kicker'] ) . '</p>';
         }
-        $html .= '<' . $tag . ' class="hmap-card__title">' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '">' . esc_html( $item['title'] ) . '</a>' : esc_html( $item['title'] ) ) . '</' . $tag . '>';
+        $attrs = $this->link( $profile, $item );
+        $html .= '<' . $tag . ' class="hmap-card__title">' . ( '' !== $url ? '<a href="' . esc_url( $url ) . '"' . $attrs . '>' . esc_html( $item['title'] ) . '</a>' : esc_html( $item['title'] ) ) . '</' . $tag . '>';
         foreach ( (array) $card['meta'] as $line ) {
             if ( is_scalar( $line ) && '' !== trim( (string) $line ) ) {
                 $html .= '<p class="hmap-card__meta">' . esc_html( (string) $line ) . '</p>';
@@ -147,16 +152,23 @@ final class MapRenderer {
                 continue;
             }
             $inner = ( '' !== (string) ( $row['label'] ?? '' ) ? '<b>' . esc_html( (string) $row['label'] ) . '</b>' : '' ) . '<span>' . esc_html( (string) $row['text'] ) . '</span>';
-            $rows .= '<li>' . ( '' !== (string) ( $row['url'] ?? '' ) ? '<a href="' . esc_url( (string) $row['url'] ) . '">' . $inner . '</a>' : '<span class="hmap-card__row">' . $inner . '</span>' ) . '</li>';
+            // A row may name the post it links to with `id`; otherwise it is looked up from its URL.
+            $row_id = (int) ( $row['id'] ?? ( 'lightbox' === $profile['link_behavior']['mode'] ? ItemLink::post_id( (string) ( $row['url'] ?? '' ) ) : 0 ) );
+            $rows  .= '<li>' . ( '' !== (string) ( $row['url'] ?? '' ) ? '<a href="' . esc_url( (string) $row['url'] ) . '"' . ItemLink::attributes( $profile, 'map', $row_id ) . '>' . $inner . '</a>' : '<span class="hmap-card__row">' . $inner . '</span>' ) . '</li>';
         }
         if ( '' !== $rows ) {
             $html .= ( '' !== (string) $card['list_label'] ? '<p class="hmap-card__label">' . esc_html( (string) $card['list_label'] ) . '</p>' : '' ) . '<ul>' . $rows . '</ul>';
         }
         if ( '' !== $url && '' !== (string) $card['cta'] ) {
-            $html .= '<a class="hmap-card__cta" href="' . esc_url( $url ) . '">' . esc_html( (string) $card['cta'] ) . ' <span aria-hidden="true">→</span></a>';
+            $html .= '<a class="hmap-card__cta" href="' . esc_url( $url ) . '"' . $attrs . '>' . esc_html( (string) $card['cta'] ) . ' <span aria-hidden="true">→</span></a>';
         }
 
         return $html . '</div>';
+    }
+
+    /** Link attributes for an item's own URL; a posts-source item is the post itself, a user item never opens in the lightbox. */
+    private function link( array $profile, array $item ): string {
+        return ItemLink::attributes( $profile, 'map', 'posts' === $profile['source'] ? (int) $item['id'] : 0 );
     }
 
     /** @param array<string,mixed> $profile @param array<string,int> $groups */

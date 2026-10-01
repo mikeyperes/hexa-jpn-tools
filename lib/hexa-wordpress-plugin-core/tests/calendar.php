@@ -73,7 +73,7 @@ function get_permalink( int $id ): string {
 }
 
 foreach ( [
-    'PublicComponents/ProfileValues', 'PublicComponents/ProfileStore', 'PublicComponents/PublicComponent',
+    'PublicComponents/ProfileValues', 'PublicComponents/ProfileStore', 'PublicComponents/PublicComponent', 'PublicComponents/ItemLink', 'PublicComponents/ItemLightbox',
     'QueryFilter/QueryFilterType', 'QueryFilter/MetaFilterType', 'QueryFilter/TaxonomyFilterType', 'QueryFilter/DateRangeFilterType',
     'QueryFilter/CallbackFilterType', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet',
     'Calendar/CalendarGrid', 'Calendar/CalendarProfile', 'Calendar/CalendarRegistry', 'Calendar/CalendarRequest', 'Calendar/CalendarQuery', 'Calendar/CalendarRenderer',
@@ -311,5 +311,7 @@ $expect( str_contains( CalendarRenderer::css(), '.hcal-day>.hcal-items,.hcal-day
 $expect( str_contains( CalendarRenderer::js(), "eu.href.indexOf('hexa-plugin-core/v1/calendar/')" ) && str_contains( CalendarRenderer::js(), 'status.textContent=d.status' ), 'The script only calls its own same-site endpoint and updates the persistent status.' );
 $expect( strlen( CalendarRenderer::css() ) < 6500 && strlen( CalendarRenderer::js() ) < 5000 && strlen( (string) gzencode( CalendarRenderer::css() . CalendarRenderer::js(), 9 ) ) < 3600, 'Calendar assets stay lightweight (under about 3.5 KB gzipped together).' );
 $expect( str_contains( $shortcode, 'data-hcal-today="2026-09-23" data-hcal-tz="America/New_York"' ), 'The rendered day and timezone let a cached page detect that it is stale.' );
+
+$expect( str_contains( CalendarRenderer::js(), 'if(location.search===shown)return;' ), 'A history entry that keeps the address (an open lightbox) does not reload the month.' );
 
 echo "PASS: calendar contract ({$assertions} assertions).\n";

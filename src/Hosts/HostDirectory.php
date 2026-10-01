@@ -364,6 +364,7 @@ final class HostDirectory
         foreach ((array) $rows as $row) {
             $postId = (int) $row['ID'];
             $events[(int) $row['host_id']][] = [
+                'id' => $postId,
                 'url' => (string) get_permalink($postId),
                 'title' => wp_strip_all_tags(get_the_title($postId)),
                 'ts' => (int) $row['ts'],

@@ -249,8 +249,9 @@ final class WpConfigFile {
      * @return string|array{status:bool,message:string}
      */
     private static function apply_ini_update( string $content, string $setting_name, mixed $value ): string|array {
-        $escaped_value = str_replace( "'", "\\'", (string) $value );
-        $new_line      = "ini_set( '{$setting_name}', '{$escaped_value}' );";
+        $setting_literal = var_export( $setting_name, true );
+        $value_literal   = var_export( (string) $value, true );
+        $new_line        = "ini_set( {$setting_literal}, {$value_literal} );";
         $pattern       = "/ini_set\s*\(\s*['\"]" . preg_quote( $setting_name, '/' ) . "['\"]\s*,\s*['\"].*?['\"]\s*\)\s*;\s*/i";
         $result        = preg_replace( $pattern, '', $content );
 
@@ -269,17 +270,17 @@ final class WpConfigFile {
      */
     private static function apply_define_update( string $content, string $constant, mixed $value ): string|array {
         $constant = strtoupper( $constant );
+        $name     = var_export( $constant, true );
 
         if ( is_bool( $value ) ) {
-            $new_constant = $value
-                ? "define( '{$constant}', true );"
-                : "define( '{$constant}', false );";
+            $literal = $value ? 'true' : 'false';
         } elseif ( is_numeric( $value ) ) {
-            $new_constant = "define( '{$constant}', {$value} );";
+            $literal = (string) $value;
         } else {
-            $escaped      = str_replace( "'", "\\'", (string) $value );
-            $new_constant = "define( '{$constant}', '{$escaped}' );";
+            $literal = var_export( (string) $value, true );
         }
+
+        $new_constant = "define( {$name}, {$literal} );";
 
         $pattern = "/define\s*\(\s*['\"]" . preg_quote( $constant, '/' ) . "['\"]\s*,\s*.*?\)\s*;\s*/i";
         $result  = preg_replace( $pattern, '', $content );

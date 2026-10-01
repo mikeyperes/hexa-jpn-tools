@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hexa\JpnTools\Hosts;
 
 use Hexa\JpnTools\Events\EventDates;
+use Hexa\JpnTools\Events\EventLightbox;
 use Hexa\PluginCore\Map\MapRegistry;
 
 /**
@@ -13,13 +14,14 @@ use Hexa\PluginCore\Map\MapRegistry;
  * Core owns geocoding, the map, pins, clustering, the area filter, card
  * markup, and caching; brand colors are set in Elementor. This class owns
  * which hosts appear, where their address and area are stored, and what a
- * host's card says, reusing the host directory's batch data.
+ * host's card says, reusing the host directory's batch data. An event in a
+ * card opens in Core's lightbox (EventLightbox); the host link opens the host page.
  */
 final class HostMap
 {
     public const PROFILE = 'jpn_hosts';
 
-    public function __construct(private HostDirectory $directory, private EventDates $dates)
+    public function __construct(private HostDirectory $directory, private EventDates $dates, private EventLightbox $lightbox)
     {
     }
 
@@ -29,7 +31,7 @@ final class HostMap
             return;
         }
 
-        MapRegistry::register(self::PROFILE, [
+        MapRegistry::register(self::PROFILE, $this->lightbox->profile() + [
             'source' => 'users',
             'roles' => ['host'],
             'address' => 'address',
@@ -55,7 +57,7 @@ final class HostMap
                 'count_many' => __('%d hosts', 'hexa-jpn-tools'),
                 'list' => __('List of all hosts on the map', 'hexa-jpn-tools'),
                 'cta' => __('View host', 'hexa-jpn-tools'),
-            ],
+            ] + $this->lightbox->labels(),
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-hosts-map',
         ]);
@@ -89,6 +91,7 @@ final class HostMap
                 'label' => $this->dates->formatTimestamp((int) $event['ts'], 'M j'),
                 'text' => (string) $event['title'],
                 'url' => (string) $event['url'],
+                'id' => (int) ($event['id'] ?? 0),
             ];
         }
 
