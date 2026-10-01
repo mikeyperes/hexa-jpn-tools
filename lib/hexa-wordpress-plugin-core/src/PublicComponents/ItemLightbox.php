@@ -165,9 +165,12 @@ document.body.appendChild(dlg);body=dlg.querySelector('.hlb-body');full=dlg.quer
 close.addEventListener('click',hide);
 dlg.addEventListener('click',function(e){if(e.target===dlg)hide();});
 dlg.addEventListener('cancel',function(e){e.preventDefault();hide();});
-dlg.addEventListener('close',function(){document.documentElement.classList.remove('hlb-lock');body.innerHTML='';if(trigger&&trigger.isConnected&&trigger.focus)trigger.focus();});}
-function hide(){if(!dlg||!dlg.open)return;if(pushed&&history.state&&history.state.hlb){pushed=false;history.back();return;}pushed=false;dlg.close();}
-window.addEventListener('popstate',function(){if(dlg&&dlg.open){pushed=false;dlg.close();}});
+dlg.addEventListener('close',function(){if(!dlg.open&&trigger)finish();});}
+// Cleanup runs as the dialog closes, not in the later close event, which could land after a quick reopen.
+function finish(){var t=trigger;trigger=null;document.documentElement.classList.remove('hlb-lock');body.innerHTML='';if(t&&t.isConnected&&t.focus)t.focus();}
+function shut(){pushed=false;dlg.close();finish();}
+function hide(){if(!dlg||!dlg.open)return;if(pushed&&history.state&&history.state.hlb){pushed=false;history.back();return;}shut();}
+window.addEventListener('popstate',function(){if(dlg&&dlg.open)shut();});
 function show(a){if(!dlg)build();
 var root=a.closest('[data-hlb-labels]')||a,l={},cs=getComputedStyle(root),url=a.getAttribute('data-hlb'),href=a.href,n=++seq;
 try{l=JSON.parse(root.getAttribute('data-hlb-labels')||'{}')||{};}catch(e){}

@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.5
+Stable tag: 1.8.6
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.6 =
+* Event lightbox closes cleanly after a quick close and reopen. Bundles Hexa WP Core 3.8.1.
 
 = 1.8.5 =
 * Event calendar and host map: clicking an event opens it in a lightbox (flyer, details, RSVP and Details buttons) instead of leaving the page. Bundles Hexa WP Core 3.8.0.
