@@ -90,6 +90,8 @@ final class AcfFields
                 ['key' => 'field_jpn_host_code', 'label' => 'JPN Host Code', 'name' => 'jpn_host_code', 'type' => 'text', 'instructions' => 'Managed by Code.Hexa.', 'readonly' => 1, 'wrapper' => ['width' => '50']],
                 ['key' => 'field_jpn_auto_approve', 'label' => 'Auto Approve Submissions', 'name' => 'jpn_auto_approve', 'type' => 'true_false', 'default_value' => 1, 'ui' => 1, 'wrapper' => ['width' => '50']],
                 ['key' => 'field_jpn_host_website', 'label' => 'Website', 'name' => 'website', 'type' => 'url'],
+                ['key' => 'field_jpn_host_phone', 'label' => 'Phone', 'name' => 'phone', 'type' => 'text', 'wrapper' => ['width' => '50']],
+                ['key' => 'field_jpn_host_preferred_contact', 'label' => 'Preferred Contact Method', 'name' => 'preferred_contact', 'type' => 'select', 'choices' => \Hexa\JpnTools\Hosts\HostContact::CHOICES, 'allow_null' => 1, 'return_format' => 'value', 'instructions' => 'Shown as the host\'s contact button on event pages and in the host directory. Uses the matching field (Website, Email, Phone, WhatsApp, Instagram or Facebook).', 'wrapper' => ['width' => '50']],
             ],
             'location' => [[['param' => 'user_role', 'operator' => '==', 'value' => 'host']]],
             'menu_order' => 5,

@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.7
+Stable tag: 1.8.8
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,10 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.8 =
+* Hosts: new Phone and Preferred Contact Method fields; host cards show the host's description and a contact button for the preferred method.
+* Event pages: `[jpn_event_host]` shows the event's host as a full card (photo, description, website and links, preferred contact, upcoming events) linking to the host page.
 
 = 1.8.7 =
 * Latest events video: optional download button with the file size below the player (`[jpn_latest_video download="Download video"]`).

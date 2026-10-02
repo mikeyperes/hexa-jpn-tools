@@ -29,6 +29,7 @@ final class HostDirectory
 
     public function register(): void
     {
+        add_shortcode('jpn_event_host', [$this, 'eventHost']);
         if (!class_exists(DirectorySearchRegistry::class)) {
             return;
         }
@@ -194,6 +195,7 @@ final class HostDirectory
             $address = trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags((string) get_user_meta($id, 'address', true))));
 
             $data[$id] = [
+                'id' => $id,
                 'name' => (string) $summary['display_name'],
                 'url' => get_author_posts_url($id, (string) $summary['slug']),
                 'area' => $areaId > 0 ? $areaNames[$areaId] : '',
@@ -201,6 +203,8 @@ final class HostDirectory
                 'website' => $website,
                 'instagram' => (string) ($summary['instagram_handle'] ?? ''),
                 'avatar' => $this->avatarUrl($id),
+                'description' => trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags($user ? (string) $user->description : ''))),
+                'contact' => HostContact::preferred($id),
                 'stats' => $stats[$id] ?? ['total' => 0, 'upcoming' => 0, 'next_ts' => 0, 'last_ts' => 0],
                 'events' => $events[$id] ?? [],
             ];
@@ -209,20 +213,42 @@ final class HostDirectory
         return $data;
     }
 
-    /** @param array<string,mixed> $host */
-    public function renderCard(int $id, array $host): string
+    /**
+     * `[jpn_event_host]`: the current event's host as a full card (photo, bio, links,
+     * preferred contact, events); nothing when the event has no host.
+     */
+    public function eventHost(): string
+    {
+        $eventId = (int) get_the_ID();
+        if ($eventId <= 0 || get_post_type($eventId) !== 'event') {
+            return '';
+        }
+        $hostId = (int) get_post_meta($eventId, 'event_host', true) ?: (int) get_post_field('post_author', $eventId);
+        $host = $hostId > 0 ? ($this->prepare([$hostId])[$hostId] ?? []) : [];
+
+        return $this->renderCard($hostId, $host, 'feature');
+    }
+
+    /**
+     * One host card: the directory result, or with `feature` the larger card on an event page.
+     *
+     * @param array<string,mixed> $host
+     */
+    public function renderCard(int $id, array $host, string $variant = ''): string
     {
         if ($host === []) {
             return '';
         }
+        $feature = $variant === 'feature';
 
         $name = (string) $host['name'];
         $url = (string) $host['url'];
         $stats = $host['stats'];
         $upcoming = (int) $stats['upcoming'];
 
-        $media = $host['avatar'] !== ''
-            ? '<img src="' . esc_url((string) $host['avatar']) . '" alt="" loading="lazy" width="96" height="96">'
+        $avatar = $feature ? $this->avatarUrl($id, 'medium') : (string) $host['avatar'];
+        $media = $avatar !== ''
+            ? '<img src="' . esc_url($avatar) . '" alt="' . esc_attr($feature ? $name : '') . '" loading="lazy" width="' . ($feature ? 160 : 96) . '" height="' . ($feature ? 160 : 96) . '">'
             : '<span class="jpn-host__monogram" aria-hidden="true">' . esc_html($this->initials($name)) . '</span>';
 
         $meta = [];
@@ -262,11 +288,21 @@ final class HostDirectory
             $when = __('No events yet', 'hexa-jpn-tools');
         }
 
-        return '<article class="jpn-host' . ($upcoming > 0 ? ' has-upcoming' : '') . '">'
+        $bio = (string) ($host['description'] ?? '') !== '' ? '<p class="jpn-host__bio">' . esc_html((string) $host['description']) . '</p>' : '';
+        $contact = is_array($host['contact'] ?? null)
+            ? '<a class="jpn-host__contact jpn-host__contact--' . esc_attr((string) $host['contact']['method']) . '" href="' . esc_url((string) $host['contact']['url']) . '"'
+                . (str_starts_with((string) $host['contact']['url'], 'http') ? ' target="_blank" rel="noopener nofollow"' : '') . '>'
+                . esc_html((string) $host['contact']['label'])
+                . ((string) $host['contact']['value'] !== '' ? ' <span>' . esc_html((string) $host['contact']['value']) . '</span>' : '') . '</a>'
+            : '';
+
+        return '<article class="jpn-host' . ($feature ? ' jpn-host--feature' : '') . ($upcoming > 0 ? ' has-upcoming' : '') . '">'
+            . ($feature ? '<p class="jpn-host__kicker">' . esc_html__('Host', 'hexa-jpn-tools') . '</p>' : '')
             . '<a class="jpn-host__media" href="' . esc_url($url) . '" tabindex="-1" aria-hidden="true">' . $media . '</a>'
             . '<div class="jpn-host__main">'
             . '<h3 class="jpn-host__name"><a href="' . esc_url($url) . '">' . esc_html($name) . '</a></h3>'
             . ($meta !== [] ? '<div class="jpn-host__meta">' . implode('', $meta) . '</div>' : '')
+            . $bio
             . $eventsHtml
             . '</div>'
             . '<div class="jpn-host__side">'
@@ -275,6 +311,7 @@ final class HostDirectory
             . '<p class="jpn-host__stat' . ($upcoming > 0 ? ' is-live' : '') . '"><b>' . esc_html(number_format_i18n($upcoming)) . '</b><span>' . esc_html__('upcoming', 'hexa-jpn-tools') . '</span></p>'
             . '</div>'
             . '<p class="jpn-host__when">' . esc_html($when) . '</p>'
+            . $contact
             . '<a class="jpn-host__cta" href="' . esc_url($url) . '">' . esc_html__('View host', 'hexa-jpn-tools') . ' <span aria-hidden="true">→</span></a>'
             . '</div>'
             . '</article>';
@@ -410,14 +447,14 @@ final class HostDirectory
     }
 
     /** Uploaded One User Avatar image, or '' so the card shows a monogram instead of a gray silhouette. */
-    private function avatarUrl(int $userId): string
+    private function avatarUrl(int $userId, string $size = 'thumbnail'): string
     {
         global $wpdb;
         $attachmentId = (int) get_user_meta($userId, $wpdb->get_blog_prefix() . 'user_avatar', true);
         if ($attachmentId <= 0) {
             return '';
         }
-        $url = (string) wp_get_attachment_image_url($attachmentId, 'thumbnail');
+        $url = (string) wp_get_attachment_image_url($attachmentId, $size);
         if ($url === '' || preg_match('/no-photo|placeholder|default-avatar/i', $url)) {
             return '';
         }
