@@ -226,20 +226,30 @@ final class HostDirectory
         $hostId = (int) get_post_meta($eventId, 'event_host', true) ?: (int) get_post_field('post_author', $eventId);
         $host = $hostId > 0 ? ($this->prepare([$hostId])[$hostId] ?? []) : [];
 
-        return $this->renderCard($hostId, $host, 'feature');
+        return $this->card($hostId, $host, true);
     }
 
     /**
-     * One host card: the directory result, or with `feature` the larger card on an event page.
+     * One directory result. Core's DirectorySearch calls this with extra arguments (the request),
+     * so the card variant lives in card(), not in this callback's signature.
      *
      * @param array<string,mixed> $host
      */
-    public function renderCard(int $id, array $host, string $variant = ''): string
+    public function renderCard(int $id, array $host): string
+    {
+        return $this->card($id, $host, false);
+    }
+
+    /**
+     * One host card: the directory result, or with $feature the larger card on an event page.
+     *
+     * @param array<string,mixed> $host
+     */
+    private function card(int $id, array $host, bool $feature): string
     {
         if ($host === []) {
             return '';
         }
-        $feature = $variant === 'feature';
 
         $name = (string) $host['name'];
         $url = (string) $host['url'];

@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.9
+Stable tag: 1.8.10
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.10 =
+* Fix: the host directory (/hosts/) failed to load in 1.8.8 and 1.8.9 because Core's directory passes extra arguments to the card callback.
 
 = 1.8.9 =
 * Event page host card: laid out for a half-width column (photo beside details, stats and buttons below), full photo, wrapping address.
