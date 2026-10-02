@@ -18,7 +18,8 @@ use Hexa\PluginCore\PublicComponents\RelativeTime;
  * Media Library, the "Latest Events Video" option fields record it and when it
  * was made, the previous published export is deleted, and cached pages showing
  * it are purged. `[jpn_latest_video]` renders the player with a live
- * "Last updated X ago" line above it. Design lives in Elementor.
+ * "Last updated X ago" line above it; `download="Download video"` adds a
+ * download button with the file size below it. Design lives in Elementor.
  */
 final class LatestVideo
 {
@@ -104,9 +105,15 @@ final class LatestVideo
         return ['attachment' => (int) $id, 'url' => (string) wp_get_attachment_url($id), 'updated' => $updated, 'replaced' => $previous];
     }
 
-    /** `[jpn_latest_video]`: the player with "Last updated X ago" above it, or nothing when no video is set. */
-    public function render(): string
+    /**
+     * `[jpn_latest_video download="…"]`: the player with "Last updated X ago" above it and, when `download`
+     * has a label, a download button below it; nothing when no video is set.
+     *
+     * @param array<string,string>|string $atts
+     */
+    public function render($atts = []): string
     {
+        $atts = shortcode_atts(['download' => ''], is_array($atts) ? $atts : [], self::SHORTCODE);
         $id = (int) Field::get('jpn_latest_video', 'option', false);
         $url = $id > 0 ? (string) wp_get_attachment_url($id) : '';
         if ($url === '') {
@@ -125,7 +132,31 @@ final class LatestVideo
             . ($caption !== '' ? '<span class="jpn-latest-video__caption">' . esc_html($caption) . '</span>' : '')
             . '</figcaption>'
             . '<video class="jpn-latest-video__player" src="' . esc_url($url) . '#t=0.1" controls playsinline preload="metadata"' . $size . '></video>'
+            . $this->downloadLink($id, $url, trim((string) $atts['download']), $meta)
             . '</figure>';
+    }
+
+    /**
+     * Same-origin download of the current export, named after its date, with its size.
+     *
+     * @param array<string,mixed> $meta Attachment metadata.
+     */
+    private function downloadLink(int $id, string $url, string $label, array $meta): string
+    {
+        if ($label === '') {
+            return '';
+        }
+        $bytes = (int) ($meta['filesize'] ?? 0);
+        if ($bytes <= 0) {
+            $file = get_attached_file($id);
+            $bytes = $file && is_readable($file) ? (int) filesize($file) : 0;
+        }
+
+        return '<a class="jpn-latest-video__download" href="' . esc_url($url) . '" download="' . esc_attr(wp_basename((string) wp_parse_url($url, PHP_URL_PATH))) . '">'
+            . '<span class="jpn-latest-video__download-icon" aria-hidden="true">↓</span>'
+            . '<span class="jpn-latest-video__download-label">' . esc_html($label) . '</span>'
+            . ($bytes > 0 ? '<span class="jpn-latest-video__download-size">' . esc_html((string) size_format($bytes, 1)) . '</span>' : '')
+            . '</a>';
     }
 
     /**
