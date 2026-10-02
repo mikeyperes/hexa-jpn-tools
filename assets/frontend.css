@@ -219,7 +219,7 @@
     border: 1px solid rgba(255, 255, 255, .12);
 }
 
-.jpn-host__media img {
+.jpn-host .jpn-host__media img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -468,13 +468,35 @@ a.jpn-host__chip--link:focus-visible {
     color: #0A150D;
 }
 
-/* Event page host ([jpn_event_host]): the same card, larger, in its own panel. */
+/* Event page host ([jpn_event_host]): the same card in its own panel, sized for a half-width column:
+   photo beside the details, stats and buttons in one row underneath. */
 .jpn-host--feature {
-    grid-template-columns: 160px minmax(0, 1fr) 220px;
-    gap: 28px;
+    grid-template-columns: 128px minmax(0, 1fr);
+    gap: 22px 26px;
     padding: 28px;
     border: 1px solid rgba(255, 255, 255, .08);
     background: rgba(255, 255, 255, .03);
+}
+
+.jpn-host--feature .jpn-host__side {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px 16px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    text-align: left;
+}
+
+.jpn-host--feature .jpn-host__when {
+    margin-right: auto;
+}
+
+.jpn-host--feature .jpn-host__chip {
+    white-space: normal;
+    max-width: 100%;
 }
 
 .jpn-host--feature::before {
@@ -492,8 +514,8 @@ a.jpn-host__chip--link:focus-visible {
 }
 
 .jpn-host--feature .jpn-host__media {
-    width: 160px;
-    height: 160px;
+    width: 128px;
+    height: 128px;
 }
 
 .jpn-host--feature .jpn-host__monogram {
@@ -509,7 +531,7 @@ a.jpn-host__chip--link:focus-visible {
 }
 
 .jpn-host--feature .jpn-host__side > a {
-    align-self: stretch;
+    flex: 1 1 200px;
 }
 
 .jpn-hosts-directory .hds-empty {
@@ -546,13 +568,18 @@ a.jpn-host__chip--link:focus-visible {
     }
 
     .jpn-host--feature {
-        grid-template-columns: 96px minmax(0, 1fr);
+        grid-template-columns: 80px minmax(0, 1fr);
+        gap: 16px;
         padding: 20px 16px;
     }
 
     .jpn-host--feature .jpn-host__media {
-        width: 96px;
-        height: 96px;
+        width: 80px;
+        height: 80px;
+    }
+
+    .jpn-host--feature .jpn-host__main {
+        grid-column: 1 / -1;
     }
 
     .jpn-host--feature .jpn-host__side > a {

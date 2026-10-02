@@ -8,12 +8,17 @@ use Hexa\JpnTools\Rest\HostController;
 
 /**
  * A host's preferred contact method (the `preferred_contact` field) as one
- * link visitors can use, built from the host's existing contact fields.
+ * link visitors can use, built from the host's existing contact fields. With
+ * no method chosen, the first direct channel the host lists (WhatsApp, email,
+ * phone) is offered; the stored field stays empty.
  *
  * The account (login) email is never shown; only the public `email` field is.
  */
 final class HostContact
 {
+    /** Direct channels offered, in order, when the host has not chosen a method. */
+    private const FALLBACK = ['whatsapp', 'email', 'phone'];
+
     /** Field choices; the keys are stored in `preferred_contact`. */
     public const CHOICES = [
         'website' => 'Website',
@@ -25,15 +30,24 @@ final class HostContact
     ];
 
     /**
-     * The preferred method's link, or null when no method is chosen or its field is empty.
+     * The chosen method's link, else the first listed direct channel; null when there is none.
      *
      * @return array{method:string,label:string,url:string,value:string}|null
      */
     public static function preferred(int $hostId): ?array
     {
         $method = (string) get_user_meta($hostId, 'preferred_contact', true);
+        if (isset(self::CHOICES[$method])) {
+            return self::link($hostId, $method);
+        }
+        foreach (self::FALLBACK as $fallback) {
+            $link = self::link($hostId, $fallback);
+            if ($link !== null) {
+                return $link;
+            }
+        }
 
-        return isset(self::CHOICES[$method]) ? self::link($hostId, $method) : null;
+        return null;
     }
 
     /** @return array{method:string,label:string,url:string,value:string}|null */
