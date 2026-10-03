@@ -20,6 +20,7 @@ use Hexa\JpnTools\Events\EventRelations;
 use Hexa\JpnTools\Frontend\PhotoDownloads;
 use Hexa\JpnTools\Frontend\Privacy;
 use Hexa\JpnTools\Frontend\Shortcodes;
+use Hexa\JpnTools\Frontend\WhatsAppFeed;
 use Hexa\JpnTools\Hosts\HostDirectory;
 use Hexa\JpnTools\Hosts\HostMap;
 use Hexa\JpnTools\Integration\CoreIntegration;
@@ -73,6 +74,7 @@ final class Plugin
         $downloads = new PhotoDownloads($queries, $dates);
         $downloads->register();
         (new Shortcodes($queries, $dates, $downloads))->register();
+        (new WhatsAppFeed($queries, $dates))->register();
         $hosts = new HostDirectory($dates);
         $hosts->register();
         $lightbox = new EventLightbox();
