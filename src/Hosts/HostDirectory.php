@@ -30,6 +30,8 @@ final class HostDirectory
     public function register(): void
     {
         add_shortcode('jpn_event_host', [$this, 'eventHost']);
+        add_shortcode('jpn_host_field', [$this, 'hostField']);
+        add_shortcode('jpn_host_url', [$this, 'hostUrl']);
         if (!class_exists(DirectorySearchRegistry::class)) {
             return;
         }
@@ -227,6 +229,85 @@ final class HostDirectory
         $host = $hostId > 0 ? ($this->prepare([$hostId])[$hostId] ?? []) : [];
 
         return $this->card($hostId, $host, true);
+    }
+
+    /** Scalar current-author profile value for native Elementor dynamic controls. */
+    public function hostField(array|string $attributes = []): string
+    {
+        $attributes = shortcode_atts(['key' => ''], $attributes, 'jpn_host_field');
+        $hostId = HostContext::currentAuthorId();
+        $user = $hostId > 0 ? get_userdata($hostId) : false;
+        if (!$user) {
+            return '';
+        }
+
+        $key = sanitize_key((string) $attributes['key']);
+        $summary = HostController::summary($user);
+        $stats = $this->statsFor($hostId);
+        $website = trim((string) $user->user_url) ?: trim((string) get_user_meta($hostId, 'website', true));
+        $handle = trim((string) ($summary['instagram_handle'] ?? ''));
+        $value = match ($key) {
+            'name' => (string) $user->display_name,
+            'first_name' => (string) $user->first_name,
+            'last_name' => (string) $user->last_name,
+            'description' => trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags((string) $user->description))),
+            'address' => $this->userMetaText($hostId, 'address'),
+            'area' => $this->hostAreaNames($hostId),
+            'email' => is_email($this->userMetaText($hostId, 'email')) ? $this->userMetaText($hostId, 'email') : '',
+            'website' => $this->httpsUrl($website),
+            'website_label' => $this->websiteLabel($website),
+            'facebook' => $this->httpsUrl($this->userMetaText($hostId, 'facebook_url')),
+            'instagram' => $handle !== '' ? 'https://www.instagram.com/' . rawurlencode($handle) . '/' : '',
+            'instagram_handle' => $handle !== '' ? '@' . $handle : '',
+            'avatar_url' => $this->avatarUrl($hostId, 'large'),
+            'event_count' => (string) $stats['total'],
+            'upcoming_count' => (string) $stats['upcoming'],
+            'past_count' => (string) $stats['past'],
+            'next_event_date' => $stats['next_ts'] > 0 ? $this->dates->formatTimestamp($stats['next_ts'], 'M j') : '',
+            'member_since' => $user->user_registered !== '' ? wp_date('M Y', strtotime($user->user_registered . ' UTC'), $this->dates->timezone()) : '',
+            default => '',
+        };
+
+        return in_array($key, ['website', 'facebook', 'instagram', 'avatar_url'], true)
+            ? esc_url($value)
+            : esc_html($value);
+    }
+
+    /** Scalar current-author action URL for native Elementor button/link controls. */
+    public function hostUrl(array|string $attributes = []): string
+    {
+        $attributes = shortcode_atts(['key' => ''], $attributes, 'jpn_host_url');
+        $hostId = HostContext::currentAuthorId();
+        $user = $hostId > 0 ? get_userdata($hostId) : false;
+        if (!$user) {
+            return '';
+        }
+
+        $key = sanitize_key((string) $attributes['key']);
+        $summary = HostController::summary($user);
+        $email = $this->userMetaText($hostId, 'email');
+        $address = $this->userMetaText($hostId, 'address');
+        $website = trim((string) $user->user_url) ?: $this->userMetaText($hostId, 'website');
+        $handle = trim((string) ($summary['instagram_handle'] ?? ''));
+        $value = match ($key) {
+            'email' => is_email($email) ? 'mailto:' . $email : '',
+            'website' => $this->httpsUrl($website),
+            'facebook' => $this->httpsUrl($this->userMetaText($hostId, 'facebook_url')),
+            'instagram' => $handle !== '' ? 'https://www.instagram.com/' . rawurlencode($handle) . '/' : '',
+            'maps' => $address !== '' ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($address) : '',
+            default => '',
+        };
+
+        return esc_url($value, ['http', 'https', 'mailto']);
+    }
+
+    /** @return array{total:int,upcoming:int,past:int,next_ts:int,last_ts:int} */
+    public function statsFor(int $hostId): array
+    {
+        $stats = $this->stats()[$hostId] ?? ['total' => 0, 'upcoming' => 0, 'next_ts' => 0, 'last_ts' => 0];
+        $stats['past'] = max(0, $stats['total'] - $stats['upcoming']);
+
+        return $stats;
     }
 
     /**
@@ -454,6 +535,44 @@ final class HostDirectory
         }
 
         return $used;
+    }
+
+    private function userMetaText(int $hostId, string $key): string
+    {
+        return trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags((string) get_user_meta($hostId, $key, true))));
+    }
+
+    private function hostAreaNames(int $hostId): string
+    {
+        $raw = get_user_meta($hostId, 'area', true);
+        $ids = is_array($raw) ? $raw : (array) maybe_unserialize($raw);
+        $names = [];
+        foreach (array_values(array_unique(array_filter(array_map('intval', $ids)))) as $termId) {
+            $term = get_term($termId, 'area');
+            if ($term && !is_wp_error($term)) {
+                $names[] = html_entity_decode((string) $term->name, ENT_QUOTES, 'UTF-8');
+            }
+        }
+
+        return implode(', ', $names);
+    }
+
+    private function httpsUrl(string $value): string
+    {
+        $value = trim($value);
+        if ($value !== '' && !preg_match('#^https?://#i', $value)) {
+            $value = 'https://' . ltrim($value, '/');
+        }
+
+        return (string) esc_url_raw($value, ['http', 'https']);
+    }
+
+    private function websiteLabel(string $value): string
+    {
+        $url = $this->httpsUrl($value);
+        $host = (string) wp_parse_url($url, PHP_URL_HOST);
+
+        return (string) preg_replace('#^www\.#i', '', $host);
     }
 
     /** Uploaded One User Avatar image, or '' so the card shows a monogram instead of a gray silhouette. */

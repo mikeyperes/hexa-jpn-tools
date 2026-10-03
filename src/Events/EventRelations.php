@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hexa\JpnTools\Events;
 
+use Hexa\JpnTools\Hosts\HostContext;
 use WP_Query;
 
 final class EventRelations
@@ -19,6 +20,8 @@ final class EventRelations
     {
         add_action('elementor/query/jpn_home_upcoming_events', [$this, 'configureUpcomingQuery']);
         add_action('elementor/query/jpn_past_events', [$this, 'configurePastQuery']);
+        add_action('elementor/query/jpn_host_upcoming_events', [$this, 'configureHostUpcomingQuery']);
+        add_action('elementor/query/jpn_host_past_events', [$this, 'configureHostPastQuery']);
         add_filter('the_content', [$this, 'renderRelatedEvents'], 25);
     }
 
@@ -69,6 +72,47 @@ final class EventRelations
             'compare' => '<',
             'type' => 'NUMERIC',
         ]]);
+    }
+
+    /** Current author's published events starting today or later, soonest first. */
+    public function configureHostUpcomingQuery($query): void
+    {
+        $this->configureHostQuery($query, '>=', 'ASC');
+    }
+
+    /** Current author's published events before today, newest first. */
+    public function configureHostPastQuery($query): void
+    {
+        $this->configureHostQuery($query, '<', 'DESC');
+    }
+
+    private function configureHostQuery(mixed $query, string $compare, string $order): void
+    {
+        if (!$query instanceof WP_Query) {
+            return;
+        }
+
+        $hostId = HostContext::currentAuthorId();
+        $query->set('post_type', 'event');
+        $query->set('post_status', 'publish');
+        $query->set('ignore_sticky_posts', true);
+        $query->set('meta_key', 'start_date_timestamp');
+        $query->set('orderby', 'meta_value_num');
+        $query->set('order', $order);
+        $query->set('meta_query', [[
+            'key' => 'start_date_timestamp',
+            'value' => EventDates::startOfToday(),
+            'compare' => $compare,
+            'type' => 'NUMERIC',
+        ]]);
+
+        if ($hostId > 0) {
+            $query->set('author', $hostId);
+            return;
+        }
+
+        // A host-scoped loop must never fall back to events from every author.
+        $query->set('post__in', [0]);
     }
 
     public function relatedUpcomingExclusions(): array

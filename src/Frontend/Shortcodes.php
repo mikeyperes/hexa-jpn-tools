@@ -23,6 +23,48 @@ final class Shortcodes
         add_shortcode('jpn_event_badges', [$this, 'badges']);
         add_shortcode('jpn_event_facts', [$this, 'facts']);
         add_shortcode('jpn_event_actions', [$this, 'actions']);
+        add_shortcode('jpn_event_field', [$this, 'eventField']);
+    }
+
+    /** Scalar current-event value for native Elementor Loop Item controls. */
+    public function eventField(array|string $attributes = []): string
+    {
+        $attributes = shortcode_atts(['key' => ''], $attributes, 'jpn_event_field');
+        $eventId = $this->currentEventId();
+        if ($eventId === 0) {
+            return '';
+        }
+
+        $key = sanitize_key((string) $attributes['key']);
+        $start = (int) get_post_meta($eventId, 'start_date_timestamp', true);
+        $area = $this->areaName($eventId);
+        $hostId = (int) get_post_meta($eventId, 'event_host', true) ?: (int) get_post_field('post_author', $eventId);
+        $address = trim((string) get_post_meta($eventId, 'location_address', true));
+        if ($address === '') {
+            $address = trim((string) get_post_meta($eventId, 'location', true));
+        }
+        if ($address === '' && $hostId > 0) {
+            $address = trim((string) get_user_meta($hostId, 'address', true));
+        }
+
+        $value = match ($key) {
+            'dow' => $start > 0 ? $this->dates->formatTimestamp($start, 'D') : '',
+            'day' => $start > 0 ? $this->dates->formatTimestamp($start, 'j') : '',
+            'month' => $start > 0 ? $this->dates->formatTimestamp($start, 'M') : '',
+            'relative' => $this->relativeDate($start),
+            'date_long' => $start > 0 ? $this->dates->formatTimestamp($start, 'l, F j') : '',
+            'time_range' => html_entity_decode($this->timeRange(), ENT_QUOTES, 'UTF-8'),
+            'where' => $this->eventWhere($eventId),
+            'address' => $address,
+            'audience' => $this->flag($eventId, 'kids_event') ? __('Kids & families', 'hexa-jpn-tools') : __('All ages', 'hexa-jpn-tools'),
+            'rsvp_url' => $this->eventRsvpUrl($eventId),
+            'area' => $area,
+            'featured_label' => $this->flag($eventId, 'featured_event') ? __('Featured', 'hexa-jpn-tools') : '',
+            'kids_label' => $this->flag($eventId, 'kids_event') ? __('Kids', 'hexa-jpn-tools') : '',
+            default => '',
+        };
+
+        return $key === 'rsvp_url' ? esc_url($value) : esc_html($value);
     }
 
     /** Featured / Kids badges for the current event card; empty when neither flag is set. */
@@ -274,6 +316,32 @@ final class Shortcodes
             return $fallback;
         }
         return preg_match('#^https?://#i', $url) ? $url : 'https://' . ltrim($url, '/');
+    }
+
+    private function eventRsvpUrl(int $eventId): string
+    {
+        $link = trim((string) get_post_meta($eventId, 'link', true));
+        return $link !== '' ? $this->normalizeUrl($link, '') : '';
+    }
+
+    private function relativeDate(int $timestamp): string
+    {
+        if ($timestamp <= 0) {
+            return '';
+        }
+
+        $today = EventDates::startOfToday();
+        $eventDay = EventDates::startOfToday($timestamp);
+        if ($eventDay < $today) {
+            return '';
+        }
+
+        $days = (int) round(($eventDay - $today) / DAY_IN_SECONDS);
+        return match ($days) {
+            0 => __('Today', 'hexa-jpn-tools'),
+            1 => __('Tomorrow', 'hexa-jpn-tools'),
+            default => sprintf(__('In %d days', 'hexa-jpn-tools'), $days),
+        };
     }
 
     private function enqueueStyle(): void
