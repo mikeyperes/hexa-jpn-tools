@@ -177,7 +177,7 @@
 
 .jpn-host {
     display: grid;
-    grid-template-columns: 96px minmax(0, 1fr) 200px;
+    grid-template-columns: 96px minmax(0, 1fr) 232px;
     gap: 24px;
     align-items: start;
     padding: 24px 20px;
@@ -350,14 +350,30 @@ a.jpn-host__chip--link:focus-visible {
 .jpn-host__side {
     display: flex;
     flex-direction: column;
+    gap: 16px;
+}
+
+.jpn-host__facts {
+    display: flex;
+    flex-direction: column;
     align-items: flex-end;
-    gap: 10px;
+    gap: 8px;
     text-align: right;
 }
 
 .jpn-host__stats {
     display: flex;
     gap: 8px;
+}
+
+.jpn-host__actions {
+    display: grid;
+    gap: 8px;
+}
+
+.jpn-host__actions > a {
+    justify-content: center;
+    white-space: nowrap;
 }
 
 .jpn-host__stat {
@@ -450,16 +466,9 @@ a.jpn-host__chip--link:focus-visible {
     color: #0A150D;
     font-size: 12px;
     font-weight: 900;
-    letter-spacing: .18em;
+    letter-spacing: .16em;
     text-transform: uppercase;
     text-decoration: none;
-}
-
-.jpn-host__contact span {
-    font-weight: 600;
-    letter-spacing: .04em;
-    text-transform: none;
-    opacity: .75;
 }
 
 .jpn-host__contact:hover,
@@ -468,35 +477,14 @@ a.jpn-host__chip--link:focus-visible {
     color: #0A150D;
 }
 
-/* Event page host ([jpn_event_host]): the same card in its own panel, sized for a half-width column:
-   photo beside the details, stats and buttons in one row underneath. */
+/* Event page host ([jpn_event_host]): the same card in its own panel, sized for a half-width column.
+   The event counts sit under the name as one line of facts; the two buttons share a footer row. */
 .jpn-host--feature {
     grid-template-columns: 128px minmax(0, 1fr);
     gap: 22px 26px;
     padding: 28px;
     border: 1px solid rgba(255, 255, 255, .08);
     background: rgba(255, 255, 255, .03);
-}
-
-.jpn-host--feature .jpn-host__side {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 12px 16px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, .08);
-    text-align: left;
-}
-
-.jpn-host--feature .jpn-host__when {
-    margin-right: auto;
-}
-
-.jpn-host--feature .jpn-host__chip {
-    white-space: normal;
-    max-width: 100%;
 }
 
 .jpn-host--feature::before {
@@ -530,8 +518,53 @@ a.jpn-host__chip--link:focus-visible {
     font-size: 15px;
 }
 
-.jpn-host--feature .jpn-host__side > a {
-    flex: 1 1 200px;
+.jpn-host--feature .jpn-host__chip {
+    white-space: normal;
+    max-width: 100%;
+}
+
+.jpn-host--feature .jpn-host__facts {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+    margin-top: 14px;
+    text-align: left;
+}
+
+.jpn-host--feature .jpn-host__stats {
+    gap: 18px;
+}
+
+.jpn-host--feature .jpn-host__stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+}
+
+.jpn-host--feature .jpn-host__stat b {
+    font-size: 18px;
+}
+
+.jpn-host--feature .jpn-host__when {
+    padding-left: 18px;
+    border-left: 1px solid rgba(255, 255, 255, .15);
+    font-size: 14px;
+}
+
+.jpn-host--feature .jpn-host__side {
+    grid-column: 1 / -1;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+}
+
+.jpn-host--feature .jpn-host__actions {
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
 }
 
 .jpn-hosts-directory .hds-empty {
@@ -556,11 +589,18 @@ a.jpn-host__chip--link:focus-visible {
 
     .jpn-host__side {
         grid-column: 1 / -1;
+    }
+
+    .jpn-host__facts {
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
         text-align: left;
+    }
+
+    .jpn-host__actions {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
 
     .jpn-host__events a {
@@ -582,8 +622,9 @@ a.jpn-host__chip--link:focus-visible {
         grid-column: 1 / -1;
     }
 
-    .jpn-host--feature .jpn-host__side > a {
-        flex: 1 1 100%;
+    .jpn-host--feature .jpn-host__when {
+        padding-left: 0;
+        border-left: 0;
     }
 }
 

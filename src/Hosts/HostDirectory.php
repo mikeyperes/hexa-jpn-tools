@@ -382,10 +382,18 @@ final class HostDirectory
         $bio = (string) ($host['description'] ?? '') !== '' ? '<p class="jpn-host__bio">' . esc_html((string) $host['description']) . '</p>' : '';
         $contact = is_array($host['contact'] ?? null)
             ? '<a class="jpn-host__contact jpn-host__contact--' . esc_attr((string) $host['contact']['method']) . '" href="' . esc_url((string) $host['contact']['url']) . '"'
+                . ((string) $host['contact']['value'] !== '' ? ' title="' . esc_attr((string) $host['contact']['value']) . '"' : '')
                 . (str_starts_with((string) $host['contact']['url'], 'http') ? ' target="_blank" rel="noopener nofollow"' : '') . '>'
-                . esc_html((string) $host['contact']['label'])
-                . ((string) $host['contact']['value'] !== '' ? ' <span>' . esc_html((string) $host['contact']['value']) . '</span>' : '') . '</a>'
+                . esc_html((string) $host['contact']['label']) . '</a>'
             : '';
+
+        $facts = '<div class="jpn-host__facts">'
+            . '<div class="jpn-host__stats">'
+            . '<p class="jpn-host__stat"><b>' . esc_html(number_format_i18n((int) $stats['total'])) . '</b><span>' . esc_html(_n('event', 'events', (int) $stats['total'], 'hexa-jpn-tools')) . '</span></p>'
+            . '<p class="jpn-host__stat' . ($upcoming > 0 ? ' is-live' : '') . '"><b>' . esc_html(number_format_i18n($upcoming)) . '</b><span>' . esc_html__('upcoming', 'hexa-jpn-tools') . '</span></p>'
+            . '</div>'
+            . '<p class="jpn-host__when">' . esc_html($when) . '</p>'
+            . '</div>';
 
         return '<article class="jpn-host' . ($feature ? ' jpn-host--feature' : '') . ($upcoming > 0 ? ' has-upcoming' : '') . '">'
             . ($feature ? '<p class="jpn-host__kicker">' . esc_html__('Host', 'hexa-jpn-tools') . '</p>' : '')
@@ -393,17 +401,16 @@ final class HostDirectory
             . '<div class="jpn-host__main">'
             . '<h3 class="jpn-host__name"><a href="' . esc_url($url) . '">' . esc_html($name) . '</a></h3>'
             . ($meta !== [] ? '<div class="jpn-host__meta">' . implode('', $meta) . '</div>' : '')
+            . ($feature ? $facts : '')
             . $bio
             . $eventsHtml
             . '</div>'
             . '<div class="jpn-host__side">'
-            . '<div class="jpn-host__stats">'
-            . '<p class="jpn-host__stat"><b>' . esc_html(number_format_i18n((int) $stats['total'])) . '</b><span>' . esc_html(_n('event', 'events', (int) $stats['total'], 'hexa-jpn-tools')) . '</span></p>'
-            . '<p class="jpn-host__stat' . ($upcoming > 0 ? ' is-live' : '') . '"><b>' . esc_html(number_format_i18n($upcoming)) . '</b><span>' . esc_html__('upcoming', 'hexa-jpn-tools') . '</span></p>'
-            . '</div>'
-            . '<p class="jpn-host__when">' . esc_html($when) . '</p>'
+            . ($feature ? '' : $facts)
+            . '<div class="jpn-host__actions">'
             . $contact
             . '<a class="jpn-host__cta" href="' . esc_url($url) . '">' . esc_html__('View host', 'hexa-jpn-tools') . ' <span aria-hidden="true">→</span></a>'
+            . '</div>'
             . '</div>'
             . '</article>';
     }
