@@ -4,6 +4,13 @@ Copy this file into every plugin that consumes `hexa/plugin-core`. Keep it updat
 
 This is the quick reference for developers and agents working in separate Codex or Claude chats.
 
+Calendar profiles accept `sort`, an ordered list of field or value-callback
+criteria handled by `Hexa\PluginCore\Calendar\CalendarSort`. Fields may be
+dot-separated paths such as `data.area`; criteria declare `direction`
+(`asc`/`desc`), `type` (`auto`/`text`/`number`/`boolean`), and missing-value
+placement (`first`/`last`). Sorting runs within each day after placement, before
+the visible/more split. See `docs/calendar.md` for examples and compatibility.
+
 ## Fixed Identity
 
 ```text
@@ -13,7 +20,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.8.1
+Current release: 3.11.0
 ```
 
 Do not rename these.

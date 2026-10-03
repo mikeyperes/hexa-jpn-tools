@@ -66,7 +66,9 @@ caching, the public REST endpoint
 `start_date_timestamp`/`end_date_timestamp` in New York time (date-only events
 keep their stored last day), Area / Dates (matching events that run during the
 chosen days) / Kids events / Featured filters, and each event's time, title,
-area, and badges.
+area, and badges. Within each day, the profile uses Core's generic sort criteria
+to order areas A–Z, then events by their starting date and time (earliest first).
+Events without an area follow named areas; continuing events use the same order.
 Days are not clickable; each event links to its permalink.
 
 ## Host map

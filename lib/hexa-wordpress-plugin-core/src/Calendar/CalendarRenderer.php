@@ -104,7 +104,7 @@ final class CalendarRenderer {
         $timezone = ProfileValues::resolve_timezone( $profile['timezone'] );
         $grid     = CalendarGrid::build( $request['month'], $timezone, $profile['week_start'], $now );
         $items    = $this->items( $profile, $request, $grid );
-        $placed   = CalendarGrid::place( $items, $grid, $timezone, $profile['max_span_days'], $profile['end_midnight'] );
+        $placed   = CalendarGrid::place( $items, $grid, $timezone, $profile['max_span_days'], $profile['end_midnight'], $profile['sort'] );
         $label    = $this->date( 'F Y', $grid['days'][ (int) floor( count( $grid['days'] ) / 2 ) ]['start'], $timezone );
 
         $in_month = [];

@@ -98,6 +98,7 @@ final class CalendarProfile {
             'link_target'   => 'new_tab' === $link_behavior['mode'] ? '_blank' : '',
             'title'         => ProfileValues::callback( $config['title'] ?? null ),
             'time_format'   => $time_format,
+            'sort'          => CalendarSort::normalize( $config['sort'] ?? CalendarSort::DEFAULT_CRITERIA ),
             'filters'       => $filters,
             'prepare'       => ProfileValues::callback( $config['prepare'] ?? null ),
             'render_item'   => ProfileValues::callback( $config['render_item'] ?? null ),

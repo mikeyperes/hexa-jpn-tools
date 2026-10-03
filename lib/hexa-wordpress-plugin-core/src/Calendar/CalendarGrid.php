@@ -88,12 +88,13 @@ final class CalendarGrid {
      * it lies wholly in the leading or trailing days). An end at exactly local
      * midnight follows $end_midnight: `auto` keeps that day for all-day items
      * (a stored last day) and drops it for timed items (the item ends as the
-     * day begins). Each day lists continuing items first, then by start time.
+     * day begins). Each day follows the host's ordered sort criteria, defaulting
+     * to continuing items first, then start time and title.
      *
      * @param list<array<string,mixed>> $items Each with int `start`, optional int `end`, bool `all_day`, string `title`.
      * @return array<string,list<array<string,mixed>>> Y-m-d => items.
      */
-    public static function place( array $items, array $grid, \DateTimeZone $timezone, int $max_span_days, string $end_midnight = 'auto' ): array {
+    public static function place( array $items, array $grid, \DateTimeZone $timezone, int $max_span_days, string $end_midnight = 'auto', array $sort = CalendarSort::DEFAULT_CRITERIA ): array {
         $in_month    = array_values( array_filter( $grid['days'], static fn( array $day ): bool => $day['in_month'] ) );
         $month_first = $in_month[0]['date'] ?? $grid['first'];
         $month_last  = $in_month[ count( $in_month ) - 1 ]['date'] ?? $grid['last'];
@@ -133,7 +134,7 @@ final class CalendarGrid {
         }
 
         foreach ( $placed as &$day_items ) {
-            usort( $day_items, static fn( array $a, array $b ): int => [ $b['continued'], $a['start'], (string) $a['title'] ] <=> [ $a['continued'], $b['start'], (string) $b['title'] ] );
+            $day_items = CalendarSort::items( $day_items, $sort );
         }
         unset( $day_items );
 

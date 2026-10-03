@@ -88,6 +88,7 @@ CalendarRegistry::register( 'events', [
 | `link_behavior` / `lightbox` | `page` | What a click does: `page`, `new_tab`, or `lightbox` (the item opens in an in-page dialog). See `docs/item-link.md`. The legacy `link_target` `_blank` still opens a new tab. |
 | `title` | post title | Optional `fn( int $id, array $item ): string`. |
 | `time_format` | site `time_format` | Items at local midnight are all-day and show no time. |
+| `sort` | continued DESC, start ASC, title ASC | Ordered per-day criteria, evaluated after placement and before the visible/more split. See sorting below. An empty list preserves provider/query order. |
 | `filters` | none | Shared QueryFilter definitions. Date-range controls take the request's month window as limits unless they declare `min`/`max`; give a date range `end_meta_key` so ongoing items match. |
 | `prepare` | — | Batch data for exactly the loaded IDs. |
 | `render_item` | Core markup | Inner HTML of the item link; must be escaped and contain no links. `$item['when']` holds the time label. |
@@ -156,3 +157,48 @@ php tests/calendar.php
 php tests/query-filters.php
 php tests/package-integrity.php
 ```
+
+## Per-day sorting
+
+`Hexa\PluginCore\Calendar\CalendarSort` owns stable multi-criterion ordering.
+Hosts supply only criteria and any domain values in the existing batch `prepare`
+callback or item provider. This is presentation ordering within each day: it does
+not change the bounded month query, its item limit, or placement across dates.
+Server markup and REST month fragments use the same order, including the items
+collapsed under “more”. Continuing items are not given extra priority unless a
+criterion explicitly requests it.
+
+```php
+'sort' => [
+    [ 'field' => 'data.area', 'type' => 'text', 'direction' => 'asc' ],
+    [ 'field' => 'start', 'type' => 'number', 'direction' => 'asc' ],
+],
+```
+
+Criteria are evaluated in the order declared. A string is shorthand for a field
+criterion. `field` selects any scalar item value, including nested `data.*`,
+`start`, `end`, `title`, `all_day`, `continued`, and `long`. Alternatively,
+`value => fn( array $item ) => ...` computes a scalar value from the complete
+placed item once per criterion per item, allowing custom ranks or derived values.
+Declare exactly one of `field` or `value`.
+
+- `direction`: `asc` (default) or `desc`.
+- `type`: `auto` (default, PHP scalar comparison), `text` (case-insensitive
+  natural comparison), `number`, or `boolean`. Normalize domain-specific values
+  in the host callback when necessary.
+- `missing`: `last` (default) or `first`, independent of direction. Absent/null,
+  empty-string, and non-scalar values count as missing; zero and false do not.
+
+Ties retain input order. An explicitly empty `sort` list preserves query/provider
+order. Omitting `sort` retains the previous order: `continued` descending,
+`start` ascending, then `title` ascending. Existing direct callers of
+`CalendarGrid::place()` retain that default; its optional sixth argument accepts
+the same criteria. Pure callers can use `CalendarSort::items( $items, $criteria )`
+without WordPress. Invalid criteria throw `InvalidArgumentException` at profile
+registration. Bump the profile's `cache_version` when changing prepared sort
+values; sorting itself runs after cached items are loaded.
+
+When a check is requested, use a small pure `CalendarSort::items()` fixture with
+multiple primary values and dates, plus tied and missing values, or the existing
+calendar fixture entry point. No browser or WordPress installation is required
+for the sorting function.

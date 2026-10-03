@@ -41,6 +41,10 @@ final class EventCalendar
             'max_per_day' => 3,
             'max_span_days' => 7,
             'time_format' => 'g:ia',
+            'sort' => [
+                ['field' => 'data.area', 'type' => 'text', 'direction' => 'asc'],
+                ['field' => 'start', 'type' => 'number', 'direction' => 'asc'],
+            ],
             'link' => 'permalink',
             'filters' => [
                 'area' => [

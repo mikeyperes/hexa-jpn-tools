@@ -108,6 +108,10 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.11.0 adds stable per-day multi-criterion calendar sorting with field paths, value callbacks, type-aware comparison, and explicit missing-value placement. Hosts can sort by any item data, including nested `data.*` values, while preserving stable ties.
+
+Version 3.10.0 removes `Hexa\PluginCore\DraftPreview`. Public draft links are an HWS Base Tools feature, not a shared Core module.
+
 Version 3.8.1 closes the item lightbox cleanly on a quick close and reopen: unlocking page scroll, clearing the dialog, and returning focus now happen as the dialog closes instead of in the later close event.
 
 Version 3.8.0 adds one `link_behavior` setting to the `Calendar` and `Map` components: `page` (follow the link, the default), `new_tab`, or `lightbox`, which shows the linked post in an in-page dialog (`ItemLink`, `ItemLightbox`, `GET /wp-json/hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`), so visitors can click through a calendar or a map without leaving the page. Docs: `docs/item-link.md`.

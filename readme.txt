@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.15
+Stable tag: 1.8.16
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.16 =
+* Calendar: groups each day by area A–Z, then orders events within each area by starting date and time through the shared Core calendar sorter.
 
 = 1.8.15 =
 * Host card: event counts and next date sit together, and the contact and View host buttons share one clean row (event page host panel: facts under the name, buttons in the footer).
