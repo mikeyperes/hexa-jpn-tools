@@ -53,9 +53,14 @@ final class WhatsAppFeed
     {
         $eventId = (int) $event->ID;
         $timestamp = (int) get_post_meta($eventId, 'start_date_timestamp', true);
-        $date = $timestamp > 0 ? $this->dates->formatTimestamp($timestamp, 'D n/j') : '';
-        if ($timestamp > 0 && get_post_meta($eventId, 'start_date_precision', true) !== 'date') {
-            $date .= ' · ' . $this->dates->formatTimestamp($timestamp, 'g:i A');
+        $date = '';
+        if ($timestamp > 0) {
+            $when = $this->dates->when(
+                $timestamp,
+                (int) get_post_meta($eventId, 'end_date_timestamp', true),
+                get_post_meta($eventId, 'start_date_precision', true) === 'date'
+            );
+            $date = $when['date'] . ($when['time'] !== '' ? ' · ' . $when['time'] : '');
         }
 
         $hostId = (int) get_post_meta($eventId, 'event_host', true) ?: (int) $event->post_author;

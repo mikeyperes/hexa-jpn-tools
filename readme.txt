@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.8.12
+Stable tag: 1.8.13
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.8.13 =
+* WhatsApp feed: preserves ongoing event date ranges and exact date-only versus timed event formatting.
 
 = 1.8.12 =
 * Adds `[jpn_whatsapp_feed]`, a live two-week event feed for the native Elementor WhatsApp phone mockup with timed message and notification motion.
