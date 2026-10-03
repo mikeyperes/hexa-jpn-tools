@@ -107,8 +107,12 @@ final class EventDates
         $date = $this->formatTimestamp($start, 'D, M j');
         if ($end > $start) {
             // A date-only end stored at local midnight names its own day; a timed
-            // event ending before 6 AM belongs to the night it started.
-            $last = $this->formatTimestamp($dateOnly ? $end : max($start, $end - 6 * 3600), 'D, M j');
+            // event shorter than one day and ending before 6 AM belongs to the
+            // night it started. Longer ranges keep their canonical end day.
+            $displayEnd = !$dateOnly && ($end - $start) < 24 * 3600
+                ? max($start, $end - 6 * 3600)
+                : $end;
+            $last = $this->formatTimestamp($displayEnd, 'D, M j');
             if ($last !== $date) {
                 $date .= ' – ' . $last;
             }
