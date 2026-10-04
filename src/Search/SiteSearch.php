@@ -160,6 +160,13 @@ final class SiteSearch
             'user_reference_fields' => ['event_host'],
             'results_per_page' => 12,
             'orderby' => 'relevance',
+            'time_window' => [
+                'start_meta_key' => 'start_date_timestamp',
+                'end_meta_key' => 'end_date_timestamp',
+                'precision_meta_key' => 'start_date_precision',
+                'date_only_value' => 'date',
+                'post_types' => ['event'],
+            ],
         ];
     }
 

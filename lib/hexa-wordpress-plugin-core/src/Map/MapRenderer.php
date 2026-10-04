@@ -315,6 +315,8 @@ final class MapRenderer {
 .hmap-sidebar[hidden],.hmap-sidebar [hidden],.hmap-list button[hidden]{display:none!important}
 .hmap-sidebar{--hmap-ease:cubic-bezier(.22,.8,.24,1);position:absolute;top:12px;right:12px;bottom:12px;z-index:5;display:flex;flex-direction:column;width:var(--hmap-sidebar-width,400px);max-width:calc(100% - 24px);box-sizing:border-box;border:1px solid var(--hmap-border);border-radius:calc(var(--hmap-radius) + 6px);background:var(--hmap-surface);box-shadow:0 28px 70px -16px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02);color:var(--hmap-text);font:inherit;overflow:hidden;opacity:0;transform:translate3d(calc(100% + 24px),0,0);visibility:hidden;transition:transform .34s var(--hmap-ease),opacity .2s ease,visibility 0s linear .34s}
 .hmap-stage.has-selection .hmap-sidebar{opacity:1;transform:none;visibility:visible;transition:transform .34s var(--hmap-ease),opacity .16s ease,visibility 0s}
+.hmap .maplibregl-ctrl-top-right{transition:right .34s cubic-bezier(.22,.8,.24,1)}
+.hmap-stage.has-selection .maplibregl-ctrl-top-right{right:calc(min(var(--hmap-sidebar-width,400px),100% - 24px) + 12px)}
 .hmap-sidebar__header{flex:none;display:flex;align-items:flex-start;gap:12px;padding:18px 18px 14px 20px;border-bottom:1px solid transparent;transition:border-color .15s}
 .hmap-sidebar.is-scrolled .hmap-sidebar__header{border-bottom-color:var(--hmap-border)}
 .hmap-sidebar__heading{flex:1;min-width:0}
@@ -383,7 +385,7 @@ final class MapRenderer {
 .hmap-sidebar button:focus-visible,.hmap-list button:focus-visible,.hmap-sidebar a:focus-visible{outline:2px solid var(--hmap-accent);outline-offset:3px}
 @keyframes hmap-in{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
 @keyframes hmap-shimmer{to{background-position:-300% 0}}
-@media(max-width:767px){.hmap-sidebar{top:auto;right:8px;bottom:8px;left:8px;width:auto;max-width:none;max-height:78%;transform:translate3d(0,calc(100% + 16px),0)}.hmap-stage.has-selection .hmap-sidebar{transform:none}.hmap-sidebar__header{padding:16px 14px 12px 16px}.hmap-sidebar__body{padding:0 16px 16px}.hmap-sidebar__footer{padding:10px 16px}}
+@media(max-width:767px){.hmap-stage.has-selection .maplibregl-ctrl-top-right{right:0}.hmap-sidebar{top:auto;right:8px;bottom:8px;left:8px;width:auto;max-width:none;max-height:78%;transform:translate3d(0,calc(100% + 16px),0)}.hmap-stage.has-selection .hmap-sidebar{transform:none}.hmap-sidebar__header{padding:16px 14px 12px 16px}.hmap-sidebar__body{padding:0 16px 16px}.hmap-sidebar__footer{padding:10px 16px}}
 @media(prefers-reduced-motion:reduce){.hmap-sidebar,.hmap-stage.has-selection .hmap-sidebar,.hmap-entry,.hmap-skeleton li{transition:none;animation:none}}
 @media (max-width:767px){.hmap{--hmap-height:440px}.hmap-status{flex-basis:100%;margin:2px 0 0}}
 CSS;

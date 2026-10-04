@@ -89,6 +89,13 @@ Core's bounded exact-query meta constraints, avoiding row-multiplying
 pages and reusable templates without reading raw builder data or rewriting page
 content. It refreshes after page/template saves.
 
+Both Query IDs map JPN's canonical event timestamps and date-only precision to
+Core's natural time-window filter. Searches such as `24 hours`, `48 hours`,
+`one week`, and `Chabad next 48 hours` return only events that start in the
+requested window or remain ongoing, including date-only events active on the
+site's local day. Core removes only the recognized time phrase from keyword
+matching and preserves Elementor's normal pagination.
+
 Rebuild or inspect that public text source in bounded batches:
 
 ```bash

@@ -145,6 +145,14 @@ namespace {
     $expect($all['user_reference_fields'] === ['event_host'] && $all['authors'] === true, 'event hosts and public authors are searchable');
     $expect($all['taxonomies'] === ['category', 'area'], 'public topics and areas are searchable without post-format noise');
     $expect($all['results_per_page'] === 12 && $all['orderby'] === 'relevance', 'all-content keeps bounded relevance ordering');
+    $expect($upcoming['time_window'] === $all['time_window'], 'both native search profiles share one event time-window mapping');
+    $expect($all['time_window'] === [
+        'start_meta_key' => 'start_date_timestamp',
+        'end_meta_key' => 'end_date_timestamp',
+        'precision_meta_key' => 'start_date_precision',
+        'date_only_value' => 'date',
+        'post_types' => ['event'],
+    ], 'JPN declares only its canonical event timestamp, precision, and eligible post type fields');
 
     $query = new SearchFixtureQuery();
     $configured = $search->configureUpcomingQuery($query);

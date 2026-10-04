@@ -42,6 +42,7 @@ final class FakeDirectoryWpdb {
     }
 }
 
+require $root . '/src/QueryFilter/NaturalTimeWindow.php';
 require $root . '/src/SearchQuery/SearchQueryConfiguration.php';
 require $root . '/src/SearchQuery/SearchTermParser.php';
 require $root . '/src/SearchQuery/SearchMatchSql.php';

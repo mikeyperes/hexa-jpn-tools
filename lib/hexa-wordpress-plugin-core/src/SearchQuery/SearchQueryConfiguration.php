@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\SearchQuery;
 
+use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
+
 /**
  * Normalizes the reusable public-search behavior contract.
  *
@@ -30,6 +32,7 @@ final class SearchQueryConfiguration {
             'user_reference_fields' => [],
             'results_per_page' => 0,
             'orderby'          => 'relevance',
+            'time_window'      => [],
         ];
     }
 
@@ -71,6 +74,10 @@ final class SearchQueryConfiguration {
 
         $results_per_page = (int) ( $settings['results_per_page'] ?? $defaults['results_per_page'] );
         $results_per_page = max( 0, min( 100, $results_per_page ) );
+        $time_window = NaturalTimeWindow::normalize(
+            is_array( $settings['time_window'] ?? null ) ? $settings['time_window'] : [],
+            $selected_post_types
+        );
 
         return [
             'enabled'          => self::boolean( $settings['enabled'] ?? $defaults['enabled'] ),
@@ -85,6 +92,7 @@ final class SearchQueryConfiguration {
             'user_reference_fields' => $user_reference_fields,
             'results_per_page' => $results_per_page,
             'orderby'          => self::choice( $settings['orderby'] ?? '', self::ORDERING, $defaults['orderby'] ),
+            'time_window'      => $time_window,
         ];
     }
 

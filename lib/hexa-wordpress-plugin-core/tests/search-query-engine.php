@@ -119,6 +119,7 @@ final class FakeQuery {
 }
 
 $root = dirname( __DIR__ );
+require $root . '/src/QueryFilter/NaturalTimeWindow.php';
 require $root . '/src/SearchQuery/SearchQueryConfiguration.php';
 require $root . '/src/SearchQuery/SearchTermParser.php';
 require $root . '/src/SearchQuery/SearchMatchSql.php';
@@ -127,6 +128,7 @@ require $root . '/src/SearchQuery/SearchQueryEngine.php';
 require $root . '/src/SearchQuery/JetEngineSearchAdapter.php';
 
 use Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter;
+use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 use Hexa\PluginCore\SearchQuery\SearchQueryEngine;
 use Hexa\PluginCore\SearchQuery\SearchTermParser;
@@ -151,6 +153,13 @@ $normalized = SearchQueryConfiguration::normalize(
         'custom_fields'    => [ '_sku', 'location', 'bad key' ],
         'results_per_page' => 500,
         'orderby'          => 'oldest',
+        'time_window'      => [
+            'start_meta_key' => 'starts_at',
+            'end_meta_key' => 'ends_at',
+            'precision_meta_key' => 'start_precision',
+            'post_types' => [ 'book', 'private_type' ],
+            'timezone' => 'America/New_York',
+        ],
     ],
     [ 'post' => 'Posts', 'page' => 'Pages', 'book' => 'Books' ],
     [ 'category' => 'Categories', 'post_tag' => 'Tags' ]
@@ -162,6 +171,7 @@ $expect( [ 'title', 'slug' ] === $normalized['fields'], 'Only supported post fie
 $expect( [ 'category' ] === $normalized['taxonomies'], 'Only available taxonomies survive normalization.' );
 $expect( [ '_sku', 'location', 'badkey' ] === $normalized['custom_fields'], 'Custom field keys are bounded and normalized.' );
 $expect( 100 === $normalized['results_per_page'], 'Results per page is capped at 100.' );
+$expect( [ 'book' ] === $normalized['time_window']['post_types'] && 'starts_at' === $normalized['time_window']['start_meta_key'], 'A time window keeps only valid host fields and searchable post types.' );
 
 $advanced_only = SearchQueryConfiguration::normalize(
     [
@@ -181,6 +191,34 @@ $expect( [] === SearchTermParser::parse( '""', 'exact' ), 'An empty quoted exact
 $expect( 80 === strlen( SearchTermParser::parse( '"' . str_repeat( 'a', 100 ) . '"', 'exact' )[0] ?? '' ), 'Exact phrases are unquoted before their bounded length is applied.' );
 $expect( 8 === count( SearchTermParser::parse( 'one two three four five six seven eight nine ten' ) ), 'Search terms are capped to control SQL growth.' );
 
+$clock = new DateTimeImmutable( '2026-10-04 15:00:00', new DateTimeZone( 'America/New_York' ) );
+$window_definition = $normalized['time_window'];
+$day_window = NaturalTimeWindow::parse( '24 hours', $window_definition, $clock );
+$mixed_window = NaturalTimeWindow::parse( 'Chabad next 48 hours', $window_definition, $clock );
+$week_window = NaturalTimeWindow::parse( 'within one week', $window_definition, $clock );
+$expect( is_array( $day_window ) && '' === $day_window['query'] && 86400 === $day_window['duration'], 'A duration-only query becomes a 24-hour filter with no residual keyword.' );
+$expect( is_array( $mixed_window ) && 'Chabad' === $mixed_window['query'] && 172800 === $mixed_window['duration'], 'A cued mixed query retains its ordinary keyword and extracts 48 hours.' );
+$expect( is_array( $week_window ) && '' === $week_window['query'] && 604800 === $week_window['duration'], 'Number words and within phrases produce a bounded one-week window.' );
+$expect( is_array( $day_window ) && $day_window['from'] === $clock->getTimestamp() && $day_window['to'] === $clock->getTimestamp() + 86400, 'The time window includes the exact current instant through the exact duration boundary.' );
+$expect( null === NaturalTimeWindow::parse( '"next 48 hours"', $window_definition, $clock ), 'Quoted literal phrases are never interpreted as time filters.' );
+$expect( null === NaturalTimeWindow::parse( 'Open 24 hours', $window_definition, $clock ), 'An uncued duration inside ordinary prose remains ordinary search text.' );
+$expect( null === NaturalTimeWindow::parse( 'Chabad next 48 hours Miami', $window_definition, $clock ), 'A time-like phrase in the middle of unrelated prose is not extracted accidentally.' );
+$expect( null === NaturalTimeWindow::parse( '999 weeks', $window_definition, $clock ), 'Durations beyond the one-year bound remain ordinary search text.' );
+
+$day_constraints = is_array( $day_window ) ? NaturalTimeWindow::constraints( $window_definition, $day_window ) : [];
+$expect(
+    ( $day_constraints[0]['compare'] ?? '' ) === '<='
+    && ( $day_constraints[0]['value'] ?? 0 ) === ( $day_window['to'] ?? -1 )
+    && ( $day_constraints[1][0]['compare'] ?? '' ) === '>='
+    && ( $day_constraints[1][0]['value'] ?? 0 ) === ( $day_window['from'] ?? -1 ),
+    'Window constraints include both exact upper and lower boundaries.'
+);
+$expect(
+    ( $day_constraints[1][2][0]['key'] ?? '' ) === 'start_precision'
+    && ( $day_constraints[1][2][1]['value'] ?? 0 ) === ( $day_window['today'] ?? -1 ),
+    'Date-only events use the site-local current day for ongoing eligibility.'
+);
+
 $settings = SearchQueryConfiguration::normalize(
     [
         'enabled'          => true,
@@ -194,6 +232,14 @@ $settings = SearchQueryConfiguration::normalize(
         'custom_fields'    => [ '_sku' ],
         'results_per_page' => 12,
         'orderby'          => 'newest',
+        'time_window'      => [
+            'start_meta_key' => 'starts_at',
+            'end_meta_key' => 'ends_at',
+            'precision_meta_key' => 'start_precision',
+            'date_only_value' => 'date',
+            'post_types' => [ 'book' ],
+            'timezone' => 'America/New_York',
+        ],
     ],
     [ 'post', 'book' ],
     [ 'category' ]
@@ -278,6 +324,35 @@ $expect( str_contains( $target_sql, 'hexa_sq_mc0.meta_key = \'starts_at\'' ) && 
 $expect( str_contains( $target_sql, ' OR (' ) && str_contains( $target_sql, ' AND ' ), 'Nested meta-constraint relations preserve their host-declared boolean structure.' );
 $expect( 'ORIGINAL' === ( is_callable( $search_filter ) ? $search_filter( 'ORIGINAL', $target ) : '' ), 'Prepared state must be consumed after the exact target reaches the dispatcher.' );
 $expect( 1 === count( $test_filters['posts_search'][999] ?? [] ), 'The permanent dispatcher must remain singular after consuming a target.' );
+
+$window_only = new FakeQuery( [ 's' => '24 hours', 'hexa_search' => '1', 'paged' => 3 ] );
+$engine->prepare_query( $window_only );
+$active_window = $window_only->get( SearchQueryEngine::TIME_WINDOW_QUERY_VAR );
+$expect( [ 'book' ] === $window_only->get( 'post_type' ), 'A recognized time window narrows the configured search to the host-declared dated post type.' );
+$expect( 3 === $window_only->get( 'paged' ) && '24 hours' === $window_only->get( 's' ), 'Time filtering preserves native pagination and the original request needed by WordPress dispatch.' );
+$engine->set_meta_constraints( $window_only, [ [ 'key' => 'published_state', 'value' => 'public', 'compare' => '=' ] ] );
+$window_sql = is_callable( $search_filter ) ? $search_filter( 'ORIGINAL', $window_only ) : '';
+$expect( is_array( $active_window ) && '' !== $window_sql, 'A duration-only query reaches constraint SQL even with no residual keyword.' );
+$expect( ! str_contains( $window_sql, "LIKE '%24%'" ) && ! str_contains( $window_sql, "LIKE '%hours%'" ), 'Duration words never become text LIKE predicates after extraction.' );
+$expect(
+    str_contains( $window_sql, "meta_key = 'starts_at'" )
+    && str_contains( $window_sql, "meta_key = 'ends_at'" )
+    && str_contains( $window_sql, "meta_key = 'start_precision'" )
+    && str_contains( $window_sql, "meta_key = 'published_state'" )
+    && str_contains( $window_sql, "<= '" . (string) ( $active_window['to'] ?? 0 ) . "'" )
+    && str_contains( $window_sql, ">= '" . (string) ( $active_window['from'] ?? 0 ) . "'" ),
+    'The exact target query combines bounded upcoming, ongoing, and date-only predicates with its host eligibility tree.'
+);
+
+$keyword_window = new FakeQuery( [ 's' => 'Chabad within 48 hours', 'hexa_search' => '1' ] );
+$engine->prepare_query( $keyword_window );
+$keyword_window_sql = is_callable( $search_filter ) ? $search_filter( 'ORIGINAL', $keyword_window ) : '';
+$expect( str_contains( $keyword_window_sql, "LIKE '%Chabad%'" ) && ! str_contains( $keyword_window_sql, "LIKE '%48%'" ) && ! str_contains( $keyword_window_sql, "LIKE '%hours%'" ), 'A mixed time query retains keyword matching without searching its duration words.' );
+
+$ordinary_numeric = new FakeQuery( [ 's' => 'Open 24 hours', 'hexa_search' => '1' ] );
+$engine->prepare_query( $ordinary_numeric );
+$ordinary_numeric_sql = is_callable( $search_filter ) ? $search_filter( 'ORIGINAL', $ordinary_numeric ) : '';
+$expect( null === $ordinary_numeric->get( SearchQueryEngine::TIME_WINDOW_QUERY_VAR ) && str_contains( $ordinary_numeric_sql, "LIKE '%24%'" ), 'Ordinary numeric text remains an ordinary search when it has no explicit time-filter intent.' );
 
 $duplicate = new FakeQuery( [ 's' => 'duplicate prepare', 'hexa_search' => '1' ] );
 $engine->prepare_query( $duplicate );

@@ -39,8 +39,19 @@ Normalizes untrusted host settings against Core modes and host-provided public o
 | `user_reference_fields` | up to 10 post-meta keys containing public user IDs | none |
 | `results_per_page` | `0` through `100`; `0` keeps WordPress | `0` |
 | `orderby` | `relevance`, `newest`, `oldest`, `title` | `relevance` |
+| `time_window` | Opt-in `QueryFilter\\NaturalTimeWindow` event-field mapping | disabled |
 
 Term logic and word matching are separate controls. `all` versus `any` decides how multiple terms relate. `whole`, `prefix`, and `contains` decide where each term can match inside a word. `exact` treats the complete submitted text as one contiguous phrase and ignores the word-matching mode.
+
+`time_window` accepts `start_meta_key`, optional `end_meta_key`, optional
+`precision_meta_key` plus `date_only_value`, optional IANA `timezone`, and the
+dated `post_types` subset. When configured, explicit edge phrases such as
+`24 hours`, `next 48 hours`, `within one week`, or `Chabad next 48 hours`
+become an inclusive current-instant-through-duration filter. A pure duration
+needs no residual keyword; a mixed query retains its other words. Quoted
+phrases and uncued prose such as `Open 24 hours` remain ordinary search text.
+Durations are limited to 366 days. Field meaning and eligible post types remain
+host-owned; parsing and bounded constraints remain in `QueryFilter`.
 
 ### `SearchTermParser`
 
@@ -55,6 +66,13 @@ Preserves quoted phrases, removes duplicate terms case-insensitively, strips exp
 `SearchQueryEngine::register(): void` idempotently registers the public marker query variable, guarded preparation hook, and one exact-query SQL dispatcher. `SearchQueryEngine::build_search_sql()` is public for deterministic testing; hosts should normally let WordPress call the registered hooks.
 
 `SearchQueryEngine::set_meta_constraints(object $query, array $constraints): void` attaches a trusted, bounded post-meta predicate tree to one already prepared query object. The tree supports nested `AND`/`OR` groups, up to 20 leaves and four levels, with `=`, `>`, `>=`, `<`, `<=`, `EXISTS`, and `NOT EXISTS` comparisons over `CHAR`, `NUMERIC`, `SIGNED`, `UNSIGNED`, `DECIMAL`, `DATE`, or `DATETIME` values. Invalid trees fail closed. Constraints are kept in weak exact-object state and are never read from visitor query variables.
+
+When a configured natural time window is recognized, the engine stores its
+trusted parsed state in `SearchQueryEngine::TIME_WINDOW_QUERY_VAR`, narrows the
+query to the declared dated post types, and combines its constraint tree with
+any adapter-supplied constraints. The original `s` value stays in place so
+WordPress and Elementor still dispatch their normal search and pagination;
+only Core's exact-query SQL uses the residual keyword.
 
 ### `MetaConstraintSql`
 
@@ -181,7 +199,7 @@ add_filter(
 
 Core replaces only the target query's search clause. Selected post fields are combined with optional source checks. Taxonomy names, author display names, selected custom-field values, and referenced-user display names use correlated `EXISTS` subqueries instead of broad joins, preventing duplicate result rows and avoiding unnecessary join work when those sources are disabled.
 
-An exact component adapter may additionally return `['meta_constraints' => <tree>]` from its trusted query configurator. Core appends the compiled predicate to that same query's search clause, so date and state eligibility does not require a multiplying `meta_query`. WordPress or the component continues to own sorting, pagination, and rendering.
+An exact component adapter may additionally return `['meta_constraints' => <tree>]` from its trusted query configurator. Core appends the compiled predicate to that same query's search clause, so date and state eligibility does not require a multiplying `meta_query`. A configured natural time window is combined with that trusted tree. Constraint-only searches remain eligible when the time phrase consumes the complete search text. WordPress or the component continues to own sorting, pagination, and rendering.
 
 Anonymous searches retain WordPress password protection. Trusted Elementor Search widget queries are explicitly limited to published, non-password content. WordPress or Elementor continues to own pagination, permissions, template selection, and result rendering.
 

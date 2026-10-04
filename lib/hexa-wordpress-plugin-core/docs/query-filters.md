@@ -66,6 +66,22 @@ request.
 A date range covers whole days in the filter's timezone: from the start of
 `from` to the start of the day after `to`.
 
+## Natural Search Time Windows
+
+`NaturalTimeWindow` is the shared non-UI date-filter parser used by
+`SearchQuery`. A host opts in with its start timestamp meta key, optional end
+timestamp and precision keys, date-only value, timezone, and eligible dated
+post types. Core recognizes bounded duration-only searches (`24 hours`,
+`48h`, `one week`) and edge-cued mixed searches (`Chabad next 48 hours`,
+`within one week`). It returns the residual keyword plus an inclusive window
+from the current instant through the duration.
+
+The generated constraints include events starting exactly at either boundary,
+ongoing events whose stored end has not passed, and date-only events still
+active on the site's local day. Quoted time text, uncued time-like prose inside
+a larger query, middle-of-sentence phrases, ambiguous multiple windows, and
+durations over 366 days are left untouched as ordinary search text.
+
 ## Adding A Type
 
 ```php

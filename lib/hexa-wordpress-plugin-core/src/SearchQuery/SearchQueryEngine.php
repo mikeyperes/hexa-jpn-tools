@@ -2,6 +2,8 @@
 
 namespace Hexa\PluginCore\SearchQuery;
 
+use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
+
 /**
  * Applies a host-provided search configuration to one exact frontend query.
  *
@@ -10,6 +12,7 @@ namespace Hexa\PluginCore\SearchQuery;
  */
 final class SearchQueryEngine {
     public const EXPLICIT_QUERY_VAR = 'hexa_search_query_explicit';
+    public const TIME_WINDOW_QUERY_VAR = 'hexa_search_time_window';
 
     /** @var callable */
     private $settings_provider;
@@ -112,7 +115,21 @@ final class SearchQueryEngine {
             return null;
         }
 
-        $query->set( 'post_type', $settings['post_types'] );
+        $raw_query = trim( (string) $query->get( 's' ) );
+        $time_window = NaturalTimeWindow::parse( $raw_query, (array) $settings['time_window'] );
+        $post_types = $settings['post_types'];
+        $meta_constraints = [];
+        if ( null !== $time_window ) {
+            $post_types = array_values( array_intersect(
+                (array) $settings['post_types'],
+                (array) $settings['time_window']['post_types']
+            ) );
+            $meta_constraints = NaturalTimeWindow::constraints( (array) $settings['time_window'], $time_window );
+            $raw_query = (string) $time_window['query'];
+        }
+
+        $query->set( 'post_type', [] !== $post_types ? $post_types : $settings['post_types'] );
+        $query->set( self::TIME_WINDOW_QUERY_VAR, $time_window );
         if ( $explicit ) {
             $query->set( 'post_status', 'publish' );
             $query->set( 'has_password', false );
@@ -128,9 +145,9 @@ final class SearchQueryEngine {
             $this->prepared_queries = new \WeakMap();
         }
         $this->prepared_queries[ $query ] = [
-            'raw_query'        => trim( (string) $query->get( 's' ) ),
+            'raw_query'        => $raw_query,
             'settings'         => $settings,
-            'meta_constraints' => [],
+            'meta_constraints' => $meta_constraints,
         ];
 
         return $settings;
@@ -153,7 +170,7 @@ final class SearchQueryEngine {
         }
 
         $prepared = $this->prepared_queries[ $query ];
-        $prepared['meta_constraints'] = $constraints;
+        $prepared['meta_constraints'] = self::merge_constraints( $prepared['meta_constraints'], $constraints );
         $this->prepared_queries[ $query ] = $prepared;
     }
 
@@ -198,9 +215,6 @@ final class SearchQueryEngine {
             (array) ( $settings['taxonomies'] ?? [] )
         );
         $terms = SearchTermParser::parse( $raw_query, (string) $settings['term_logic'] );
-        if ( [] === $terms ) {
-            return '';
-        }
 
         $groups = [];
         foreach ( $terms as $term ) {
@@ -210,21 +224,37 @@ final class SearchQueryEngine {
             }
         }
 
-        if ( [] === $groups ) {
+        $constraint_sql = MetaConstraintSql::compile( $database, $meta_constraints );
+        if ( [] === $groups && '' === $constraint_sql ) {
             return '';
         }
 
         $relation = 'any' === $settings['term_logic'] ? ' OR ' : ' AND ';
-        $sql = ' AND (' . implode( $relation, $groups ) . ')';
+        $sql = [] !== $groups ? ' AND (' . implode( $relation, $groups ) . ')' : '';
         if ( ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in() ) {
             $sql .= ' AND (' . $database->posts . ".post_password = '')";
         }
-        $constraint_sql = MetaConstraintSql::compile( $database, $meta_constraints );
         if ( '' !== $constraint_sql ) {
             $sql .= ' AND (' . $constraint_sql . ')';
         }
 
         return $sql . ' ';
+    }
+
+    /**
+     * @param array<string|int,mixed> $first
+     * @param array<string|int,mixed> $second
+     * @return array<string|int,mixed>
+     */
+    private static function merge_constraints( array $first, array $second ): array {
+        if ( [] === $first ) {
+            return $second;
+        }
+        if ( [] === $second ) {
+            return $first;
+        }
+
+        return [ 'relation' => 'AND', $first, $second ];
     }
 
     /** @param object $query */
