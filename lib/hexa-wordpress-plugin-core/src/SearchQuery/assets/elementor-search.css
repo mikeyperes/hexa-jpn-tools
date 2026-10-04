@@ -38,3 +38,13 @@
 .hexa-elementor-search-error .e-search-results-container > :not(.hexa-elementor-search-status) {
     display: none !important;
 }
+
+[data-hexa-search-query-id] .e-search-label {
+    align-self: flex-start;
+    block-size: var(--hexa-elementor-search-input-height, auto);
+}
+
+[data-hexa-search-query-id] .e-search-input-wrapper > i,
+[data-hexa-search-query-id] .e-search-input-wrapper > svg {
+    inset-block-start: calc(var(--hexa-elementor-search-input-height) / 2);
+}
