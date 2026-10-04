@@ -36,6 +36,7 @@ Normalizes untrusted host settings against Core modes and host-provided public o
 | `taxonomies` | host-allowed public taxonomy names | none |
 | `authors` | boolean-like value | `false` |
 | `custom_fields` | up to 20 normalized meta keys | none |
+| `user_reference_fields` | up to 10 post-meta keys containing public user IDs | none |
 | `results_per_page` | `0` through `100`; `0` keeps WordPress | `0` |
 | `orderby` | `relevance`, `newest`, `oldest`, `title` | `relevance` |
 
@@ -61,6 +62,26 @@ Preserves quoted phrases, removes duplicate terms case-insensitively, strips exp
 
 The adapter rejects admin, WP-CLI, AJAX, REST, cron, XML-RPC, feed, empty, suppressed, disabled, non-search, and non-main request contexts before loading host settings. It skips JetEngine grids configured as archive templates because those already consume the native main query. A host can reject a specific grid with `hexa_plugin_core_search_query_jet_engine_should_handle` or the `hexa_search_query_disabled` query argument.
 
+### `ElementorSearchAdapter`
+
+`new ElementorSearchAdapter(callable $settings_provider, string $query_id, ?callable $query_configurator = null, int $max_results_per_page = 50)`
+
+`ElementorSearchAdapter::register(): void` binds one exact Elementor Pro Search widget Query ID to the same bounded engine. Elementor continues to own its native live REST endpoint, Loop Item template, responsive results grid, loader, empty markup, pagination, keyboard behavior, and GET fallback. The adapter validates the widget type and its stored `search_query_query_id`, then weakly binds matching SQL only to that exact `WP_Query`, including its trusted Elementor REST query. It forces published, non-password results and clamps each page to 50 or the lower host limit.
+
+Core also marks only the registered widgets and loads a small native-search companion. It aborts a superseded request as soon as the visitor types again, rejects stale responses, and exposes visible, screen-reader-announced loading, page-count, empty, and error states. It does not replace Elementor's renderer or endpoint.
+
+The optional configurator receives the exact query, normalized settings, and verified widget. Use native `WP_Query` arguments there for domain constraints such as an upcoming date window. Post types remain intersected with the normalized allowlist after the callback.
+
+### `ElementorPublicTextIndex`
+
+`new ElementorPublicTextIndex(array $post_types = [], ?callable $extractor = null, int $max_characters = 100000)`
+
+`ElementorPublicTextIndex::register(): void` maintains the private `_hexa_elementor_public_text` search source for declared public post types. An empty post-type list resolves the current public searchable types when indexing runs, after host types registered on `init` are available. It accepts only published, non-password, non-excluded content, renders through Elementor's supported frontend API as an anonymous visitor, removes scripts, styles, tags, attributes, and private widget settings, normalizes whitespace, and stores at most the configured 100,000 characters by default, with a hard limit of 250,000. The prior user and post context is restored after every render. Raw `_elementor_data` is never searched or copied into the index, and existing `post_content` is never rewritten.
+
+Elementor document saves, exact `_elementor_data` changes, publication changes, and reusable-template saves refresh the index. Template dependency discovery reads only exact `template_id` values from Elementor document objects, limits each document traversal to 32 levels and 10,000 nodes, follows at most 100 reusable templates, and refreshes the public documents that depend on them. It does not persist document structure or other widget settings.
+
+`ElementorPublicTextIndex::rebuild(int $page = 1, int $per_page = 100, bool $dry_run = false): array` selects only published, non-password Elementor documents in bounded pages of at most 200. Dry-run items contain only post ID, action, character count, before/after SHA-256 hashes, and a changed flag. A host owns the CLI or deployment wrapper and must opt `ElementorPublicTextIndex::META_KEY` into its existing `custom_fields` search configuration.
+
 ## Required Host Protocol
 
 The host plugin owns:
@@ -79,6 +100,8 @@ use Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 use Hexa\PluginCore\SearchQuery\SearchQueryEngine;
 use Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter;
+use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
+use Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex;
 
 $marker = 'example_search';
 $settings_provider = static function (): array {
@@ -98,6 +121,15 @@ $engine->register();
 
 $jet_engine = new JetEngineSearchAdapter( $settings_provider, $marker );
 $jet_engine->register();
+
+$elementor_search = new ElementorSearchAdapter(
+    $settings_provider,
+    'example_live_search'
+);
+$elementor_search->register();
+
+$elementor_text = new ElementorPublicTextIndex( get_post_types( [ 'public' => true ], 'names' ) );
+$elementor_text->register();
 
 echo SearchDisplayRenderer::render(
     [
@@ -143,7 +175,9 @@ add_filter(
 
 Core replaces only the target query's search clause. Selected post fields are combined with optional source checks. Taxonomy names, author display names, and selected custom-field values use correlated `EXISTS` subqueries instead of broad joins, preventing duplicate result rows and avoiding unnecessary join work when those sources are disabled.
 
-Anonymous searches retain WordPress password protection. WordPress continues to own post status, pagination, permissions, template selection, and result rendering.
+Anonymous searches retain WordPress password protection. Trusted Elementor Search widget queries are explicitly limited to published, non-password content. WordPress or Elementor continues to own pagination, permissions, template selection, and result rendering.
+
+`user_reference_fields` searches the public display name of users referenced by numeric post-meta values. It is intended for public relationships such as an event organizer; email, login, and user meta are never searched. A host using `ElementorPublicTextIndex` may add its `META_KEY` to `custom_fields`; the value contains normalized public text rather than raw builder data.
 
 `contains` uses escaped `LIKE`; `prefix` and `whole` use bounded regular expressions. Custom fields are opt-in and limited to 20 explicit keys. This is a lightweight live-query engine, not an index. Fuzzy correction, stemming, synonyms, weighted fields, comments, attachment contents, and commerce indexing belong in a dedicated indexed implementation.
 

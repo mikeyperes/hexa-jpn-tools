@@ -18,6 +18,8 @@ final class SearchQueryEngine {
 
     private bool $registered = false;
 
+    private bool $search_dispatcher_registered = false;
+
     /** @var \WeakMap<object,array{raw_query:string,settings:array<string,mixed>}>|null */
     private ?\WeakMap $prepared_queries = null;
 
@@ -37,8 +39,21 @@ final class SearchQueryEngine {
 
         add_filter( 'query_vars', [ $this, 'register_query_var' ] );
         add_action( 'pre_get_posts', [ $this, 'prepare_query' ], 20 );
-        add_filter( 'posts_search', [ $this, 'filter_search_sql' ], 999, 2 );
+        $this->register_search_dispatcher();
         $this->registered = true;
+    }
+
+    /**
+     * Registers only the exact-query SQL dispatcher. Trusted component
+     * adapters use this without attaching the native main-query hooks.
+     */
+    public function register_search_dispatcher(): void {
+        if ( $this->search_dispatcher_registered ) {
+            return;
+        }
+
+        add_filter( 'posts_search', [ $this, 'filter_search_sql' ], 999, 2 );
+        $this->search_dispatcher_registered = true;
     }
 
     /** @param string[] $query_vars @return string[] */
@@ -58,9 +73,33 @@ final class SearchQueryEngine {
             return;
         }
 
+        $this->prepare_allowed_query( $query, false );
+    }
+
+    /**
+     * Prepares one exact query already authenticated by a trusted component
+     * adapter. REST/AJAX is allowed here because the adapter, rather than a
+     * visitor query variable, proves the query provenance.
+     *
+     * @param object $query
+     * @return array<string,mixed>|null The normalized settings when prepared.
+     */
+    public function prepare_explicit_query( $query ): ?array {
+        $this->forget_prepared_query( $query );
+
+        if ( ! $this->is_explicit_candidate_query( $query ) ) {
+            return null;
+        }
+
+        return $this->prepare_allowed_query( $query, true );
+    }
+
+    /** @param object $query @return array<string,mixed>|null */
+    private function prepare_allowed_query( $query, bool $explicit ): ?array {
+
         $provided = call_user_func( $this->settings_provider );
         if ( ! is_array( $provided ) ) {
-            return;
+            return null;
         }
 
         $settings = SearchQueryConfiguration::normalize(
@@ -69,11 +108,16 @@ final class SearchQueryEngine {
             (array) ( $provided['taxonomies'] ?? [] )
         );
 
-        if ( ! $this->configuration_allows_query( $query, $settings ) ) {
-            return;
+        if ( ! $this->configuration_allows_query( $query, $settings, $explicit ) ) {
+            return null;
         }
 
         $query->set( 'post_type', $settings['post_types'] );
+        if ( $explicit ) {
+            $query->set( 'post_status', 'publish' );
+            $query->set( 'has_password', false );
+            $query->set( 'ignore_sticky_posts', true );
+        }
         if ( $settings['results_per_page'] > 0 ) {
             $query->set( 'posts_per_page', $settings['results_per_page'] );
         }
@@ -87,6 +131,8 @@ final class SearchQueryEngine {
             'raw_query' => trim( (string) $query->get( 's' ) ),
             'settings'  => $settings,
         ];
+
+        return $settings;
     }
 
     /** @param mixed $search_sql @param mixed $query */
@@ -191,16 +237,37 @@ final class SearchQueryEngine {
     }
 
     /** @param object $query @param array<string,mixed> $settings */
-    private function configuration_allows_query( $query, array $settings ): bool {
+    private function configuration_allows_query( $query, array $settings, bool $explicit = false ): bool {
         if ( ! $settings['enabled'] ) {
             return false;
         }
-        if ( 'shortcode' === $settings['scope'] && '1' !== (string) $query->get( $this->marker_key ) ) {
+        if ( ! $explicit && 'shortcode' === $settings['scope'] && '1' !== (string) $query->get( $this->marker_key ) ) {
             return false;
         }
 
         if ( function_exists( 'apply_filters' ) ) {
             return (bool) apply_filters( 'hexa_plugin_core_search_query_should_handle', true, $query, $settings );
+        }
+
+        return true;
+    }
+
+    /** @param mixed $query */
+    private function is_explicit_candidate_query( $query ): bool {
+        if ( ! is_object( $query ) || ! method_exists( $query, 'get' ) || ! method_exists( $query, 'set' ) ) {
+            return false;
+        }
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            return false;
+        }
+        if ( ( function_exists( 'wp_doing_cron' ) && wp_doing_cron() ) || ( defined( 'DOING_CRON' ) && DOING_CRON ) ) {
+            return false;
+        }
+        if ( defined( 'XMLRPC_REQUEST' ) && XMLRPC_REQUEST ) {
+            return false;
+        }
+        if ( '' === trim( (string) $query->get( 's' ) ) || $query->get( 'suppress_filters' ) || $query->get( 'hexa_search_query_disabled' ) ) {
+            return false;
         }
 
         return true;
@@ -273,6 +340,18 @@ final class SearchQueryEngine {
                 . ' WHERE hexa_sq_pm.post_id = ' . $database->posts . '.ID'
                 . ' AND (' . implode( ' OR ', $meta_conditions ) . ')'
                 . ' AND ' . $this->match_condition( $database, 'hexa_sq_pm.meta_value', $term, $matching ) . ')';
+        }
+
+        if ( ! empty( $settings['user_reference_fields'] ) ) {
+            $reference_conditions = [];
+            foreach ( $settings['user_reference_fields'] as $meta_key ) {
+                $reference_conditions[] = $database->prepare( 'hexa_sq_ur.meta_key = %s', $meta_key );
+            }
+            $conditions[] = 'EXISTS (SELECT 1 FROM ' . $database->postmeta . ' hexa_sq_ur'
+                . ' INNER JOIN ' . $database->users . ' hexa_sq_ru ON hexa_sq_ru.ID = CAST(hexa_sq_ur.meta_value AS UNSIGNED)'
+                . ' WHERE hexa_sq_ur.post_id = ' . $database->posts . '.ID'
+                . ' AND (' . implode( ' OR ', $reference_conditions ) . ')'
+                . ' AND ' . $this->match_condition( $database, 'hexa_sq_ru.display_name', $term, $matching ) . ')';
         }
 
         return array_values( array_filter( $conditions ) );

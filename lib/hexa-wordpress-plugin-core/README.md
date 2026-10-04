@@ -108,6 +108,8 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.13.0 adds the generic `SearchQuery\\ElementorSearchAdapter` for trusted native Elementor Search widgets, including bounded public matching, exact Query ID provenance, live REST-safe query preparation, cancellation and stale-response protection, accessible request states, and preserved Loop Item listing grids. `ElementorPublicTextIndex` adds a separate bounded index of anonymously rendered public Elementor text, including reusable templates, without searching raw document data or rewriting `post_content`.
+
 Version 3.12.0 adds an opt-in Map selection sidebar with lazy, paginated detail REST responses, rich image/title/fact/action entries, responsive placement, request cancellation, focus management, and related-content cache invalidation.
 
 Version 3.11.0 adds stable per-day multi-criterion calendar sorting with field paths, value callbacks, type-aware comparison, and explicit missing-value placement. Hosts can sort by any item data, including nested `data.*` values, while preserving stable ties.
@@ -231,7 +233,7 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `SchemaDetection`: reusable JSON-LD URL scans, source detection, semantic property validation, duplicate schema conflict checks, FAQ validation, and dark admin report rendering.
 - `SchemaTools`: shared schema-document normalization, typed HTTP(S) URL guards, fail-closed URL-property sanitization, graph-node deduplication, JSON-LD rendering, and one-shot WordPress output injection while host plugins retain their schema builders.
 - `SearchDisplay`: five reusable front-end WordPress search-form templates with shared markup, CSS, and accessible interactions.
-- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, selected post types and sources, one-query-only SQL hooks, and guarded JetEngine search-template bridging.
+- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, selected post types and sources, one-query-only SQL hooks, guarded JetEngine and native Elementor Search bridging, and a safe public Elementor text index.
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
 - `DirectorySearch`: declarative public directory search over posts or users with filters, sorts, card templates, a public REST endpoint, and a server-rendered shortcode that upgrades to live search.
 - `Calendar`: lightweight public month-grid calendar profiles over dated posts (or a host provider) with linked items, shared filters, bounded month navigation, a public REST endpoint, and a server-rendered shortcode.
@@ -373,7 +375,7 @@ This panel compares the vendored `VERSION` in the host plugin with the public Gi
 
 Version 0.19.60 adds a guarded JetEngine listing-grid adapter to `Hexa\PluginCore\SearchQuery`. Version 0.19.59 introduced the reusable native WordPress search-results engine, separating all/any/exact term logic from whole/prefix/contains word matching, supporting selected public post types and explicit native or advanced sources, and keeping display options outside the behavior contract.
 
-Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, WP-CLI, AJAX, REST, cron, feed, unmarked nested, disabled, and empty queries are rejected before host settings are loaded. A trusted adapter may explicitly mark a secondary query created by a search-results template; one permanent dispatcher consumes weak state bound to that exact `WP_Query` object without retaining abandoned queries or stacking callbacks. See `docs/search-query.md` for the host protocol and mandatory performance guards.
+Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, WP-CLI, AJAX, REST, cron, feed, unmarked nested, disabled, and empty queries are rejected before host settings are loaded. A trusted adapter may explicitly mark a secondary query created by a search-results template; one permanent dispatcher consumes weak state bound to that exact `WP_Query` object without retaining abandoned queries or stacking callbacks. The Elementor adapter requires an exact registered Query ID on a native Search widget and preserves Elementor's live Loop Item grid. See `docs/search-query.md` for the host protocol and mandatory performance guards.
 
 ## Collection Filters and Sidebar Header
 

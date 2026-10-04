@@ -71,6 +71,35 @@ to order areas A–Z, then events by their starting date and time (earliest firs
 Events without an area follow named areas; continuing events use the same order.
 Days are not clickable; each event links to its permalink.
 
+## Site search
+
+JPN uses Elementor Pro's native Search widget for live, debounced results and
+native Loop Item cards. Set the widget's Query ID to
+`jpn_search_upcoming` for ongoing/upcoming events ordered by start time, or
+`jpn_search_all` for every public searchable post type. Elementor owns the
+live REST request, responsive result grid, loader, empty state, pagination,
+keyboard behavior, and GET fallback. Hexa WP Core's
+`ElementorSearchAdapter` owns exact-widget query provenance, bounded matching,
+public-only result enforcement, request cancellation and stale-response
+protection, accessible request states, and organizer lookup through the
+`event_host` user reference. JPN supplies its New York date cutoff plus event
+location, area, topic, author, and organizer sources. Core's
+`ElementorPublicTextIndex` also searches visible text from public Elementor
+pages and reusable templates without reading raw builder data or rewriting page
+content. It refreshes after page/template saves.
+
+Rebuild or inspect that public text source in bounded batches:
+
+```bash
+wp hexa-jpn search-index rebuild --dry-run
+wp hexa-jpn search-index rebuild
+```
+
+The dry run reports only selected post IDs, character counts, change actions,
+and before/after SHA-256 hashes. The write stores normalized public text in
+`_hexa_elementor_public_text`; it never stores markup, scripts, style content,
+tag attributes, form recipients, or raw `_elementor_data`.
+
 ## Host map
 
 `[hexa_map id="jpn_hosts"]` renders the host map through Hexa WP Core `Map`.
