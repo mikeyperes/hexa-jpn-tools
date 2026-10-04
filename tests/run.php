@@ -131,7 +131,13 @@ $expect($dates->when($sep25, $sep26Midnight, true) === ['date' => 'Fri, Sep 25 â
 $bootstrapPath = $root . '/hexa-jpn-tools.php';
 $bootstrap = (string) file_get_contents($bootstrapPath);
 $expect(str_contains($bootstrap, 'Plugin Name: Hexa JPN Tools'), 'prepared bootstrap has the final display name');
-$expect(str_contains($bootstrap, "define('HEXA_JPN_TOOLS_VERSION', '1.8.10')"), 'plugin header and version constant use version 1.8.10');
+$headerVersion = preg_match('/^[ \t*#@\/]*Version:\s*([^\r\n*]+)/mi', $bootstrap, $versionMatch) === 1
+    ? trim($versionMatch[1])
+    : '';
+$constantVersion = preg_match("/define\('HEXA_JPN_TOOLS_VERSION',\s*'([^']+)'\)/", $bootstrap, $constantMatch) === 1
+    ? trim($constantMatch[1])
+    : '';
+$expect($headerVersion !== '' && $headerVersion === $constantVersion, 'plugin header and version constant match');
 $expect(str_contains($bootstrap, '\\Hexa\\JpnTools\\Plugin::register();'), 'plugin bootstrap registers the isolated namespaced plugin');
 $expect(str_contains($bootstrap, "hexa_plugin_core_register_package('hexa-jpn-tools'"), 'plugin registers its vendored Hexa WP Core candidate');
 

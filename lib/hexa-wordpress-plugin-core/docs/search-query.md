@@ -74,7 +74,7 @@ The adapter rejects admin, WP-CLI, AJAX, REST, cron, XML-RPC, feed, empty, suppr
 
 `ElementorSearchAdapter::register(): void` binds one exact Elementor Pro Search widget Query ID to the same bounded engine. Elementor continues to own its native live REST endpoint, Loop Item template, responsive results grid, loader, empty markup, pagination, keyboard behavior, and GET fallback. The adapter validates the widget type and its stored `search_query_query_id`, then weakly binds matching SQL only to that exact `WP_Query`, including its trusted Elementor REST query. It forces published, non-password results and clamps each page to 50 or the lower host limit.
 
-Core also marks only the registered widgets and loads a small native-search companion. It aborts a superseded request as soon as the visitor types again and rejects stale responses. Loading, result-count, and empty updates use a visually hidden live region so they do not become result-grid items; request errors replace stale results with one visible full-width status. Elementor's native spinner and branded empty state stay visible. Core does not replace Elementor's renderer or endpoint.
+Core also marks only the registered widgets and loads a small native-search companion. It aborts a superseded request as soon as the visitor types again and rejects stale responses. When the current input becomes shorter than the widget's native minimum character setting, Core clears the old native result markup and collapsed combobox state; Elementor resumes ownership at the threshold. Loading, result-count, and empty updates use a visually hidden live region so they do not become result-grid items; request errors replace stale results with one visible full-width status. Elementor's native spinner and branded empty state stay visible. Core does not replace Elementor's renderer or endpoint.
 
 The optional configurator receives the exact query, normalized settings, and verified widget. Use native `WP_Query` arguments there for domain constraints such as an upcoming date window. Post types remain intersected with the normalized allowlist after the callback.
 
@@ -197,6 +197,7 @@ Run the deterministic package tests:
 php tests/search-query-engine.php
 php tests/search-display-renderer.php
 php tests/package-integrity.php
+node tests/elementor-search-client.js
 ```
 
 Every host release must additionally use the visible frontend workflow to verify:

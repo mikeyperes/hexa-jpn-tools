@@ -108,6 +108,8 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.13.3 clears a registered Elementor Search widget's old result markup as soon as its current input falls below the widget's native minimum character setting, while preserving native rendering at and above that threshold.
+
 Version 3.13.2 keeps host-owned upcoming-event eligibility in the generic Core search contract through bounded correlated meta constraints, avoiding row-multiplying `WP_Meta_Query` joins while preserving native Elementor listing grids and ordering.
 
 Version 3.13.1 keeps live-search status announcements out of Elementor result grids by hiding non-error status content accessibly, and replaces stale result cards with one full-width visible error state when a request fails.
@@ -313,7 +315,8 @@ $context = new PluginContext(
 
 ## Development
 
-Run the complete standalone suite with `php tests/run.php`.
+Run the complete PHP suite with `php tests/run.php` and the native Elementor
+client regression with `node tests/elementor-search-client.js`.
 
 ## Agent Rule
 
