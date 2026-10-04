@@ -108,6 +108,8 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.13.1 keeps live-search status announcements out of Elementor result grids by hiding non-error status content accessibly, and replaces stale result cards with one full-width visible error state when a request fails.
+
 Version 3.13.0 adds the generic `SearchQuery\\ElementorSearchAdapter` for trusted native Elementor Search widgets, including bounded public matching, exact Query ID provenance, live REST-safe query preparation, cancellation and stale-response protection, accessible request states, and preserved Loop Item listing grids. `ElementorPublicTextIndex` adds a separate bounded index of anonymously rendered public Elementor text, including reusable templates, without searching raw document data or rewriting `post_content`.
 
 Version 3.12.0 adds an opt-in Map selection sidebar with lazy, paginated detail REST responses, rich image/title/fact/action entries, responsive placement, request cancellation, focus management, and related-content cache invalidation.
