@@ -82,6 +82,10 @@ final class MapProfile {
             'title'         => ProfileValues::callback( $config['title'] ?? null ),
             'link'          => ProfileValues::callback( $config['link'] ?? null ),
             'card'          => ProfileValues::callback( $config['card'] ?? null ),
+            'selection'     => ProfileValues::choice( $config['selection'] ?? 'popup', [ 'popup', 'sidebar' ], 'popup' ),
+            'details'       => ProfileValues::callback( $config['details'] ?? null ),
+            'details_per_page' => ProfileValues::bounded_int( $config['details_per_page'] ?? 10, 10, 1, 50 ),
+            'related_post_types' => ProfileValues::keys( (array) ( $config['related_post_types'] ?? [] ) ),
             'link_behavior' => ItemLink::normalize( $config, $post_types ),
             'render_item'   => ProfileValues::callback( $config['render_item'] ?? null ),
             'highlight'     => ProfileValues::callback( $config['highlight'] ?? null ),
@@ -196,6 +200,16 @@ final class MapProfile {
             'count_many' => '%d locations',
             'list'       => 'List of every location on the map',
             'cta'        => 'View details',
+            'details'    => 'Location details',
+            'details_open' => 'Show details',
+            'details_close' => 'Close details',
+            'details_loading' => 'Loading details…',
+            'details_error' => 'Details could not load. Please try again.',
+            'details_empty' => 'No items match this location and date window.',
+            'details_retry' => 'Try again',
+            'details_previous' => 'Previous',
+            'details_next' => 'Next',
+            'details_page' => 'Page %1$d of %2$d · %3$d items',
         ] + ItemLink::LABELS, $labels );
     }
 }

@@ -124,19 +124,45 @@ final class MapLocations {
         $items = [];
         foreach ( $located as $id => $point ) {
             $row = is_array( $data[ $id ] ?? null ) ? $data[ $id ] : [];
-            $items[] = [
-                'id'      => $id,
-                'title'   => self::title( $profile, $id, $row ),
-                'url'     => self::link( $profile, $id, $row ),
-                'group'   => self::group( $profile, $id, $row ),
-                'address' => $point['address'],
-                'lat'     => $point['lat'],
-                'lng'     => $point['lng'],
-                'data'    => $row,
-            ];
+            $items[] = self::item_data( $profile, $id, $point, $row );
         }
 
         return $items;
+    }
+
+    /** Resolves exactly one eligible placed item without preparing the whole map. */
+    public static function item( array $profile, int $id ): ?array {
+        if ( $id <= 0 ) {
+            return null;
+        }
+        if ( 'users' === $profile['source'] ) {
+            $object = get_userdata( $id );
+            if ( ! $object || [] === array_intersect( $profile['roles'], (array) $object->roles ) ) {
+                return null;
+            }
+        } else {
+            $object = get_post( $id );
+            if ( ! $object || 'publish' !== $object->post_status || '' !== $object->post_password || ! in_array( $object->post_type, $profile['post_types'], true ) ) {
+                return null;
+            }
+        }
+        self::prime( $profile, [ $id ] );
+        $address = self::address( $profile, $id );
+        $point = '' !== $address ? self::coordinates( $profile, $id, $address ) : null;
+        if ( null === $point ) {
+            return null;
+        }
+        $data = null !== $profile['prepare'] ? (array) call_user_func( $profile['prepare'], [ $id ] ) : [];
+
+        return self::item_data( $profile, $id, $point + [ 'address' => $address ], (array) ( $data[ $id ] ?? [] ) );
+    }
+
+    private static function item_data( array $profile, int $id, array $point, array $data ): array {
+        return [
+            'id' => $id, 'title' => self::title( $profile, $id, $data ), 'url' => self::link( $profile, $id, $data ),
+            'group' => self::group( $profile, $id, $data ), 'address' => $point['address'],
+            'lat' => $point['lat'], 'lng' => $point['lng'], 'data' => $data,
+        ];
     }
 
     public static function generation(): string {

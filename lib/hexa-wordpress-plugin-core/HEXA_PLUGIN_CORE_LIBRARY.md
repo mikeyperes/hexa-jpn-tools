@@ -11,6 +11,20 @@ dot-separated paths such as `data.area`; criteria declare `direction`
 placement (`first`/`last`). Sorting runs within each day after placement, before
 the visible/more split. See `docs/calendar.md` for examples and compatibility.
 
+Map profiles opt into a right selection panel with `selection => 'sidebar'`.
+Core's `Map\MapDetails` owns rich image/title/description/fact/action markup,
+the read endpoint `map/{profile}/details/{item}`, bounded pagination, loading,
+retry, request cancellation, focus, and responsive placement. Hosts supply a
+`details(int $id, array $data, array $item, array $query): array` callback
+returning `title`, `summary`, `entries`, `total`, and the clamped `page`.
+The query contains `page`, profile-controlled `per_page` (1–50), and `hours`
+(0 or a declared date window); hosts own grouping, ordering and date semantics.
+Set `related_post_types` for content dependencies so saves/terms/metadata
+invalidate map/detail caches even for user-sourced maps. `MapLocations::item()`
+resolves one eligible placed location. The popup remains the default; absent
+a details provider, a sidebar shows the existing card. See `docs/map.md` for
+entry shape, profile settings, endpoint visibility, and verification methods.
+
 ## Fixed Identity
 
 ```text
@@ -20,7 +34,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.11.0
+Current release: 3.12.0
 ```
 
 Do not rename these.

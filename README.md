@@ -75,14 +75,33 @@ Days are not clickable; each event links to its permalink.
 
 `[hexa_map id="jpn_hosts"]` renders the host map through Hexa WP Core `Map`.
 Core owns geocoding and storing coordinates (user meta `hexa_map_geo`), the
-MapLibre map on OpenFreeMap tiles, clustering, the area filter, the card
-markup, caching, and interaction. `Hexa\JpnTools\Hosts\HostMap` owns the
-profile: users with the `host` role, their `address` field, their `area`
-term as the filter group, and the card data (address, event totals, up to
-three upcoming or recent events from the host directory). Hosts with upcoming
-events pulse, and `next` (the host's next event start) drives the
-"Events in the next 24 hours / 48 hours / 1 week / 2 weeks" chips. Colors are
-`--hmap-*` tokens set in Elementor, not here.
+MapLibre map on OpenFreeMap tiles, clustering, the area filter, a right-side
+selection panel, rich entry markup, pagination, caching, and interaction.
+`Hexa\JpnTools\Hosts\HostMap` owns the profile: users with the `host` role,
+their `address` field, and their `area` term as the filter group. Selecting a
+pin opens Core's sidebar on the right (below the map on narrow screens).
+`Hexa\JpnTools\Events\AreaMapDetails` supplies upcoming and ongoing events
+across all hosts in the selected area, ordered by start date then ID. It uses
+`EventQueries::pageBetween()` to count all matching events and load ten per
+page; the host directory's three-title card limit does not limit the sidebar.
+An unassigned area falls back to the selected host's own events.
+
+Each event includes its featured photo (or first additional photo), title,
+stored description, date/time, venue/address, host, stored kids/featured flags,
+and Details/RSVP links where available. Photos and titles keep the existing
+event lightbox. Private/password-protected events are excluded. No missing
+prices or audience restrictions are inferred.
+
+The detail endpoint is
+`/wp-json/hexa-plugin-core/v1/map/jpn_hosts/details/{host_id}`. "Any time"
+has no future upper bound and shows upcoming/ongoing events; ended timed
+events are excluded, and date-only events remain through their last local day.
+A selected date chip also limits sidebar events to its hour window. Hosts
+with upcoming events pulse, and `next` (the host's next event start) drives
+the "Events in the next 24 hours / 48 hours / 1 week / 2 weeks" chips.
+The profile declares `event` as related content, so event edits invalidate
+map/detail caches. Colors and optional `--hmap-sidebar-width` are CSS tokens
+set in Elementor.
 
 ## Latest events video
 

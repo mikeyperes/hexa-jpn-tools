@@ -29,6 +29,7 @@ final class MapModule implements ModuleInterface {
         self::$registered = true;
 
         add_shortcode( self::SHORTCODE, [ $this, 'shortcode' ] );
+        add_action( 'rest_api_init', [ MapDetails::class, 'register_routes' ] );
         ItemLightbox::component( 'map', [ MapRegistry::class, 'get' ] );
         add_action( self::CRON_HOOK, [ $this, 'geocode' ] );
         add_action( 'init', [ $this, 'schedule' ] );
@@ -79,6 +80,9 @@ final class MapModule implements ModuleInterface {
     public function meta_changed( $meta_id, $object_id, $meta_key ): void {
         $type = str_ends_with( current_filter(), '_user_meta' ) ? 'users' : 'posts';
         foreach ( MapRegistry::all() as $profile ) {
+            if ( 'posts' === $type && in_array( (string) get_post_type( (int) $object_id ), $profile['related_post_types'], true ) ) {
+                $this->changed();
+            }
             if ( $profile['source'] !== $type || $meta_key === $profile['geo_meta'] ) {
                 continue;
             }
@@ -99,7 +103,7 @@ final class MapModule implements ModuleInterface {
     public function post_changed( $post_id ): void {
         $type = (string) get_post_type( (int) $post_id );
         foreach ( MapRegistry::all() as $profile ) {
-            if ( in_array( $type, $profile['post_types'], true ) ) {
+            if ( in_array( $type, array_merge( $profile['post_types'], $profile['related_post_types'] ), true ) ) {
                 $this->changed();
                 return;
             }

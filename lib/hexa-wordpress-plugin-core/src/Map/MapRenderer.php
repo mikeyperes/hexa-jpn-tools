@@ -22,7 +22,7 @@ final class MapRenderer {
     public const CACHE_TAG = 'hexa_map';
 
     /** Bumped whenever the cached point shape changes, so older cached payloads are never served. */
-    public const PAYLOAD_VERSION = 3;
+    public const PAYLOAD_VERSION = 4;
 
     private static bool $assets_printed = false;
 
@@ -48,18 +48,20 @@ final class MapRenderer {
             'library' => $profile['library'],
             'view'    => $profile['view'],
             'cluster' => $profile['cluster'],
-            'labels'  => [ 'one' => $labels['count_one'], 'many' => $labels['count_many'] ],
+            'selection' => $profile['selection'],
+            'labels'  => [ 'one' => $labels['count_one'], 'many' => $labels['count_many'] ] + $labels,
         ];
 
         $html = '<div class="hmap ' . esc_attr( $profile['class'] ) . '" id="' . esc_attr( $dom_id ) . '"'
             . ' data-hmap="' . esc_attr( (string) wp_json_encode( $config ) ) . '"'
             . ' data-hmap-points="' . esc_attr( (string) wp_json_encode( $payload['points'] ) ) . '"'
+            . ( 'sidebar' === $profile['selection'] ? PublicComponent::live_attributes( 'hmap', 'map/' . $profile['id'] . '/details', $profile['public'] ) : '' )
             . ItemLink::root_attributes( $profile ) . '>'
             . '<div class="hmap-bar">' . $this->filter( $profile, $payload['groups'], $count, $dom_id )
             . '<p class="hmap-status" role="status" aria-live="polite">' . esc_html( $this->count( $labels, $count ) ) . '</p>'
             . $this->windows( $profile ) . '</div>'
             . '<div class="hmap-stage"><div class="hmap-canvas" role="region" aria-label="' . esc_attr( $labels['region'] ) . '"></div>'
-            . '<p class="hmap-loading">' . esc_html( $labels['loading'] ) . '</p></div>'
+            . '<p class="hmap-loading">' . esc_html( $labels['loading'] ) . '</p>' . $this->sidebar( $profile, $dom_id ) . '</div>'
             . $payload['list']
             . '</div>';
 
@@ -88,6 +90,7 @@ final class MapRenderer {
         usort( $items, static fn( array $a, array $b ): int => strcasecmp( $a['title'], $b['title'] ) );
         foreach ( $items as $item ) {
             $points[] = [
+                'id'   => $item['id'],
                 'la'   => round( $item['lat'], 6 ),
                 'lo'   => round( $item['lng'], 6 ),
                 'g'    => $item['group'],
@@ -100,7 +103,8 @@ final class MapRenderer {
                 $groups[ $item['group'] ] = ( $groups[ $item['group'] ] ?? 0 ) + 1;
             }
             $list .= '<li>' . ( '' !== $item['url'] ? '<a href="' . esc_url( $item['url'] ) . '"' . $this->link( $profile, $item ) . '>' . esc_html( $item['title'] ) . '</a>' : esc_html( $item['title'] ) )
-                . ( '' !== $item['group'] ? ' <span>· ' . esc_html( $item['group'] ) . '</span>' : '' ) . '</li>';
+                . ( '' !== $item['group'] ? ' <span>· ' . esc_html( $item['group'] ) . '</span>' : '' )
+                . ( 'sidebar' === $profile['selection'] ? ' <button type="button" data-hmap-select="' . esc_attr( (string) $item['id'] ) . '" hidden>' . esc_html( $profile['labels']['details_open'] ) . '</button>' : '' ) . '</li>';
         }
         uksort( $groups, static fn( string $a, string $b ): int => ( $groups[ $b ] <=> $groups[ $a ] ) ?: strcasecmp( $a, $b ) );
 
@@ -114,6 +118,20 @@ final class MapRenderer {
         }
 
         return $payload;
+    }
+
+    private function sidebar( array $profile, string $dom_id ): string {
+        if ( 'sidebar' !== $profile['selection'] ) { return ''; }
+        $labels = $profile['labels'];
+
+        return '<aside class="hmap-sidebar" aria-labelledby="' . esc_attr( $dom_id . '-detail-title' ) . '" hidden>'
+            . '<div class="hmap-sidebar__header"><h2 id="' . esc_attr( $dom_id . '-detail-title' ) . '" class="hmap-sidebar__title" tabindex="-1">' . esc_html( $labels['details'] ) . '</h2>'
+            . '<button type="button" class="hmap-sidebar__close" aria-label="' . esc_attr( $labels['details_close'] ) . '"><span aria-hidden="true">×</span></button></div>'
+            . '<p class="hmap-sidebar__status" role="status" aria-live="polite"></p>'
+            . '<div class="hmap-sidebar__body"></div><button type="button" class="hmap-sidebar__retry" hidden>' . esc_html( $labels['details_retry'] ) . '</button>'
+            . '<nav class="hmap-sidebar__pages" aria-label="' . esc_attr( $labels['details'] ) . '" hidden>'
+            . '<button type="button" data-hmap-page="previous">' . esc_html( $labels['details_previous'] ) . '</button>'
+            . '<button type="button" data-hmap-page="next">' . esc_html( $labels['details_next'] ) . '</button></nav></aside>';
     }
 
     /**
@@ -293,6 +311,25 @@ final class MapRenderer {
 .hmap-card li a:hover span{text-decoration:underline}
 .hmap-card__cta{justify-self:start;margin-top:4px;color:var(--hmap-accent);font-weight:600;text-decoration:none}
 .hmap-card__cta:hover{text-decoration:underline}
+.hmap-sidebar[hidden],.hmap-sidebar [hidden],.hmap-list button[hidden]{display:none!important}
+.hmap-stage.has-selection>.hmap-canvas{right:min(var(--hmap-sidebar-width,380px),50%);width:auto}
+.hmap-sidebar{position:absolute;right:0;top:0;bottom:0;width:var(--hmap-sidebar-width,380px);max-width:50%;box-sizing:border-box;display:flex;flex-direction:column;padding:20px;background:var(--hmap-surface);border-left:1px solid var(--hmap-border);z-index:5;overflow:auto;overscroll-behavior:contain;color:var(--hmap-text);font:inherit}
+.hmap-sidebar__header{display:flex;align-items:flex-start;gap:12px;position:sticky;top:-20px;margin:-20px -20px 0;padding:20px 20px 12px;background:var(--hmap-surface);z-index:1}
+.hmap-sidebar__title{flex:1;margin:0;color:inherit;font-size:22px;line-height:1.2;overflow-wrap:anywhere}
+.hmap .hmap-sidebar button,.hmap-list button{appearance:none;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);padding:8px 12px;background:var(--hmap-surface);color:var(--hmap-text);font:inherit;font-size:13px;text-transform:none;letter-spacing:normal;cursor:pointer}
+.hmap .hmap-sidebar__close{flex:none;min-width:36px;min-height:36px;padding:0;font-size:24px}
+.hmap-sidebar button:focus-visible,.hmap-list button:focus-visible,.hmap-sidebar a:focus-visible{outline:2px solid var(--hmap-accent);outline-offset:3px}
+.hmap-sidebar__status{margin:0 0 12px;color:var(--hmap-muted);font-size:13px;line-height:1.4}
+.hmap-sidebar__body{min-width:0}.hmap-detail-context{padding-bottom:16px}.hmap-detail-summary{margin:12px 0 0;font-size:14px;color:var(--hmap-muted)}
+.hmap-detail-entries{display:grid;gap:20px}.hmap-entry{padding:16px;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);min-width:0}
+.hmap-entry__image{display:block;margin:-16px -16px 14px;padding:0;background:var(--hmap-land);border-radius:var(--hmap-radius) var(--hmap-radius) 0 0;overflow:hidden}
+.hmap-entry__image img{display:block;width:100%;height:auto;max-height:300px;object-fit:contain}
+.hmap-entry__title{margin:0 0 12px;color:inherit;font-size:19px;line-height:1.3}.hmap-entry__title a{color:inherit;text-decoration:none}
+.hmap-entry__description{margin:0 0 12px;font-size:14px;color:var(--hmap-muted);line-height:1.5}
+.hmap-entry__facts{display:grid;gap:8px;margin:0;font-size:13px;line-height:1.5}.hmap-entry__facts>div{display:grid;grid-template-columns:65px minmax(0,1fr);gap:8px}.hmap-entry__facts dt{color:var(--hmap-muted);font-weight:400}.hmap-entry__facts dd{margin:0;overflow-wrap:anywhere}
+.hmap-entry__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.hmap-entry__actions a{display:inline-block;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);padding:7px 12px;color:var(--hmap-accent);font-size:13px;text-decoration:none}
+.hmap-sidebar__pages{display:flex;justify-content:space-between;gap:12px;margin-top:18px}.hmap-sidebar__pages button:disabled{opacity:.4;cursor:default}
+@media(max-width:767px){.hmap-stage.has-selection{height:auto}.hmap-stage.has-selection>.hmap-canvas{position:relative;inset:auto;width:100%;height:var(--hmap-height)}.hmap-sidebar{position:relative;inset:auto;width:100%;max-width:none;max-height:65vh;max-height:65dvh;border-left:0;border-top:1px solid var(--hmap-border)}.hmap-stage.has-selection:after{display:none}}
 @media (max-width:767px){.hmap{--hmap-height:440px}.hmap-status{flex-basis:100%;margin:2px 0 0}}
 CSS;
     }
@@ -396,6 +433,61 @@ CSS;
       el.hmapMap = map;
       map.addControl(new gl.NavigationControl({ showCompass: false }), 'top-right');
       var popup = new gl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '300px', offset: 14, anchor: 'bottom', className: 'hmap-popup' });
+      var stage = el.querySelector('.hmap-stage'), sidebar = el.querySelector('.hmap-sidebar');
+      var sideTitle = sidebar && sidebar.querySelector('.hmap-sidebar__title');
+      var sideBody = sidebar && sidebar.querySelector('.hmap-sidebar__body');
+      var sideStatus = sidebar && sidebar.querySelector('.hmap-sidebar__status');
+      var sideRetry = sidebar && sidebar.querySelector('.hmap-sidebar__retry');
+      var sidePages = sidebar && sidebar.querySelector('.hmap-sidebar__pages');
+      var sidePage = 1, sideLastPage = 1, detailSeq = 0, detailAbort = null, returnFocus = null;
+      canvas.tabIndex = 0;
+      function closeSelection(restore) {
+        popup.remove(); tip.remove();
+        mark(selId, 'sel', false); selId = null;
+        ++detailSeq;
+        if (detailAbort) { detailAbort.abort(); detailAbort = null; }
+        if (sidebar) {
+          sidebar.hidden = true; sidebar.removeAttribute('aria-busy'); sideBody.innerHTML = '';
+          stage.classList.remove('has-selection'); map.resize();
+        }
+        if (restore && returnFocus && returnFocus.isConnected) { returnFocus.focus({preventScroll:true}); }
+        returnFocus = null;
+      }
+      function loadDetails(page) {
+        var p = shown[selId], endpoint = el.getAttribute('data-hmap-endpoint');
+        if (!sidebar || !p || !endpoint) { return; }
+        if (detailAbort) { detailAbort.abort(); }
+        detailAbort = window.AbortController ? new AbortController() : null;
+        var n = ++detailSeq;
+        sidePage = page; sidebar.setAttribute('aria-busy', 'true');
+        sideStatus.textContent = cfg.labels.details_loading; sideRetry.hidden = true; sidePages.hidden = true;
+        var url = new URL(endpoint, location.href);
+        if (url.origin !== location.origin) {
+          sidebar.removeAttribute('aria-busy'); sideStatus.textContent = cfg.labels.details_error; return;
+        }
+        if (url.searchParams.has('rest_route')) {
+          url.searchParams.set('rest_route', url.searchParams.get('rest_route').replace(/\/$/, '') + '/' + p.id);
+        } else { url.pathname = url.pathname.replace(/\/$/, '') + '/' + p.id; }
+        url.searchParams.set('page', page); url.searchParams.set('hours', state.h);
+        var nonce = el.getAttribute('data-hmap-nonce'), headers = {'Accept':'application/json'};
+        if (nonce) { headers['X-WP-Nonce'] = nonce; }
+        fetch(url.href, {credentials:nonce?'same-origin':'omit', headers:headers, signal:detailAbort?detailAbort.signal:undefined})
+          .then(function(r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
+          .then(function(d) {
+            if (n !== detailSeq || sidebar.hidden) { return; }
+            sidebar.removeAttribute('aria-busy');
+            sideTitle.textContent = d.title || p.t; sideBody.innerHTML = d.html || '';
+            sidePage = +d.page || 1; sideLastPage = +d.pages || 1;
+            sideStatus.textContent = cfg.labels.details_page.replace('%1$d', sidePage).replace('%2$d', sideLastPage).replace('%3$d', +d.total || 0);
+            sidePages.hidden = sideLastPage <= 1;
+            sidePages.querySelector('[data-hmap-page="previous"]').disabled = sidePage <= 1;
+            sidePages.querySelector('[data-hmap-page="next"]').disabled = sidePage >= sideLastPage;
+            sidebar.scrollTop = 0;
+          }).catch(function(e) {
+            if (n !== detailSeq || sidebar.hidden || e.name === 'AbortError') { return; }
+            sidebar.removeAttribute('aria-busy'); sideStatus.textContent = cfg.labels.details_error; sideRetry.hidden = false;
+          });
+      }
       map.on('style.load', function () {
         tint(map, t);
         map.addSource('hmap', { type: 'geojson', data: fc(shown), cluster: cfg.cluster, clusterRadius: 44, clusterMaxZoom: 13 });
@@ -453,7 +545,7 @@ CSS;
         return best;
       }
       function hover(f) {
-        var id = f && !f.properties.cluster_id && f.properties.i !== undefined ? f.properties.i : null;
+        var id = f && f.properties.cluster_id === undefined && f.properties.i !== undefined ? +f.properties.i : null;
         map.getCanvas().style.cursor = f ? 'pointer' : '';
         if (id === hoverId) { return; }
         mark(hoverId, 'hover', false);
@@ -462,10 +554,19 @@ CSS;
         var p = id !== null ? shown[id] : null;
         if (p && p.t && id !== selId) { tip.setLngLat([p.lo, p.la]).setText(p.t).addTo(map); } else { tip.remove(); }
       }
-      function openCard(i) {
+      function openCard(i, trigger) {
+        i = +i;
         var p = shown[i];
         if (!p) { return; }
         tip.remove();
+        if (sidebar) {
+          mark(selId, 'sel', false); selId = i; mark(selId, 'sel', true);
+          returnFocus = trigger || canvas;
+          sideTitle.textContent = p.g || p.t; sideBody.innerHTML = '';
+          sidebar.hidden = false; stage.classList.add('has-selection'); map.resize();
+          map.easeTo({center:[p.lo,p.la],duration:reduce?0:300});
+          sideTitle.focus({preventScroll:true}); loadDetails(1); return;
+        }
         var c = map.getContainer(), w = c.clientWidth, h = c.clientHeight;
         // The card always opens above its pin and never exceeds the map: narrow maps (phones) get a
         // narrower card, and a card taller than the map scrolls inside itself.
@@ -490,8 +591,9 @@ CSS;
       map.getCanvas().addEventListener('mouseleave', function () { hover(null); });
       map.on('click', function (e) {
         var f = nearest(e);
-        if (!f) { popup.remove(); return; }
+        if (!f) { closeSelection(false); return; }
         if (f.properties.cluster_id !== undefined) {
+          closeSelection(false);
           map.getSource('hmap').getClusterExpansionZoom(f.properties.cluster_id).then(function (z) {
             map.easeTo({ center: f.geometry.coordinates, zoom: z + 0.5 });
           });
@@ -500,14 +602,16 @@ CSS;
         openCard(f.properties.i);
       });
       function apply() {
+        closeSelection(false);
         shown = pick();
-        popup.remove();
-        tip.remove();
         if (map.getSource('hmap')) { map.removeFeatureState({ source: 'hmap' }); }
         hoverId = null; selId = null;
         if (map.getSource('hmap')) { map.getSource('hmap').setData(fc(shown)); }
         Array.prototype.forEach.call(controls, function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-hmap-group') === state.g ? 'true' : 'false'); });
         Array.prototype.forEach.call(hourControls, function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-hmap-hours') === state.h ? 'true' : 'false'); });
+        Array.prototype.forEach.call(el.querySelectorAll('[data-hmap-select]'), function(b) {
+          b.disabled = !shown.some(function(p) { return +p.id === +b.getAttribute('data-hmap-select'); });
+        });
         if (select) { select.value = select.querySelector('option[value="' + CSS.escape(state.g) + '"]') ? state.g : ''; }
         if (status) { status.textContent = (shown.length === 1 ? cfg.labels.one : cfg.labels.many).replace('%d', shown.length); }
         counts();
@@ -520,6 +624,22 @@ CSS;
         b.addEventListener('click', function () { state.h = +b.getAttribute('data-hmap-hours'); apply(); });
       });
       if (select) { select.addEventListener('change', function () { state.g = select.value; apply(); }); }
+      if (sidebar) {
+        sidebar.querySelector('.hmap-sidebar__close').addEventListener('click', function() { closeSelection(true); });
+        sideRetry.addEventListener('click', function() { loadDetails(sidePage); });
+        sidePages.addEventListener('click', function(e) {
+          var b = e.target.closest('[data-hmap-page]');
+          if (b && !b.disabled) { loadDetails(sidePage + (b.getAttribute('data-hmap-page') === 'next' ? 1 : -1)); }
+        });
+        el.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !sidebar.hidden) { e.preventDefault(); closeSelection(true); } });
+        Array.prototype.forEach.call(el.querySelectorAll('[data-hmap-select]'), function(b) {
+          b.hidden = false;
+          b.addEventListener('click', function() {
+            var id = +b.getAttribute('data-hmap-select'), i = shown.findIndex(function(p) { return +p.id === id; });
+            if (i >= 0) { openCard(i, b); }
+          });
+        });
+      }
     }).catch(function () {
       el.classList.add('is-failed');
       var list = el.querySelector('.hmap-list');

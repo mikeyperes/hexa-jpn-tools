@@ -6,16 +6,17 @@ namespace Hexa\JpnTools\Hosts;
 
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventLightbox;
+use Hexa\JpnTools\Events\AreaMapDetails;
 use Hexa\PluginCore\Map\MapRegistry;
 
 /**
  * JPN host map: registers the `jpn_hosts` profile with Hexa WP Core's Map.
  *
- * Core owns geocoding, the map, pins, clustering, the area filter, card
- * markup, and caching; brand colors are set in Elementor. This class owns
- * which hosts appear, where their address and area are stored, and what a
- * host's card says, reusing the host directory's batch data. An event in a
- * card opens in Core's lightbox (EventLightbox); the host link opens the host page.
+ * Core owns geocoding, the map, pins, clustering, the area filter, the right
+ * selection sidebar, rich entry markup, and caching; brand colors are set in
+ * Elementor. This class owns the host profile and opts into AreaMapDetails,
+ * which supplies upcoming/ongoing event data across the selected area.
+ * Event photos and titles open Core's lightbox; Details opens the event page.
  */
 final class HostMap
 {
@@ -43,6 +44,10 @@ final class HostMap
             // Start of the host's next event: drives the "24 hours / 48 hours / 1 week / 2 weeks" chips.
             'next' => static fn (int $id, array $host): int => (int) ($host['stats']['upcoming'] ?? 0) > 0 ? (int) ($host['stats']['next_ts'] ?? 0) : 0,
             'card' => [$this, 'card'],
+            'selection' => 'sidebar',
+            'details' => [new AreaMapDetails($this->dates), 'items'],
+            'details_per_page' => 10,
+            'related_post_types' => ['event'],
             'view' => ['center' => [26.2, -80.19], 'zoom' => 8.4, 'fit_zoom' => 13],
             'labels' => [
                 'region' => __('Map of JPN hosts', 'hexa-jpn-tools'),
@@ -57,6 +62,12 @@ final class HostMap
                 'count_many' => __('%d hosts', 'hexa-jpn-tools'),
                 'list' => __('List of all hosts on the map', 'hexa-jpn-tools'),
                 'cta' => __('View host', 'hexa-jpn-tools'),
+                'details' => __('Events at this location', 'hexa-jpn-tools'),
+                'details_open' => __('Show area events', 'hexa-jpn-tools'),
+                'details_loading' => __('Loading area events…', 'hexa-jpn-tools'),
+                'details_error' => __('The area events could not load. Please try again.', 'hexa-jpn-tools'),
+                'details_empty' => __('No upcoming or ongoing events match this area and date window.', 'hexa-jpn-tools'),
+                'details_page' => __('Page %1$d of %2$d · %3$d events', 'hexa-jpn-tools'),
             ] + $this->lightbox->labels(),
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-hosts-map',
