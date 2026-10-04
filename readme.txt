@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.9.2
+Stable tag: 1.9.3
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.9.3 =
+* Uses Hexa WP Plugin Core 3.13.2's bounded correlated meta constraints for efficient upcoming-event search eligibility without multiplying meta-query joins.
 
 = 1.9.2 =
 * Bundles Hexa WP Plugin Core 3.13.1 with corrected live-search status and error-grid presentation.

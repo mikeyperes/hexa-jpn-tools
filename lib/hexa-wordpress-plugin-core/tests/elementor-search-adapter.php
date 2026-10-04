@@ -138,6 +138,7 @@ $root = dirname(__DIR__);
 require $root . '/src/SearchQuery/SearchQueryConfiguration.php';
 require $root . '/src/SearchQuery/SearchTermParser.php';
 require $root . '/src/SearchQuery/SearchMatchSql.php';
+require $root . '/src/SearchQuery/MetaConstraintSql.php';
 require $root . '/src/SearchQuery/SearchQueryEngine.php';
 require $root . '/src/SearchQuery/ElementorSearchAdapter.php';
 

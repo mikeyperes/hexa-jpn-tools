@@ -122,6 +122,7 @@ $root = dirname( __DIR__ );
 require $root . '/src/SearchQuery/SearchQueryConfiguration.php';
 require $root . '/src/SearchQuery/SearchTermParser.php';
 require $root . '/src/SearchQuery/SearchMatchSql.php';
+require $root . '/src/SearchQuery/MetaConstraintSql.php';
 require $root . '/src/SearchQuery/SearchQueryEngine.php';
 require $root . '/src/SearchQuery/JetEngineSearchAdapter.php';
 
@@ -222,6 +223,30 @@ $exact['term_logic'] = 'exact';
 $exact_sql = $engine->build_search_sql( 'red shoes', $exact, $wpdb );
 $expect( str_contains( $exact_sql, "LIKE '%red shoes%'" ) && ! str_contains( $exact_sql, "LIKE '%red%'" ), 'Exact phrase mode searches the contiguous phrase once.' );
 
+$invalid_constraint_sql = $engine->build_search_sql(
+    'red shoes',
+    $settings,
+    $wpdb,
+    [ [ 'key' => 'bad key', 'value' => 1, 'compare' => '>=', 'type' => 'NUMERIC' ] ]
+);
+$expect( str_contains( $invalid_constraint_sql, 'AND (1=0)' ) && ! str_contains( $invalid_constraint_sql, 'badkey' ), 'Invalid trusted constraint shapes fail closed instead of changing the requested key.' );
+
+$numeric_boundary_sql = $engine->build_search_sql(
+    'red shoes',
+    $settings,
+    $wpdb,
+    [
+        'relation' => 'AND',
+        [ 'key' => 'signed_score', 'value' => '10.75', 'compare' => '>=', 'type' => 'SIGNED' ],
+        [ 'key' => 'unsigned_score', 'value' => '-2.5', 'compare' => '>', 'type' => 'UNSIGNED' ],
+    ]
+);
+$expect(
+    str_contains( $numeric_boundary_sql, "CAST(hexa_sq_mc0.meta_value AS SIGNED) >= '10.75'" )
+    && str_contains( $numeric_boundary_sql, "CAST(hexa_sq_mc1.meta_value AS UNSIGNED) > '-2.5'" ),
+    'Validated numeric thresholds retain fractional and negative caller values instead of being truncated or clamped.'
+);
+
 $engine->register();
 $engine->register();
 $query_vars_filter = $test_filters['query_vars'][10][0] ?? null;
@@ -232,6 +257,15 @@ $expect( 1 === count( $test_filters['posts_search'][999] ?? [] ), 'One permanent
 
 $target = new FakeQuery( [ 's' => 'red shoes', 'hexa_search' => '1' ] );
 $engine->prepare_query( $target );
+$engine->set_meta_constraints( $target, [
+    'relation' => 'OR',
+    [ 'key' => 'starts_at', 'value' => 1700000000, 'compare' => '>=', 'type' => 'NUMERIC' ],
+    [
+        'relation' => 'AND',
+        [ 'key' => 'precision', 'value' => 'date', 'compare' => '=' ],
+        [ 'key' => 'ends_at', 'value' => 1700000000, 'compare' => '>=', 'type' => 'NUMERIC' ],
+    ],
+] );
 $expect( [ 'post', 'book' ] === $target->get( 'post_type' ), 'The target query receives only the configured post types.' );
 $expect( 12 === $target->get( 'posts_per_page' ) && 'date' === $target->get( 'orderby' ), 'Result count and ordering are applied to the target query.' );
 
@@ -240,6 +274,8 @@ $other = new FakeQuery( [ 's' => 'other', 'hexa_search' => '1' ] );
 $expect( is_callable( $search_filter ) && 'ORIGINAL' === $search_filter( 'ORIGINAL', $other ), 'The SQL dispatcher ignores every unprepared query instance.' );
 $target_sql = is_callable( $search_filter ) ? $search_filter( 'ORIGINAL', $target ) : '';
 $expect( str_contains( $target_sql, "post_title LIKE '%red%'" ), 'The SQL dispatcher replaces only the prepared target search clause.' );
+$expect( str_contains( $target_sql, 'hexa_sq_mc0.meta_key = \'starts_at\'' ) && str_contains( $target_sql, "CAST(hexa_sq_mc0.meta_value AS SIGNED) >= '1700000000'" ), 'Trusted exact-query numeric meta constraints compile into bounded correlated predicates.' );
+$expect( str_contains( $target_sql, ' OR (' ) && str_contains( $target_sql, ' AND ' ), 'Nested meta-constraint relations preserve their host-declared boolean structure.' );
 $expect( 'ORIGINAL' === ( is_callable( $search_filter ) ? $search_filter( 'ORIGINAL', $target ) : '' ), 'Prepared state must be consumed after the exact target reaches the dispatcher.' );
 $expect( 1 === count( $test_filters['posts_search'][999] ?? [] ), 'The permanent dispatcher must remain singular after consuming a target.' );
 

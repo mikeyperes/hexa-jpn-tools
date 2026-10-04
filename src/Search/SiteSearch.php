@@ -75,58 +75,62 @@ final class SiteSearch
      *
      * @param object $query WP_Query-compatible Elementor query.
      */
-    public function configureUpcomingQuery($query): void
+    /** @return array{meta_constraints:array<string|int,mixed>} */
+    public function configureUpcomingQuery($query): array
     {
         $now = time();
         $today = EventDates::startOfToday($now);
 
         $query->set('post_type', ['event']);
         $query->set('meta_key', 'start_date_timestamp');
-        $query->set('meta_query', [
-            'relation' => 'OR',
-            [
-                'key' => 'start_date_timestamp',
-                'value' => $now,
-                'compare' => '>=',
-                'type' => 'NUMERIC',
-            ],
-            [
-                'key' => 'end_date_timestamp',
-                'value' => $now,
-                'compare' => '>=',
-                'type' => 'NUMERIC',
-            ],
-            [
-                'relation' => 'AND',
-                [
-                    'key' => 'start_date_precision',
-                    'value' => 'date',
-                    'compare' => '=',
-                ],
+        $query->set('orderby', ['meta_value_num' => 'ASC', 'ID' => 'ASC']);
+        $query->set('order', 'ASC');
+
+        return [
+            'meta_constraints' => [
+                'relation' => 'OR',
                 [
                     'key' => 'start_date_timestamp',
-                    'value' => $today,
+                    'value' => $now,
                     'compare' => '>=',
                     'type' => 'NUMERIC',
-                ],
-            ],
-            [
-                'relation' => 'AND',
-                [
-                    'key' => 'start_date_precision',
-                    'value' => 'date',
-                    'compare' => '=',
                 ],
                 [
                     'key' => 'end_date_timestamp',
-                    'value' => $today,
+                    'value' => $now,
                     'compare' => '>=',
                     'type' => 'NUMERIC',
                 ],
+                [
+                    'relation' => 'AND',
+                    [
+                        'key' => 'start_date_precision',
+                        'value' => 'date',
+                        'compare' => '=',
+                    ],
+                    [
+                        'key' => 'start_date_timestamp',
+                        'value' => $today,
+                        'compare' => '>=',
+                        'type' => 'NUMERIC',
+                    ],
+                ],
+                [
+                    'relation' => 'AND',
+                    [
+                        'key' => 'start_date_precision',
+                        'value' => 'date',
+                        'compare' => '=',
+                    ],
+                    [
+                        'key' => 'end_date_timestamp',
+                        'value' => $today,
+                        'compare' => '>=',
+                        'type' => 'NUMERIC',
+                    ],
+                ],
             ],
-        ]);
-        $query->set('orderby', ['meta_value_num' => 'ASC', 'ID' => 'ASC']);
-        $query->set('order', 'ASC');
+        ];
     }
 
     /** @param string[] $postTypes @return array<string,mixed> */

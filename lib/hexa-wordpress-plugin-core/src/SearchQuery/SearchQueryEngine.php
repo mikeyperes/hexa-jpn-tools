@@ -20,7 +20,7 @@ final class SearchQueryEngine {
 
     private bool $search_dispatcher_registered = false;
 
-    /** @var \WeakMap<object,array{raw_query:string,settings:array<string,mixed>}>|null */
+    /** @var \WeakMap<object,array{raw_query:string,settings:array<string,mixed>,meta_constraints:array<string|int,mixed>}>|null */
     private ?\WeakMap $prepared_queries = null;
 
     public function __construct( callable $settings_provider, string $marker_key = 'hexa_search' ) {
@@ -128,11 +128,33 @@ final class SearchQueryEngine {
             $this->prepared_queries = new \WeakMap();
         }
         $this->prepared_queries[ $query ] = [
-            'raw_query' => trim( (string) $query->get( 's' ) ),
-            'settings'  => $settings,
+            'raw_query'        => trim( (string) $query->get( 's' ) ),
+            'settings'         => $settings,
+            'meta_constraints' => [],
         ];
 
         return $settings;
+    }
+
+    /**
+     * Adds trusted, bounded post-meta constraints to one already prepared query.
+     * The constraints are consumed with the same exact-object search state and
+     * never accepted from visitor query variables.
+     *
+     * @param object $query
+     * @param array<string|int,mixed> $constraints
+     */
+    public function set_meta_constraints( $query, array $constraints ): void {
+        if ( ! is_object( $query )
+            || ! $this->prepared_queries instanceof \WeakMap
+            || ! isset( $this->prepared_queries[ $query ] )
+        ) {
+            return;
+        }
+
+        $prepared = $this->prepared_queries[ $query ];
+        $prepared['meta_constraints'] = $constraints;
+        $this->prepared_queries[ $query ] = $prepared;
     }
 
     /** @param mixed $search_sql @param mixed $query */
@@ -147,14 +169,20 @@ final class SearchQueryEngine {
         $prepared = $this->prepared_queries[ $query ];
         unset( $this->prepared_queries[ $query ] );
 
-        return $this->build_search_sql( $prepared['raw_query'], $prepared['settings'] );
+        return $this->build_search_sql(
+            $prepared['raw_query'],
+            $prepared['settings'],
+            null,
+            $prepared['meta_constraints']
+        );
     }
 
     /**
      * @param array<string,mixed> $settings
      * @param object|null $database wpdb-compatible object; injectable for tests.
+     * @param array<string|int,mixed> $meta_constraints
      */
-    public function build_search_sql( string $raw_query, array $settings, $database = null ): string {
+    public function build_search_sql( string $raw_query, array $settings, $database = null, array $meta_constraints = [] ): string {
         if ( null === $database ) {
             global $wpdb;
             $database = $wpdb;
@@ -190,6 +218,10 @@ final class SearchQueryEngine {
         $sql = ' AND (' . implode( $relation, $groups ) . ')';
         if ( ! function_exists( 'is_user_logged_in' ) || ! is_user_logged_in() ) {
             $sql .= ' AND (' . $database->posts . ".post_password = '')";
+        }
+        $constraint_sql = MetaConstraintSql::compile( $database, $meta_constraints );
+        if ( '' !== $constraint_sql ) {
+            $sql .= ' AND (' . $constraint_sql . ')';
         }
 
         return $sql . ' ';

@@ -82,8 +82,9 @@ keyboard behavior, and GET fallback. Hexa WP Core's
 `ElementorSearchAdapter` owns exact-widget query provenance, bounded matching,
 public-only result enforcement, request cancellation and stale-response
 protection, accessible request states, and organizer lookup through the
-`event_host` user reference. JPN supplies its New York date cutoff plus event
-location, area, topic, author, and organizer sources. Core's
+`event_host` user reference. JPN supplies its New York date cutoff through
+Core's bounded exact-query meta constraints, avoiding row-multiplying
+`WP_Meta_Query` joins, plus event location, area, topic, author, and organizer sources. Core's
 `ElementorPublicTextIndex` also searches visible text from public Elementor
 pages and reusable templates without reading raw builder data or rewriting page
 content. It refreshes after page/template saves.

@@ -22,6 +22,7 @@ final class ElementorSearchAdapter {
     /**
      * @param callable $settings_provider Returns SearchQueryConfiguration input.
      * @param callable|null $query_configurator Receives ($query, $settings, $widget).
+     *        It may return ['meta_constraints' => <bounded predicate tree>].
      */
     public function __construct(
         callable $settings_provider,
@@ -138,7 +139,10 @@ final class ElementorSearchAdapter {
         }
 
         if ( null !== $this->query_configurator ) {
-            call_user_func( $this->query_configurator, $query, $settings, $widget );
+            $configured = call_user_func( $this->query_configurator, $query, $settings, $widget );
+            if ( is_array( $configured ) && is_array( $configured['meta_constraints'] ?? null ) ) {
+                $this->engine->set_meta_constraints( $query, $configured['meta_constraints'] );
+            }
         }
 
         $allowed = array_values( array_intersect(

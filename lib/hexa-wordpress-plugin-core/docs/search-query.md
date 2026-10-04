@@ -54,6 +54,12 @@ Preserves quoted phrases, removes duplicate terms case-insensitively, strips exp
 
 `SearchQueryEngine::register(): void` idempotently registers the public marker query variable, guarded preparation hook, and one exact-query SQL dispatcher. `SearchQueryEngine::build_search_sql()` is public for deterministic testing; hosts should normally let WordPress call the registered hooks.
 
+`SearchQueryEngine::set_meta_constraints(object $query, array $constraints): void` attaches a trusted, bounded post-meta predicate tree to one already prepared query object. The tree supports nested `AND`/`OR` groups, up to 20 leaves and four levels, with `=`, `>`, `>=`, `<`, `<=`, `EXISTS`, and `NOT EXISTS` comparisons over `CHAR`, `NUMERIC`, `SIGNED`, `UNSIGNED`, `DECIMAL`, `DATE`, or `DATETIME` values. Invalid trees fail closed. Constraints are kept in weak exact-object state and are never read from visitor query variables.
+
+### `MetaConstraintSql`
+
+`MetaConstraintSql::compile(object $database, array $constraints, string $post_id_column = ''): string` compiles the same bounded tree into prepared correlated predicates. This avoids the row multiplication produced by `WP_Meta_Query` joins when an exact search component needs host-owned date or state rules. Hosts declare only keys, values, types, comparisons, and relations; Core owns aliases, casts, preparation, limits, and fail-closed validation.
+
 ### `JetEngineSearchAdapter`
 
 `new JetEngineSearchAdapter(callable $settings_provider, string $marker_key = 'hexa_search')`
@@ -173,7 +179,9 @@ add_filter(
 
 ## SQL Model
 
-Core replaces only the target query's search clause. Selected post fields are combined with optional source checks. Taxonomy names, author display names, and selected custom-field values use correlated `EXISTS` subqueries instead of broad joins, preventing duplicate result rows and avoiding unnecessary join work when those sources are disabled.
+Core replaces only the target query's search clause. Selected post fields are combined with optional source checks. Taxonomy names, author display names, selected custom-field values, and referenced-user display names use correlated `EXISTS` subqueries instead of broad joins, preventing duplicate result rows and avoiding unnecessary join work when those sources are disabled.
+
+An exact component adapter may additionally return `['meta_constraints' => <tree>]` from its trusted query configurator. Core appends the compiled predicate to that same query's search clause, so date and state eligibility does not require a multiplying `meta_query`. WordPress or the component continues to own sorting, pagination, and rendering.
 
 Anonymous searches retain WordPress password protection. Trusted Elementor Search widget queries are explicitly limited to published, non-password content. WordPress or Elementor continues to own pagination, permissions, template selection, and result rendering.
 
