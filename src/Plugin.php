@@ -30,6 +30,7 @@ use Hexa\JpnTools\Rest\EventController;
 use Hexa\JpnTools\Rest\HostController;
 use Hexa\JpnTools\Rest\OperationController;
 use Hexa\JpnTools\Rest\SystemController;
+use Hexa\JpnTools\Search\SiteSearch;
 
 final class Plugin
 {
@@ -80,6 +81,7 @@ final class Plugin
         $lightbox = new EventLightbox();
         (new HostMap($hosts, $dates, $lightbox))->register();
         (new EventCalendar($lightbox))->register();
+        (new SiteSearch())->register();
         (new LatestVideo())->register();
         add_action('wp_enqueue_scripts', [self::class, 'enqueueFrontend']);
         (new Privacy())->register();

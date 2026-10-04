@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.9.1 =
+* Corrective release: boots the live Elementor Search profiles during the JPN plugin lifecycle.
 
 = 1.9.0 =
 * Adds two native Elementor Search query profiles: `jpn_search_upcoming` for soonest ongoing/upcoming events and `jpn_search_all` for all public searchable content, both with bounded live AJAX matching through Hexa WP Core.
