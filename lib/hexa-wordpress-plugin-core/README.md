@@ -108,6 +108,10 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.14.4 synchronizes the registered native Elementor Search input's collapsed state when an outside click closes its result list, while preserving inside clicks and unregistered widgets. It includes the 3.14.3 native reopen lifecycle bridge.
+
+Version 3.14.3 synchronizes the native Elementor Search input's expanded state when Elementor reopens a visible result list after Escape. The lifecycle bridge applies only to registered widgets and preserves native rendering, keyboard behavior, and the existing natural search and map features.
+
 Version 3.14.2 moves the map's zoom controls beside the open selection panel on desktop so the panel never covers them.
 
 Version 3.14.0 redesigns the map selection panel as a sectioned overlay that slides in over the map (a bottom sheet on narrow screens) instead of resizing it, glides the camera so the selected pin stays clear, and organizes entries as compact rows with date badges, meta lines, tags and thumbnails, a featured card for a single entry, a loading skeleton, and a "Show more" footer that appends pages in one scrolling list.
