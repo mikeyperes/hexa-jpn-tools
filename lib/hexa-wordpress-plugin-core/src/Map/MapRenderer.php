@@ -120,18 +120,19 @@ final class MapRenderer {
         return $payload;
     }
 
+    /** The selection panel: fixed header, one scrolling body (place, then entries), and a "show more" footer. */
     private function sidebar( array $profile, string $dom_id ): string {
         if ( 'sidebar' !== $profile['selection'] ) { return ''; }
         $labels = $profile['labels'];
 
         return '<aside class="hmap-sidebar" aria-labelledby="' . esc_attr( $dom_id . '-detail-title' ) . '" hidden>'
-            . '<div class="hmap-sidebar__header"><h2 id="' . esc_attr( $dom_id . '-detail-title' ) . '" class="hmap-sidebar__title" tabindex="-1">' . esc_html( $labels['details'] ) . '</h2>'
-            . '<button type="button" class="hmap-sidebar__close" aria-label="' . esc_attr( $labels['details_close'] ) . '"><span aria-hidden="true">×</span></button></div>'
+            . '<div class="hmap-sidebar__header"><div class="hmap-sidebar__heading">'
             . '<p class="hmap-sidebar__status" role="status" aria-live="polite"></p>'
-            . '<div class="hmap-sidebar__body"></div><button type="button" class="hmap-sidebar__retry" hidden>' . esc_html( $labels['details_retry'] ) . '</button>'
-            . '<nav class="hmap-sidebar__pages" aria-label="' . esc_attr( $labels['details'] ) . '" hidden>'
-            . '<button type="button" data-hmap-page="previous">' . esc_html( $labels['details_previous'] ) . '</button>'
-            . '<button type="button" data-hmap-page="next">' . esc_html( $labels['details_next'] ) . '</button></nav></aside>';
+            . '<h2 id="' . esc_attr( $dom_id . '-detail-title' ) . '" class="hmap-sidebar__title" tabindex="-1">' . esc_html( $labels['details'] ) . '</h2></div>'
+            . '<button type="button" class="hmap-sidebar__close" aria-label="' . esc_attr( $labels['details_close'] ) . '"><span aria-hidden="true"></span></button></div>'
+            . '<div class="hmap-sidebar__body"><div class="hmap-sidebar__context"></div><div class="hmap-sidebar__entries"></div>'
+            . '<div class="hmap-sidebar__error" hidden><p>' . esc_html( $labels['details_error'] ) . '</p><button type="button" class="hmap-sidebar__retry">' . esc_html( $labels['details_retry'] ) . '</button></div></div>'
+            . '<div class="hmap-sidebar__footer" hidden><p class="hmap-sidebar__shown"></p><button type="button" class="hmap-sidebar__more">' . esc_html( $labels['details_more'] ) . '</button></div></aside>';
     }
 
     /**
@@ -312,24 +313,78 @@ final class MapRenderer {
 .hmap-card__cta{justify-self:start;margin-top:4px;color:var(--hmap-accent);font-weight:600;text-decoration:none}
 .hmap-card__cta:hover{text-decoration:underline}
 .hmap-sidebar[hidden],.hmap-sidebar [hidden],.hmap-list button[hidden]{display:none!important}
-.hmap-stage.has-selection>.hmap-canvas{right:min(var(--hmap-sidebar-width,380px),50%);width:auto}
-.hmap-sidebar{position:absolute;right:0;top:0;bottom:0;width:var(--hmap-sidebar-width,380px);max-width:50%;box-sizing:border-box;display:flex;flex-direction:column;padding:20px;background:var(--hmap-surface);border-left:1px solid var(--hmap-border);z-index:5;overflow:auto;overscroll-behavior:contain;color:var(--hmap-text);font:inherit}
-.hmap-sidebar__header{display:flex;align-items:flex-start;gap:12px;position:sticky;top:-20px;margin:-20px -20px 0;padding:20px 20px 12px;background:var(--hmap-surface);z-index:1}
-.hmap-sidebar__title{flex:1;margin:0;color:inherit;font-size:22px;line-height:1.2;overflow-wrap:anywhere}
-.hmap .hmap-sidebar button,.hmap-list button{appearance:none;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);padding:8px 12px;background:var(--hmap-surface);color:var(--hmap-text);font:inherit;font-size:13px;text-transform:none;letter-spacing:normal;cursor:pointer}
-.hmap .hmap-sidebar__close{flex:none;min-width:36px;min-height:36px;padding:0;font-size:24px}
+.hmap-sidebar{--hmap-ease:cubic-bezier(.22,.8,.24,1);position:absolute;top:12px;right:12px;bottom:12px;z-index:5;display:flex;flex-direction:column;width:var(--hmap-sidebar-width,400px);max-width:calc(100% - 24px);box-sizing:border-box;border:1px solid var(--hmap-border);border-radius:calc(var(--hmap-radius) + 6px);background:var(--hmap-surface);box-shadow:0 28px 70px -16px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.02);color:var(--hmap-text);font:inherit;overflow:hidden;opacity:0;transform:translate3d(calc(100% + 24px),0,0);visibility:hidden;transition:transform .34s var(--hmap-ease),opacity .2s ease,visibility 0s linear .34s}
+.hmap-stage.has-selection .hmap-sidebar{opacity:1;transform:none;visibility:visible;transition:transform .34s var(--hmap-ease),opacity .16s ease,visibility 0s}
+.hmap-sidebar__header{flex:none;display:flex;align-items:flex-start;gap:12px;padding:18px 18px 14px 20px;border-bottom:1px solid transparent;transition:border-color .15s}
+.hmap-sidebar.is-scrolled .hmap-sidebar__header{border-bottom-color:var(--hmap-border)}
+.hmap-sidebar__heading{flex:1;min-width:0}
+.hmap-sidebar__status{min-height:14px;margin:0 0 6px;color:var(--hmap-accent);font-size:11px;font-weight:600;letter-spacing:.14em;line-height:1.3;text-transform:uppercase}
+.hmap-sidebar__title{margin:0;color:inherit;font-size:22px;font-weight:600;line-height:1.2;overflow-wrap:anywhere;outline:0}
+.hmap .hmap-sidebar__close,.hmap .hmap-sidebar__close:hover,.hmap .hmap-sidebar__close:focus{appearance:none;flex:none;position:relative;width:34px;height:34px;min-height:0;margin:0;padding:0;border:1px solid var(--hmap-border);border-radius:999px;background:transparent;box-shadow:none;color:var(--hmap-muted);cursor:pointer;transition:border-color .15s,color .15s,background-color .15s}
+.hmap .hmap-sidebar__close:hover{border-color:var(--hmap-accent);background:rgba(255,255,255,.05);color:var(--hmap-text)}
+.hmap-sidebar__close span:before,.hmap-sidebar__close span:after{content:"";position:absolute;left:50%;top:50%;width:14px;height:1.5px;border-radius:2px;background:currentColor;transform:translate(-50%,-50%) rotate(45deg)}
+.hmap-sidebar__close span:after{transform:translate(-50%,-50%) rotate(-45deg)}
+.hmap-sidebar__body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:0 20px 20px;scrollbar-width:thin;scrollbar-color:var(--hmap-border) transparent}
+.hmap-place{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 12px;align-items:start;padding:14px;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);background:rgba(255,255,255,.025)}
+.hmap-place__pin{grid-row:span 2;position:relative;width:30px;height:30px;border-radius:999px;background:var(--hmap-glow)}
+.hmap-place__pin:after{content:"";position:absolute;inset:9px;border-radius:999px;background:var(--hmap-accent);box-shadow:0 0 0 2px var(--hmap-surface)}
+.hmap-place__name{margin:0;font-size:14px;font-weight:600;line-height:1.35}
+.hmap-place__address{margin:2px 0 0;color:var(--hmap-muted);font-size:13px;line-height:1.4}
+.hmap-place__link{grid-column:2;justify-self:start;margin-top:8px;color:var(--hmap-accent);font-size:13px;font-weight:600;text-decoration:none}
+.hmap-place__link:hover{text-decoration:underline}
+.hmap-place__summary{margin:12px 2px 0;color:var(--hmap-muted);font-size:13px;line-height:1.5}
+.hmap-sidebar__entries{margin-top:16px}
+.hmap-entries,.hmap-skeleton{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.hmap-entry{display:grid;gap:10px;min-width:0;padding:12px;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);background:rgba(255,255,255,.02);transition:border-color .15s,background-color .15s;animation:hmap-in .3s var(--hmap-ease,ease) both}
+.hmap-entry:hover{border-color:color-mix(in srgb,var(--hmap-accent) 45%,transparent);background:rgba(255,255,255,.04)}
+.hmap-entry:nth-child(2){animation-delay:.03s}.hmap-entry:nth-child(3){animation-delay:.06s}.hmap-entry:nth-child(4){animation-delay:.09s}.hmap-entry:nth-child(n+5){animation-delay:.12s}
+.hmap-entry__row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start}
+.hmap-entry__badge{display:grid;justify-items:center;align-content:center;width:50px;min-height:56px;margin:0;padding:6px 0;box-sizing:border-box;border:1px solid var(--hmap-border);border-radius:calc(var(--hmap-radius) - 2px);background:rgba(255,255,255,.05);line-height:1;text-align:center}
+.hmap-entry__badge-top{color:var(--hmap-accent);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.hmap-entry__badge-main{margin:4px 0 3px;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.hmap-entry__badge-bottom{color:var(--hmap-muted);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.hmap-entry__main{min-width:0}
+.hmap-entry__title{display:-webkit-box;margin:0;overflow:hidden;color:inherit;font-size:15px;font-weight:600;line-height:1.3;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hmap-entry__title a{color:inherit;text-decoration:none}.hmap-entry__title a:hover{color:var(--hmap-accent)}
+.hmap-entry__meta{margin:4px 0 0;color:var(--hmap-muted);font-size:13px;line-height:1.4}
+.hmap-entry__tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;padding:0;list-style:none}
+.hmap-entry__tags li{padding:3px 8px;border-radius:999px;background:var(--hmap-glow);color:var(--hmap-accent);font-size:11px;font-weight:600;line-height:1.3}
+.hmap-entry__media{display:block;width:64px;height:64px;overflow:hidden;border-radius:calc(var(--hmap-radius) - 2px);background:var(--hmap-land)}
+.hmap-entry__media img{display:block;width:100%;height:100%;object-fit:cover}
+.hmap-entry__actions{display:flex;flex-wrap:wrap;gap:8px;padding-left:62px}
+.hmap-entry:not(:has(.hmap-entry__badge)) .hmap-entry__actions{padding-left:0}
+.hmap-entry__actions a{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 12px;border:1px solid var(--hmap-border);border-radius:999px;color:var(--hmap-text);font-size:12px;font-weight:600;line-height:1;text-decoration:none;transition:border-color .15s,color .15s,filter .15s}
+.hmap-entry__actions a:hover{border-color:var(--hmap-accent);color:var(--hmap-accent)}
+.hmap-entry__actions a:first-child,.hmap-entry__actions a:first-child:hover{border-color:var(--hmap-accent);background:var(--hmap-accent);color:var(--hmap-accent-fg)}
+.hmap-entry__actions a:first-child:hover{filter:brightness(1.1)}
+.hmap-entries--feature .hmap-entry{gap:14px;padding:0;overflow:hidden}
+.hmap-entries--feature .hmap-entry>:not(.hmap-entry__media){margin:0 16px}
+.hmap-entries--feature .hmap-entry>:first-child:not(.hmap-entry__media){margin-top:16px}
+.hmap-entries--feature .hmap-entry>:last-child{margin-bottom:16px}
+.hmap-entries--feature .hmap-entry__media{width:auto;height:auto;border-radius:0}
+.hmap-entries--feature .hmap-entry__media img{height:auto;max-height:300px;object-fit:contain}
+.hmap-entries--feature .hmap-entry__title{font-size:18px;-webkit-line-clamp:3}
+.hmap-entries--feature .hmap-entry__actions{padding-left:0}
+.hmap-entries--feature .hmap-entry__actions a{min-height:36px;padding:0 16px;font-size:13px}
+.hmap-entry__description{color:var(--hmap-muted);font-size:14px;line-height:1.55}
+.hmap-entry__facts{display:grid;font-size:13px;line-height:1.45;border-top:1px solid var(--hmap-border)}
+.hmap-entry__facts>div{display:grid;grid-template-columns:76px minmax(0,1fr);gap:12px;padding:9px 0;border-bottom:1px solid var(--hmap-border)}
+.hmap-entry__facts dt{padding-top:2px;color:var(--hmap-muted);font-size:11px;font-weight:400;letter-spacing:.1em;text-transform:uppercase}
+.hmap-entry__facts dd{margin:0;overflow-wrap:anywhere}
+.hmap-skeleton li{height:82px;border-radius:var(--hmap-radius);background:linear-gradient(90deg,rgba(255,255,255,.03) 20%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.03) 80%) 0 0/300% 100%;animation:hmap-shimmer 1.2s linear infinite}
+.hmap-skeleton li:first-child{height:64px}
+.hmap-detail-empty,.hmap-sidebar__error{margin:0;padding:18px;border:1px dashed var(--hmap-border);border-radius:var(--hmap-radius);color:var(--hmap-muted);font-size:13px;line-height:1.5;text-align:center}
+.hmap-sidebar__error{margin-top:16px}.hmap-sidebar__error p{margin:0 0 12px}
+.hmap-sidebar__footer{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;border-top:1px solid var(--hmap-border);background:var(--hmap-surface)}
+.hmap-sidebar__shown{margin:0;color:var(--hmap-muted);font-size:12px}
+.hmap .hmap-sidebar__more,.hmap .hmap-sidebar__retry,.hmap-list button{appearance:none;min-height:34px;margin:0;padding:0 14px;border:1px solid var(--hmap-border);border-radius:999px;background:transparent;box-shadow:none;color:var(--hmap-text);font:inherit;font-size:13px;font-weight:600;letter-spacing:normal;text-transform:none;cursor:pointer;transition:border-color .15s,color .15s}
+.hmap .hmap-sidebar__more:hover,.hmap .hmap-sidebar__retry:hover,.hmap-list button:hover{border-color:var(--hmap-accent);background:transparent;color:var(--hmap-accent)}
+.hmap .hmap-sidebar__more:disabled{opacity:.5;cursor:default}
 .hmap-sidebar button:focus-visible,.hmap-list button:focus-visible,.hmap-sidebar a:focus-visible{outline:2px solid var(--hmap-accent);outline-offset:3px}
-.hmap-sidebar__status{margin:0 0 12px;color:var(--hmap-muted);font-size:13px;line-height:1.4}
-.hmap-sidebar__body{min-width:0}.hmap-detail-context{padding-bottom:16px}.hmap-detail-summary{margin:12px 0 0;font-size:14px;color:var(--hmap-muted)}
-.hmap-detail-entries{display:grid;gap:20px}.hmap-entry{padding:16px;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);min-width:0}
-.hmap-entry__image{display:block;margin:-16px -16px 14px;padding:0;background:var(--hmap-land);border-radius:var(--hmap-radius) var(--hmap-radius) 0 0;overflow:hidden}
-.hmap-entry__image img{display:block;width:100%;height:auto;max-height:300px;object-fit:contain}
-.hmap-entry__title{margin:0 0 12px;color:inherit;font-size:19px;line-height:1.3}.hmap-entry__title a{color:inherit;text-decoration:none}
-.hmap-entry__description{margin:0 0 12px;font-size:14px;color:var(--hmap-muted);line-height:1.5}
-.hmap-entry__facts{display:grid;gap:8px;margin:0;font-size:13px;line-height:1.5}.hmap-entry__facts>div{display:grid;grid-template-columns:65px minmax(0,1fr);gap:8px}.hmap-entry__facts dt{color:var(--hmap-muted);font-weight:400}.hmap-entry__facts dd{margin:0;overflow-wrap:anywhere}
-.hmap-entry__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.hmap-entry__actions a{display:inline-block;border:1px solid var(--hmap-border);border-radius:var(--hmap-radius);padding:7px 12px;color:var(--hmap-accent);font-size:13px;text-decoration:none}
-.hmap-sidebar__pages{display:flex;justify-content:space-between;gap:12px;margin-top:18px}.hmap-sidebar__pages button:disabled{opacity:.4;cursor:default}
-@media(max-width:767px){.hmap-stage.has-selection{height:auto}.hmap-stage.has-selection>.hmap-canvas{position:relative;inset:auto;width:100%;height:var(--hmap-height)}.hmap-sidebar{position:relative;inset:auto;width:100%;max-width:none;max-height:65vh;max-height:65dvh;border-left:0;border-top:1px solid var(--hmap-border)}.hmap-stage.has-selection:after{display:none}}
+@keyframes hmap-in{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+@keyframes hmap-shimmer{to{background-position:-300% 0}}
+@media(max-width:767px){.hmap-sidebar{top:auto;right:8px;bottom:8px;left:8px;width:auto;max-width:none;max-height:78%;transform:translate3d(0,calc(100% + 16px),0)}.hmap-stage.has-selection .hmap-sidebar{transform:none}.hmap-sidebar__header{padding:16px 14px 12px 16px}.hmap-sidebar__body{padding:0 16px 16px}.hmap-sidebar__footer{padding:10px 16px}}
+@media(prefers-reduced-motion:reduce){.hmap-sidebar,.hmap-stage.has-selection .hmap-sidebar,.hmap-entry,.hmap-skeleton li{transition:none;animation:none}}
 @media (max-width:767px){.hmap{--hmap-height:440px}.hmap-status{flex-basis:100%;margin:2px 0 0}}
 CSS;
     }
@@ -434,37 +489,53 @@ CSS;
       map.addControl(new gl.NavigationControl({ showCompass: false }), 'top-right');
       var popup = new gl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '300px', offset: 14, anchor: 'bottom', className: 'hmap-popup' });
       var stage = el.querySelector('.hmap-stage'), sidebar = el.querySelector('.hmap-sidebar');
-      var sideTitle = sidebar && sidebar.querySelector('.hmap-sidebar__title');
-      var sideBody = sidebar && sidebar.querySelector('.hmap-sidebar__body');
-      var sideStatus = sidebar && sidebar.querySelector('.hmap-sidebar__status');
-      var sideRetry = sidebar && sidebar.querySelector('.hmap-sidebar__retry');
-      var sidePages = sidebar && sidebar.querySelector('.hmap-sidebar__pages');
-      var sidePage = 1, sideLastPage = 1, detailSeq = 0, detailAbort = null, returnFocus = null;
+      var side = {};
+      if (sidebar) {
+        ['title', 'status', 'body', 'context', 'entries', 'error', 'footer', 'shown', 'more', 'retry'].forEach(function (k) { side[k] = sidebar.querySelector('.hmap-sidebar__' + k); });
+      }
+      var sidePage = 1, sideLastPage = 1, detailSeq = 0, detailAbort = null, retryAppend = false, returnFocus = null, hideTimer = null;
+      var none = { top: 0, right: 0, bottom: 0, left: 0 };
       canvas.tabIndex = 0;
-      function closeSelection(restore) {
+      function isOpen() { return !!sidebar && stage.classList.contains('has-selection'); }
+      // Camera padding that keeps the selected pin clear of the panel (a bottom sheet on narrow maps).
+      function inset() {
+        var w = stage.clientWidth, h = stage.clientHeight, sw = sidebar.offsetWidth;
+        return sw >= w * 0.8 ? { top: 0, right: 0, left: 0, bottom: Math.round(h * 0.55) } : { top: 0, bottom: 0, left: 0, right: sw + 12 };
+      }
+      function closeSelection(restore, instant) {
         popup.remove(); tip.remove();
         mark(selId, 'sel', false); selId = null;
         ++detailSeq;
         if (detailAbort) { detailAbort.abort(); detailAbort = null; }
-        if (sidebar) {
-          sidebar.hidden = true; sidebar.removeAttribute('aria-busy'); sideBody.innerHTML = '';
-          stage.classList.remove('has-selection'); map.resize();
+        if (isOpen()) {
+          stage.classList.remove('has-selection'); sidebar.removeAttribute('aria-busy');
+          if (instant || reduce) { map.jumpTo({ padding: none }); } else { map.easeTo({ padding: none, duration: 450 }); }
+          clearTimeout(hideTimer);
+          hideTimer = setTimeout(function () {
+            if (isOpen()) { return; }
+            sidebar.hidden = true; side.context.innerHTML = ''; side.entries.innerHTML = '';
+          }, reduce ? 0 : 360);
         }
         if (restore && returnFocus && returnFocus.isConnected) { returnFocus.focus({preventScroll:true}); }
         returnFocus = null;
       }
-      function loadDetails(page) {
+      function count(d) { return (d === 1 ? cfg.labels.details_count_one : cfg.labels.details_count_many).replace('%d', d); }
+      function loadDetails(page, append) {
         var p = shown[selId], endpoint = el.getAttribute('data-hmap-endpoint');
         if (!sidebar || !p || !endpoint) { return; }
         if (detailAbort) { detailAbort.abort(); }
         detailAbort = window.AbortController ? new AbortController() : null;
         var n = ++detailSeq;
-        sidePage = page; sidebar.setAttribute('aria-busy', 'true');
-        sideStatus.textContent = cfg.labels.details_loading; sideRetry.hidden = true; sidePages.hidden = true;
-        var url = new URL(endpoint, location.href);
-        if (url.origin !== location.origin) {
-          sidebar.removeAttribute('aria-busy'); sideStatus.textContent = cfg.labels.details_error; return;
+        sidebar.setAttribute('aria-busy', 'true'); side.error.hidden = true;
+        if (append) { side.more.disabled = true; side.more.textContent = cfg.labels.details_loading; }
+        else { side.status.textContent = cfg.labels.details_loading; }
+        function failed() {
+          sidebar.removeAttribute('aria-busy'); retryAppend = append; side.error.hidden = false;
+          side.more.disabled = false; side.more.textContent = cfg.labels.details_more;
+          if (!append) { side.entries.innerHTML = ''; side.status.textContent = ''; }
         }
+        var url = new URL(endpoint, location.href);
+        if (url.origin !== location.origin) { failed(); return; }
         if (url.searchParams.has('rest_route')) {
           url.searchParams.set('rest_route', url.searchParams.get('rest_route').replace(/\/$/, '') + '/' + p.id);
         } else { url.pathname = url.pathname.replace(/\/$/, '') + '/' + p.id; }
@@ -474,18 +545,23 @@ CSS;
         fetch(url.href, {credentials:nonce?'same-origin':'omit', headers:headers, signal:detailAbort?detailAbort.signal:undefined})
           .then(function(r) { if (!r.ok) { throw new Error('HTTP ' + r.status); } return r.json(); })
           .then(function(d) {
-            if (n !== detailSeq || sidebar.hidden) { return; }
+            if (n !== detailSeq || !isOpen()) { return; }
             sidebar.removeAttribute('aria-busy');
-            sideTitle.textContent = d.title || p.t; sideBody.innerHTML = d.html || '';
+            side.title.textContent = d.title || p.t;
+            if (append) {
+              var tmp = document.createElement('div'), list, cur = side.entries.querySelector('.hmap-entries');
+              tmp.innerHTML = d.html || ''; list = tmp.querySelector('.hmap-entries');
+              while (cur && list && list.firstChild) { cur.appendChild(list.firstChild); }
+            } else { side.context.innerHTML = d.context || ''; side.entries.innerHTML = d.html || ''; }
             sidePage = +d.page || 1; sideLastPage = +d.pages || 1;
-            sideStatus.textContent = cfg.labels.details_page.replace('%1$d', sidePage).replace('%2$d', sideLastPage).replace('%3$d', +d.total || 0);
-            sidePages.hidden = sideLastPage <= 1;
-            sidePages.querySelector('[data-hmap-page="previous"]').disabled = sidePage <= 1;
-            sidePages.querySelector('[data-hmap-page="next"]').disabled = sidePage >= sideLastPage;
-            sidebar.scrollTop = 0;
+            var total = +d.total || 0;
+            side.status.textContent = count(total);
+            side.footer.hidden = sidePage >= sideLastPage;
+            side.shown.textContent = cfg.labels.details_shown.replace('%1$d', side.entries.querySelectorAll('.hmap-entry').length).replace('%2$d', total);
+            side.more.disabled = false; side.more.textContent = cfg.labels.details_more;
           }).catch(function(e) {
-            if (n !== detailSeq || sidebar.hidden || e.name === 'AbortError') { return; }
-            sidebar.removeAttribute('aria-busy'); sideStatus.textContent = cfg.labels.details_error; sideRetry.hidden = false;
+            if (n !== detailSeq || !isOpen() || e.name === 'AbortError') { return; }
+            failed();
           });
       }
       map.on('style.load', function () {
@@ -561,11 +637,17 @@ CSS;
         tip.remove();
         if (sidebar) {
           mark(selId, 'sel', false); selId = i; mark(selId, 'sel', true);
-          returnFocus = trigger || canvas;
-          sideTitle.textContent = p.g || p.t; sideBody.innerHTML = '';
-          sidebar.hidden = false; stage.classList.add('has-selection'); map.resize();
-          map.easeTo({center:[p.lo,p.la],duration:reduce?0:300});
-          sideTitle.focus({preventScroll:true}); loadDetails(1); return;
+          if (!returnFocus) { returnFocus = trigger || canvas; }
+          clearTimeout(hideTimer);
+          side.title.textContent = p.g || p.t; side.status.textContent = cfg.labels.details_loading;
+          side.context.innerHTML = ''; side.error.hidden = true; side.footer.hidden = true;
+          side.entries.innerHTML = '<ul class="hmap-skeleton" aria-hidden="true"><li></li><li></li><li></li></ul>';
+          side.body.scrollTop = 0; sidebar.classList.remove('is-scrolled');
+          // Unhide first and commit the off-screen position, so the panel slides in instead of popping.
+          if (sidebar.hidden) { sidebar.hidden = false; void sidebar.offsetWidth; }
+          stage.classList.add('has-selection');
+          map.easeTo({ center: [p.lo, p.la], padding: inset(), duration: reduce ? 0 : 450 });
+          side.title.focus({preventScroll:true}); loadDetails(1, false); return;
         }
         var c = map.getContainer(), w = c.clientWidth, h = c.clientHeight;
         // The card always opens above its pin and never exceeds the map: narrow maps (phones) get a
@@ -593,7 +675,7 @@ CSS;
         var f = nearest(e);
         if (!f) { closeSelection(false); return; }
         if (f.properties.cluster_id !== undefined) {
-          closeSelection(false);
+          closeSelection(false, true);
           map.getSource('hmap').getClusterExpansionZoom(f.properties.cluster_id).then(function (z) {
             map.easeTo({ center: f.geometry.coordinates, zoom: z + 0.5 });
           });
@@ -602,7 +684,7 @@ CSS;
         openCard(f.properties.i);
       });
       function apply() {
-        closeSelection(false);
+        closeSelection(false, true);
         shown = pick();
         if (map.getSource('hmap')) { map.removeFeatureState({ source: 'hmap' }); }
         hoverId = null; selId = null;
@@ -626,12 +708,10 @@ CSS;
       if (select) { select.addEventListener('change', function () { state.g = select.value; apply(); }); }
       if (sidebar) {
         sidebar.querySelector('.hmap-sidebar__close').addEventListener('click', function() { closeSelection(true); });
-        sideRetry.addEventListener('click', function() { loadDetails(sidePage); });
-        sidePages.addEventListener('click', function(e) {
-          var b = e.target.closest('[data-hmap-page]');
-          if (b && !b.disabled) { loadDetails(sidePage + (b.getAttribute('data-hmap-page') === 'next' ? 1 : -1)); }
-        });
-        el.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !sidebar.hidden) { e.preventDefault(); closeSelection(true); } });
+        side.retry.addEventListener('click', function() { loadDetails(retryAppend ? sidePage + 1 : 1, retryAppend); });
+        side.more.addEventListener('click', function() { if (sidePage < sideLastPage) { loadDetails(sidePage + 1, true); } });
+        side.body.addEventListener('scroll', function() { sidebar.classList.toggle('is-scrolled', side.body.scrollTop > 4); }, { passive: true });
+        el.addEventListener('keydown', function(e) { if (e.key === 'Escape' && isOpen()) { e.preventDefault(); closeSelection(true); } });
         Array.prototype.forEach.call(el.querySelectorAll('[data-hmap-select]'), function(b) {
           b.hidden = false;
           b.addEventListener('click', function() {

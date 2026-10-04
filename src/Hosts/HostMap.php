@@ -13,7 +13,7 @@ use Hexa\PluginCore\Map\MapRegistry;
  * JPN host map: registers the `jpn_hosts` profile with Hexa WP Core's Map.
  *
  * Core owns geocoding, the map, pins, clustering, the area filter, the right
- * selection sidebar, rich entry markup, and caching; brand colors are set in
+ * sliding selection panel, entry layout, and caching; brand colors are set in
  * Elementor. This class owns the host profile and opts into AreaMapDetails,
  * which supplies upcoming/ongoing event data across the selected area.
  * Event photos and titles open Core's lightbox; Details opens the event page.
@@ -67,7 +67,10 @@ final class HostMap
                 'details_loading' => __('Loading area events…', 'hexa-jpn-tools'),
                 'details_error' => __('The area events could not load. Please try again.', 'hexa-jpn-tools'),
                 'details_empty' => __('No upcoming or ongoing events match this area and date window.', 'hexa-jpn-tools'),
-                'details_page' => __('Page %1$d of %2$d · %3$d events', 'hexa-jpn-tools'),
+                'details_count_one' => __('%d event', 'hexa-jpn-tools'),
+                'details_count_many' => __('%d events', 'hexa-jpn-tools'),
+                'details_shown' => __('Showing %1$d of %2$d events', 'hexa-jpn-tools'),
+                'details_more' => __('Show more events', 'hexa-jpn-tools'),
             ] + $this->lightbox->labels(),
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-hosts-map',

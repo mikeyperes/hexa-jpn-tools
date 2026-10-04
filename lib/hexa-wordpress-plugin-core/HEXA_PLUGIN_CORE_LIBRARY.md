@@ -11,10 +11,12 @@ dot-separated paths such as `data.area`; criteria declare `direction`
 placement (`first`/`last`). Sorting runs within each day after placement, before
 the visible/more split. See `docs/calendar.md` for examples and compatibility.
 
-Map profiles opt into a right selection panel with `selection => 'sidebar'`.
-Core's `Map\MapDetails` owns rich image/title/description/fact/action markup,
-the read endpoint `map/{profile}/details/{item}`, bounded pagination, loading,
-retry, request cancellation, focus, and responsive placement. Hosts supply a
+Map profiles opt into a selection panel with `selection => 'sidebar'`: a
+sectioned overlay that slides over the map (a bottom sheet on narrow screens)
+without resizing it. Core's `Map\MapDetails` owns the place block, compact
+entry rows (date badge, meta, tags, thumbnail, actions), the single-entry
+featured card, the read endpoint `map/{profile}/details/{item}`, "Show more"
+paging, loading skeleton, retry, request cancellation, focus, and placement. Hosts supply a
 `details(int $id, array $data, array $item, array $query): array` callback
 returning `title`, `summary`, `entries`, `total`, and the clamped `page`.
 The query contains `page`, profile-controlled `per_page` (1–50), and `hours`

@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.9.3
+Stable tag: 1.10.0
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.10.0 =
+* Bundles Hexa WP Plugin Core 3.14.0: the live map's event panel slides in over the map instead of squeezing it, with date-badge event rows, time/host lines, tags, a featured card for a single event, and "Show more events" in one scrolling list.
 
 = 1.9.3 =
 * Uses Hexa WP Plugin Core 3.13.2's bounded correlated meta constraints for efficient upcoming-event search eligibility without multiplying meta-query joins.

@@ -39,7 +39,7 @@ final class MapDetails {
             'per_page' => $profile['details_per_page'], 'hours' => $hours,
         ];
         if ( null === $profile['details'] ) {
-            $payload = [ 'title' => $item['title'], 'html' => ( new MapRenderer() )->card( $profile, $item ), 'page' => 1, 'pages' => 1, 'total' => 1 ];
+            $payload = [ 'title' => $item['title'], 'context' => '', 'html' => ( new MapRenderer() )->card( $profile, $item ), 'page' => 1, 'pages' => 1, 'total' => 1 ];
         } else {
             $data = (array) call_user_func( $profile['details'], $item['id'], $item['data'], $item, $query );
             $total = max( 0, (int) ( $data['total'] ?? count( (array) ( $data['entries'] ?? [] ) ) ) );
@@ -47,10 +47,12 @@ final class MapDetails {
             $page = max( 1, min( $pages, (int) ( $data['page'] ?? $query['page'] ) ) );
             $payload = [
                 'title' => (string) ( $data['title'] ?? $item['title'] ),
-                'html' => self::render( $profile, $item, $data, $query['per_page'] ),
+                'context' => 1 === $page ? self::context( $profile, $item, $data ) : '',
+                'html' => self::render( $profile, $data, $query['per_page'], 1 === $total ),
                 'page' => $page, 'pages' => $pages, 'total' => $total,
             ];
         }
+        $payload['context'] = PublicComponent::inert( $payload['context'] );
         $payload['html'] = PublicComponent::inert( $payload['html'] );
         do_action( 'litespeed_tag_add', MapRenderer::CACHE_TAG );
         $response = PublicComponent::rest_response( $payload, $profile['public'] );
@@ -61,60 +63,104 @@ final class MapDetails {
         return $response;
     }
 
-    /** Hosts provide escaped-by-Core scalars, never map/sidebar UI or arbitrary client HTML. */
-    public static function render( array $profile, array $item, array $data, int $limit ): string {
-        $html = '<div class="hmap-detail-context"><p class="hmap-card__meta">'
-            . esc_html( $item['title'] . ( '' !== $item['address'] ? ' · ' . $item['address'] : '' ) ) . '</p>';
+    /**
+     * The selected place: its name, address, link, and the host's one-line summary.
+     * Hosts provide escaped-by-Core scalars, never map/sidebar UI or arbitrary client HTML.
+     */
+    public static function context( array $profile, array $item, array $data ): string {
+        $html = '<div class="hmap-place"><span class="hmap-place__pin" aria-hidden="true"></span><div class="hmap-place__text">'
+            . '<p class="hmap-place__name">' . esc_html( $item['title'] ) . '</p>'
+            . ( '' !== $item['address'] ? '<p class="hmap-place__address">' . esc_html( $item['address'] ) . '</p>' : '' ) . '</div>';
         if ( '' !== $item['url'] ) {
-            $html .= '<a class="hmap-card__cta" href="' . esc_url( $item['url'] ) . '"'
+            $html .= '<a class="hmap-place__link" href="' . esc_url( $item['url'] ) . '"'
                 . ItemLink::attributes( $profile, 'map', 'posts' === $profile['source'] ? $item['id'] : 0 ) . '>'
-                . esc_html( $profile['labels']['cta'] ) . '</a>';
+                . esc_html( $profile['labels']['cta'] ) . ' <span aria-hidden="true">→</span></a>';
         }
+        $html .= '</div>';
         if ( '' !== (string) ( $data['summary'] ?? '' ) ) {
-            $html .= '<p class="hmap-detail-summary">' . esc_html( (string) $data['summary'] ) . '</p>';
+            $html .= '<p class="hmap-place__summary">' . esc_html( (string) $data['summary'] ) . '</p>';
         }
-        $html .= '</div><div class="hmap-detail-entries">';
-        $count = 0;
+
+        return $html;
+    }
+
+    /**
+     * One page of entries. Several entries render as compact rows (date badge, title, meta,
+     * tags, thumbnail, actions); a lone entry renders as a featured card that adds the large
+     * image, description, and facts. Entry keys: id, title, url, image{url,alt}, badge{top,main,
+     * bottom}, meta[], tags[], description, facts{label:value}, actions[{label,url,external}].
+     */
+    public static function render( array $profile, array $data, int $limit, bool $feature = false ): string {
+        $level = (int) $profile['heading_level'];
+        $html = '';
         foreach ( array_slice( (array) ( $data['entries'] ?? [] ), 0, $limit ) as $entry ) {
             if ( ! is_array( $entry ) || '' === (string) ( $entry['title'] ?? '' ) ) {
                 continue;
             }
-            $count++;
             $url = esc_url( (string) ( $entry['url'] ?? '' ) );
             $attrs = ItemLink::attributes( $profile, 'map', (int) ( $entry['id'] ?? 0 ) );
             $title = esc_html( (string) $entry['title'] );
-            $html .= '<article class="hmap-entry">';
             $image = (array) ( $entry['image'] ?? [] );
             $src = esc_url( (string) ( $image['url'] ?? '' ) );
+            $media = '';
             if ( '' !== $src ) {
-                $media = '<img src="' . $src . '" alt="' . esc_attr( (string) ( $image['alt'] ?? '' ) ) . '" loading="lazy" decoding="async">';
-                $html .= '' !== $url ? '<a class="hmap-entry__image" href="' . $url . '"' . $attrs . '>' . $media . '</a>' : '<div class="hmap-entry__image">' . $media . '</div>';
+                $img = '<img src="' . $src . '" alt="' . esc_attr( (string) ( $image['alt'] ?? '' ) ) . '" loading="lazy" decoding="async">';
+                $media = '' !== $url ? '<a class="hmap-entry__media" href="' . $url . '"' . $attrs . ' tabindex="-1">' . $img . '</a>' : '<div class="hmap-entry__media">' . $img . '</div>';
             }
-            $html .= '<h' . $profile['heading_level'] . ' class="hmap-entry__title">'
-                . ( '' !== $url ? '<a href="' . $url . '"' . $attrs . '>' . $title . '</a>' : $title ) . '</h' . $profile['heading_level'] . '>';
-            if ( '' !== (string) ( $entry['description'] ?? '' ) ) {
-                $html .= '<p class="hmap-entry__description">' . esc_html( (string) $entry['description'] ) . '</p>';
-            }
-            $html .= '<dl class="hmap-entry__facts">';
-            foreach ( (array) ( $entry['facts'] ?? [] ) as $label => $value ) {
-                if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) {
-                    $html .= '<div><dt>' . esc_html( (string) $label ) . '</dt><dd>' . esc_html( (string) $value ) . '</dd></div>';
+            $badge = (array) ( $entry['badge'] ?? [] );
+            $badge_html = '';
+            if ( '' !== (string) ( $badge['main'] ?? '' ) ) {
+                $badge_html = '<p class="hmap-entry__badge">';
+                foreach ( [ 'top', 'main', 'bottom' ] as $part ) {
+                    if ( '' !== (string) ( $badge[ $part ] ?? '' ) ) {
+                        $badge_html .= '<span class="hmap-entry__badge-' . $part . '">' . esc_html( (string) $badge[ $part ] ) . '</span>';
+                    }
                 }
+                $badge_html .= '</p>';
             }
-            $html .= '</dl><div class="hmap-entry__actions">';
+            $meta = implode( ' · ', array_map( 'esc_html', self::strings( $entry['meta'] ?? [] ) ) );
+            $tags = '';
+            foreach ( array_slice( self::strings( $entry['tags'] ?? [] ), 0, 4 ) as $tag ) {
+                $tags .= '<li>' . esc_html( $tag ) . '</li>';
+            }
+
+            $html .= '<li class="hmap-entry">' . ( $feature ? $media : '' ) . '<div class="hmap-entry__row">' . $badge_html . '<div class="hmap-entry__main">'
+                . '<h' . $level . ' class="hmap-entry__title">' . ( '' !== $url ? '<a href="' . $url . '"' . $attrs . '>' . $title . '</a>' : $title ) . '</h' . $level . '>'
+                . ( '' !== $meta ? '<p class="hmap-entry__meta">' . $meta . '</p>' : '' )
+                . ( '' !== $tags ? '<ul class="hmap-entry__tags">' . $tags . '</ul>' : '' )
+                . '</div>' . ( $feature ? '' : $media ) . '</div>';
+            if ( $feature ) {
+                if ( '' !== (string) ( $entry['description'] ?? '' ) ) {
+                    $html .= '<p class="hmap-entry__description">' . esc_html( (string) $entry['description'] ) . '</p>';
+                }
+                $facts = '';
+                foreach ( (array) ( $entry['facts'] ?? [] ) as $label => $value ) {
+                    if ( is_scalar( $value ) && '' !== trim( (string) $value ) ) {
+                        $facts .= '<div><dt>' . esc_html( (string) $label ) . '</dt><dd>' . esc_html( (string) $value ) . '</dd></div>';
+                    }
+                }
+                $html .= '' !== $facts ? '<dl class="hmap-entry__facts">' . $facts . '</dl>' : '';
+            }
+            $actions = '';
             foreach ( array_slice( (array) ( $entry['actions'] ?? [] ), 0, 5 ) as $action ) {
                 if ( ! is_array( $action ) ) { continue; }
                 $href = esc_url( (string) ( $action['url'] ?? '' ) );
                 if ( '' !== $href && '' !== (string) ( $action['label'] ?? '' ) ) {
-                    $html .= '<a href="' . $href . '"' . ( ! empty( $action['external'] ) ? ' target="_blank" rel="noopener noreferrer"' : '' ) . '>' . esc_html( (string) $action['label'] ) . '</a>';
+                    $actions .= '<a href="' . $href . '"' . ( ! empty( $action['external'] ) ? ' target="_blank" rel="noopener noreferrer"' : '' ) . '>' . esc_html( (string) $action['label'] )
+                        . ( ! empty( $action['external'] ) ? ' <span aria-hidden="true">↗</span>' : '' ) . '</a>';
                 }
             }
-            $html .= '</div></article>';
+            $html .= ( '' !== $actions ? '<div class="hmap-entry__actions">' . $actions . '</div>' : '' ) . '</li>';
         }
-        if ( 0 === $count ) {
-            $html .= '<p class="hmap-detail-empty">' . esc_html( $profile['labels']['details_empty'] ) . '</p>';
+        if ( '' === $html ) {
+            return '<p class="hmap-detail-empty">' . esc_html( $profile['labels']['details_empty'] ) . '</p>';
         }
 
-        return $html . '</div>';
+        return '<ul class="hmap-entries' . ( $feature ? ' hmap-entries--feature' : '' ) . '">' . $html . '</ul>';
+    }
+
+    /** @return array<int,string> Non-empty trimmed scalar strings. */
+    private static function strings( $values ): array {
+        return array_values( array_filter( array_map( static fn( $v ): string => is_scalar( $v ) ? trim( (string) $v ) : '', (array) $values ), 'strlen' ) );
     }
 }

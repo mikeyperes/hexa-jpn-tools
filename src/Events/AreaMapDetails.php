@@ -63,19 +63,38 @@ final class AreaMapDetails
             if (trim($description) === '') {
                 $description = (string) $post->post_content;
             }
+            $hostName = $eventHost ? html_entity_decode((string) $eventHost->display_name, ENT_QUOTES, 'UTF-8') : '';
+            $now = time();
+            $tags = [];
+            if ($start > 0 && $start <= $now && ($end <= 0 || $end >= $now)) {
+                $tags[] = __('Happening now', 'hexa-jpn-tools');
+            }
+            if (get_post_meta($id, 'featured_event', true) === '1') {
+                $tags[] = __('Featured', 'hexa-jpn-tools');
+            }
+            if (get_post_meta($id, 'kids_event', true) === '1') {
+                $tags[] = __('Kids & families', 'hexa-jpn-tools');
+            }
+            $multiDay = str_contains($when['date'], '–');
             $entries[] = [
                 'id' => $id,
                 'title' => html_entity_decode(get_the_title($id), ENT_QUOTES, 'UTF-8'),
                 'url' => $url,
                 'image' => ['url' => $imageUrl, 'alt' => $imageId > 0 ? (string) get_post_meta($imageId, '_wp_attachment_image_alt', true) : ''],
+                'badge' => [
+                    'top' => $this->dates->formatTimestamp($start, 'M'),
+                    'main' => $this->dates->formatTimestamp($start, 'j'),
+                    'bottom' => $this->dates->formatTimestamp($start, 'D'),
+                ],
+                // Row line: multi-day range or start time, then the host.
+                'meta' => [$multiDay ? $when['date'] : ($when['time'] !== '' ? $when['time'] : __('All day', 'hexa-jpn-tools')), $hostName],
+                'tags' => $tags,
                 'description' => wp_trim_words(wp_strip_all_tags(strip_shortcodes($description)), 35),
                 'facts' => [
                     __('When', 'hexa-jpn-tools') => $when['date'] . ($when['time'] !== '' ? ' · ' . $when['time'] : '') . ' · ' . $this->dates->formatTimestamp($start, 'Y'),
+                    __('Host', 'hexa-jpn-tools') => $hostName,
                     __('Where', 'hexa-jpn-tools') => $location,
                     __('Address', 'hexa-jpn-tools') => $address,
-                    __('Host', 'hexa-jpn-tools') => $eventHost ? html_entity_decode((string) $eventHost->display_name, ENT_QUOTES, 'UTF-8') : '',
-                    __('Who', 'hexa-jpn-tools') => get_post_meta($id, 'kids_event', true) === '1' ? __('Kids & families', 'hexa-jpn-tools') : '',
-                    __('Featured', 'hexa-jpn-tools') => get_post_meta($id, 'featured_event', true) === '1' ? __('Yes', 'hexa-jpn-tools') : '',
                 ],
                 'actions' => $actions,
             ];
@@ -83,7 +102,7 @@ final class AreaMapDetails
 
         $areaName = $areaId > 0 ? html_entity_decode((string) $term->name, ENT_QUOTES, 'UTF-8') : $item['title'];
         $summary = $areaId > 0
-            ? sprintf(__('Upcoming and ongoing events across %s, ordered by start date.', 'hexa-jpn-tools'), $areaName)
+            ? sprintf(__('Upcoming and ongoing events across %s.', 'hexa-jpn-tools'), $areaName)
             : __('This location has no assigned area. Showing its own upcoming and ongoing events.', 'hexa-jpn-tools');
         if ($hours > 0) {
             $summary .= ' ' . sprintf(__('Within the next %d hours.', 'hexa-jpn-tools'), $hours);

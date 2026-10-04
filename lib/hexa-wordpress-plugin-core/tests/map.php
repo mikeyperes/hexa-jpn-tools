@@ -196,6 +196,6 @@ $expect( str_contains( MapRenderer::js(), "p.n <= now + h * 3600" ) && str_conta
 $plain = MapProfile::normalize( 'plain', [ 'source' => 'users', 'roles' => [ 'host' ], 'address' => 'address' ] );
 $expect( null === $plain['next'] && [ 24 => '24 hours', 48 => '48 hours', 168 => '1 week', 336 => '2 weeks' ] === $plain['windows'], 'Default windows; no date chips without `next`.' );
 $expect( [ 12 => '12h', 72 => '3 days' ] === MapProfile::normalize( 'w', [ 'source' => 'users', 'roles' => [ 'h' ], 'address' => 'a', 'windows' => [ 72 => '3 days', 12 => '12h', -1 => 'bad', 5 => '' ] ] )['windows'], 'Custom windows are validated and sorted.' );
-$expect( strlen( (string) gzencode( MapRenderer::css() . MapRenderer::js(), 9 ) ) < 6500, 'Map assets stay small (the map library itself loads lazily from its CDN).' );
+$expect( strlen( (string) gzencode( MapRenderer::css() . MapRenderer::js(), 9 ) ) < 11000, 'Map assets, including the selection panel, stay small (the map library itself loads lazily from its CDN).' );
 
 echo "PASS: map contract ({$assertions} assertions).\n";

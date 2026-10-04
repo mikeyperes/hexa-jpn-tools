@@ -207,9 +207,10 @@ final class MapProfile {
             'details_error' => 'Details could not load. Please try again.',
             'details_empty' => 'No items match this location and date window.',
             'details_retry' => 'Try again',
-            'details_previous' => 'Previous',
-            'details_next' => 'Next',
-            'details_page' => 'Page %1$d of %2$d · %3$d items',
+            'details_count_one' => '%d item',
+            'details_count_many' => '%d items',
+            'details_shown' => 'Showing %1$d of %2$d',
+            'details_more' => 'Show more',
         ] + ItemLink::LABELS, $labels );
     }
 }

@@ -108,6 +108,8 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
+Version 3.14.0 redesigns the map selection panel as a sectioned overlay that slides in over the map (a bottom sheet on narrow screens) instead of resizing it, glides the camera so the selected pin stays clear, and organizes entries as compact rows with date badges, meta lines, tags and thumbnails, a featured card for a single entry, a loading skeleton, and a "Show more" footer that appends pages in one scrolling list.
+
 Version 3.13.4 keeps native Elementor Search keyboard and icon behavior intact when results are nested inside another keyboard component or intentionally rendered in normal document flow.
 
 Version 3.13.3 clears a registered Elementor Search widget's old result markup as soon as its current input falls below the widget's native minimum character setting, while preserving native rendering at and above that threshold.

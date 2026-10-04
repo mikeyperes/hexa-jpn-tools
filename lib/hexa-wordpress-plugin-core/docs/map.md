@@ -33,9 +33,9 @@ data, including any related entries shown after a selection.
 - Smooth selection: every pin has a generous invisible target and a click picks
   the nearest pin; hover enlarges it and shows the item's name; the chosen pin
   stays highlighted. The default popup opens above the pin, sized to the map.
-  Opt into `selection => 'sidebar'` for a scrollable right panel and a resized
-  map centered on the selected location. On narrow screens, the panel stacks
-  below the map. The map instance is exposed as `element.hmapMap`.
+  Opt into `selection => 'sidebar'` for a selection panel that slides in over
+  the right of the map (a bottom sheet on narrow screens) without resizing it;
+  the camera glides so the selected pin stays clear of the panel. The map instance is exposed as `element.hmapMap`.
 - Accessible and crawlable: the count is a live region, filters are real
   buttons, one-finger scrolling passes through on touch screens, and every
   item is also a plain link in a `<details>` list (opened automatically if the
@@ -111,7 +111,7 @@ selector .hmap {
 | `prepare` | none | `fn( int[] $ids ): array` batch data for placed items, passed to `title`, `link`, `card`, `highlight`, `render_item`. |
 | `title` / `link` | name / profile URL | Users: display name and author URL; posts: title and permalink. Or `fn( int $id, array $data )`. |
 | `card` | group, address, CTA | `fn( int $id, array $data, array $item ): array` with `kicker`, `meta`, `list_label`, `list`, `cta`. Core escapes and renders it. |
-| `selection` | `popup` | `popup` or `sidebar`; sidebar opens on the right, below the map on narrow screens. |
+| `selection` | `popup` | `popup` or `sidebar`; sidebar slides over the right of the map, or up from the bottom on narrow screens. |
 | `details` | none | `fn( int $id, array $data, array $item, array $query ): array` supplying the selection title, summary, and paginated rich entries. Without a provider, sidebar uses the existing item card. |
 | `details_per_page` | `10` | Server-controlled entry limit, 1–50. |
 | `related_post_types` | `[]` | Related content types whose saves, deletion, terms, or metadata changes invalidate map and detail caches, including maps sourced from users. |
@@ -126,7 +126,7 @@ selector .hmap {
 | `cluster` | `true` | Cluster nearby pins; a cluster zooms in on click. |
 | `max_items` | `500` | Upper bound 2000. |
 | `heading_level` | `3` | Card title heading. |
-| `labels` | English | `region`, `loading`, `all`, `filter`, `more`, `when`, `when_all`, `when_prefix`, `count_one`, `count_many`, `list`, `cta`; sidebar adds `details`, `details_open`, `details_close`, `details_loading`, `details_error`, `details_empty`, `details_retry`, `details_previous`, `details_next`, `details_page`. |
+| `labels` | English | `region`, `loading`, `all`, `filter`, `more`, `when`, `when_all`, `when_prefix`, `count_one`, `count_many`, `list`, `cta`; sidebar adds `details`, `details_open`, `details_close`, `details_loading`, `details_error`, `details_empty`, `details_retry`, `details_count_one`, `details_count_many`, `details_shown`, `details_more`. |
 | `cache_ttl` | `3600` | Seconds the rendered payload is cached (per content generation); also caps the LiteSpeed page lifetime. |
 | `cache_version` / `class` / `public` | — | As in the other public components. |
 
@@ -161,6 +161,9 @@ Each entry is structured data, escaped and rendered by Core:
     'title' => 'Activity title',
     'url' => get_permalink( $post_id ),
     'image' => [ 'url' => $image_url, 'alt' => 'Activity photo' ],
+    'badge' => [ 'top' => 'Oct', 'main' => '4', 'bottom' => 'Sun' ], // date block
+    'meta' => [ '6:00 PM', 'Host name' ],      // one muted line, joined with " · "
+    'tags' => [ 'Kids & families', 'Happening now' ], // up to four pills
     'description' => 'A short plain-text description.',
     'facts' => [ 'When' => 'Oct 4 at 6 PM', 'Where' => 'Main hall' ],
     'actions' => [ [ 'label' => 'Details', 'url' => get_permalink( $post_id ) ],
@@ -168,8 +171,14 @@ Each entry is structured data, escaped and rendered by Core:
 ]
 ```
 
+Several entries render as compact rows: date badge, title, meta line, tags,
+thumbnail and actions (the first action is the primary button). A location
+with exactly one entry renders it as a featured card that adds the large
+image, description and facts.
+
 `GET /wp-json/hexa-plugin-core/v1/map/{profile}/details/{item}?page=1&hours=0`
-returns `title`, escaped `html`, `page`, `pages`, and `total`. `MapLocations::item()`
+returns `title`, escaped `context` (the selected place, its link and the
+summary; first page only), escaped entries `html`, `page`, `pages`, and `total`. `MapLocations::item()`
 resolves one eligible placed item, requiring the profile's user roles or a
 published password-free post of a declared type; geocoding never runs here.
 The provider receives `page` (1–10000), `per_page` (from the profile), and
@@ -183,12 +192,15 @@ lightbox links. Actions retain their supplied destination, with external
 actions opening a new tab. Hosts own related-content eligibility, grouping,
 ordering, date semantics, and missing-field fallback.
 
-Core owns loading, empty/error/retry states, pagination, selected pin state,
+The panel is sectioned: a fixed header (entry count and title), one scrolling
+body (place, then entries) and a footer with a "Show more" button that appends
+the next page. Core owns the slide transition, loading skeleton,
+empty/error/retry states, paging, selected pin state,
 request cancellation and stale-response protection, close/Escape, and focus
 restoration. Keyboard users can select through the location list; controls for
 locations outside the active filters are disabled. Changing filters clears
-the selection. `--hmap-sidebar-width` defaults to `380px` (at most half the
-desktop map); all other colors and spacing use the existing map tokens.
+the selection. `--hmap-sidebar-width` defaults to `400px`; all other colors
+and spacing use the existing map tokens. Reduced-motion users get no slide.
 
 ## Caching
 
