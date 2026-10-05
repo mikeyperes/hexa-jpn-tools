@@ -14,6 +14,7 @@ namespace Hexa\PluginCore\PublicComponents;
  *         'render'     => fn( int $post_id ): string, // dialog body markup (escaped); default: image, title, excerpt
  *         'assets'     => fn(): void,             // enqueue styles the render markup needs
  *         'page_link'  => true,                   // show the dialog's "Open full page" link
+ *         'layout'     => 'default',              // 'media': a large photo beside the details (ItemLightbox::media())
  *     ]
  *
  * In `lightbox` mode, links to anything else (another post type, a user, an
@@ -34,7 +35,7 @@ final class ItemLink {
     /**
      * @param array<string,mixed> $config        Raw profile config.
      * @param string[]            $default_types Post types the dialog shows when the profile names none.
-     * @return array{mode:string,post_types:string[],render:?callable,assets:?callable,page_link:bool}
+     * @return array{mode:string,post_types:string[],render:?callable,assets:?callable,page_link:bool,layout:string}
      */
     public static function normalize( array $config, array $default_types = [] ): array {
         // Profiles written before link_behavior existed asked for a new tab with link_target '_blank'.
@@ -49,6 +50,7 @@ final class ItemLink {
             'render'     => ProfileValues::callback( $box['render'] ?? null ),
             'assets'     => ProfileValues::callback( $box['assets'] ?? null ),
             'page_link'  => (bool) ( $box['page_link'] ?? true ),
+            'layout'     => ProfileValues::choice( $box['layout'] ?? 'default', [ 'default', 'media' ], 'default' ),
         ];
     }
 
@@ -76,7 +78,7 @@ final class ItemLink {
         if ( 'lightbox' !== $profile['link_behavior']['mode'] ) {
             return '';
         }
-        $labels = [ 'page' => $profile['link_behavior']['page_link'] ];
+        $labels = [ 'page' => $profile['link_behavior']['page_link'], 'layout' => $profile['link_behavior']['layout'] ?? 'default' ];
         foreach ( self::LABELS as $key => $default ) {
             $labels[ substr( $key, 9 ) ] = (string) ( $profile['labels'][ $key ] ?? $default );
         }

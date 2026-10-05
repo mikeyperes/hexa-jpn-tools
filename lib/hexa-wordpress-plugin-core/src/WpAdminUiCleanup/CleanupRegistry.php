@@ -31,6 +31,7 @@ final class CleanupRegistry implements ModuleInterface {
             ( new CleanupAjaxController( $this ) )->register();
         }
         add_action( "admin_init", [ $this, "apply_active_callbacks" ], 1 );
+        add_action( "add_meta_boxes", [ $this, "remove_meta_boxes" ], PHP_INT_MAX );
         add_action( "admin_head", [ $this, "render_admin_screen_cleanup" ], 999 );
     }
 
@@ -45,6 +46,21 @@ final class CleanupRegistry implements ModuleInterface {
             if ( ! $this->is_enabled( $option->key ) ) continue;
             if ( "footer_filter" === $option->mode ) $this->register_footer_filters( $option );
             if ( is_callable( $option->callback ) ) call_user_func( $option->callback, $option, $this );
+        }
+    }
+
+    /**
+     * Removes the meta boxes of every enabled "meta_box_remove" option through
+     * WordPress's own remove_meta_box(), after all plugins have added theirs.
+     */
+    public function remove_meta_boxes( mixed $post_type = "" ): void {
+        if ( ! function_exists( "remove_meta_box" ) ) return;
+        $post_type = is_string( $post_type ) ? $post_type : "";
+        foreach ( $this->options as $option ) {
+            if ( "meta_box_remove" !== $option->mode || ! $option->applies_to_post_type( $post_type ) || ! $this->is_enabled( $option->key ) ) continue;
+            foreach ( $option->meta_boxes as $meta_box ) {
+                foreach ( [ "normal", "side", "advanced" ] as $context ) remove_meta_box( $meta_box, $post_type, $context );
+            }
         }
     }
 
@@ -124,6 +140,7 @@ final class CleanupRegistry implements ModuleInterface {
     public function is_enabled( string $key ): bool {
         $option = $this->option( $key );
         if ( ! $option ) return false;
+        if ( $option->is_auto_enabled() ) return true;
         $missing = "__hpc_missing__";
         $value = function_exists( "get_option" ) ? get_option( $this->option_prefix . $key, $missing ) : $missing;
         if ( $missing === $value ) return $option->default;

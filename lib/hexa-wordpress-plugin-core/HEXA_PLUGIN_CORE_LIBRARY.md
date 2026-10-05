@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.14.1
+Current release: 3.15.0
 ```
 
 Do not rename these.
@@ -215,6 +215,8 @@ Hexa\PluginCore\WpAdminUiCleanup
 ```
 
 Use `CleanupRegistry` to define admin cleanup options once, render toggle rows, save settings through AJAX, and apply behavior on the target admin screens.
+
+Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()` and `CleanupPresets::fifu_meta_box()` instead of redefining those boxes; pass overrides such as `section` or `label` as the argument.
 
 Required rules:
 

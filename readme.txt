@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.10.2
+Stable tag: 1.10.3
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.10.3 =
+* Bundles Hexa WP Plugin Core 3.15.1. The calendar and map event popup now opens large: the full-quality flyer fills the left side and the event details scroll on the right (stacked on phones).
 
 = 1.10.2 =
 * Bundles Hexa WP Core 3.14.4: native Elementor Search correctly reports expanded state on reopening and collapsed state on outside clicks, while preserving inside clicks, unregistered widgets, natural search time windows, and map behavior.

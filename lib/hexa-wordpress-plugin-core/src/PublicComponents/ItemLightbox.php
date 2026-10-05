@@ -92,7 +92,7 @@ final class ItemLightbox {
         $post     = get_post( $post_id ); // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
         setup_postdata( $post );
         try {
-            $html = null !== $link['render'] ? (string) call_user_func( $link['render'], $post_id ) : self::preview( $post_id );
+            $html = null !== $link['render'] ? (string) call_user_func( $link['render'], $post_id ) : self::preview( $post_id, 'media' === ( $link['layout'] ?? '' ) );
         } finally {
             $post = $previous; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
             if ( $previous instanceof \WP_Post ) {
@@ -107,13 +107,35 @@ final class ItemLightbox {
         ];
     }
 
-    /** Default dialog body: featured image, title, and a short excerpt. */
-    private static function preview( int $post_id ): string {
-        $image   = has_post_thumbnail( $post_id ) ? (string) get_the_post_thumbnail( $post_id, 'large', [ 'class' => 'hlb-image', 'loading' => 'lazy' ] ) : '';
+    /** Default dialog body: featured image, title, and a short excerpt (photo beside the text in the media layout). */
+    private static function preview( int $post_id, bool $media = false ): string {
         $excerpt = wp_trim_words( wp_strip_all_tags( (string) get_the_excerpt( $post_id ) ), 60 );
-
-        return $image . '<h2 class="hlb-title">' . esc_html( html_entity_decode( (string) get_the_title( $post_id ), ENT_QUOTES, 'UTF-8' ) ) . '</h2>'
+        $text    = '<h2 class="hlb-title">' . esc_html( html_entity_decode( (string) get_the_title( $post_id ), ENT_QUOTES, 'UTF-8' ) ) . '</h2>'
             . ( '' !== $excerpt ? '<p class="hlb-excerpt">' . esc_html( $excerpt ) . '</p>' : '' );
+        if ( $media ) {
+            return self::media( (int) get_post_thumbnail_id( $post_id ), $text );
+        }
+        $image = has_post_thumbnail( $post_id ) ? (string) get_the_post_thumbnail( $post_id, 'large', [ 'class' => 'hlb-image', 'loading' => 'lazy' ] ) : '';
+
+        return $image . $text;
+    }
+
+    /**
+     * The `media` layout body: one attachment shown as large as the dialog allows, beside the
+     * host's escaped details markup (stacked on phones). The image is the original upload with
+     * its responsive srcset, so the browser picks a sharp rendition for the screen.
+     */
+    public static function media( int $attachment_id, string $details, string $alt = '' ): string {
+        $image = $attachment_id > 0 && function_exists( 'wp_get_attachment_image' )
+            ? (string) wp_get_attachment_image( $attachment_id, 'full', false, array_filter( [
+                'class' => 'hlb-item__image', 'loading' => 'eager', 'decoding' => 'async', 'fetchpriority' => 'high',
+                'sizes' => '(max-width: 760px) 100vw, 900px', 'alt' => '' !== $alt ? $alt : null,
+            ], static fn( $v ): bool => null !== $v ) )
+            : '';
+
+        return '<article class="hlb-item' . ( '' === $image ? ' hlb-item--text' : '' ) . '">'
+            . ( '' !== $image ? '<div class="hlb-item__media">' . $image . '</div>' : '' )
+            . '<div class="hlb-item__details">' . $details . '</div></article>';
     }
 
     /** The dialog's style and script, printed once per page, plus the host's assets for its render markup. */
@@ -148,6 +170,15 @@ final class ItemLightbox {
             . '.hlb-image{display:block;width:100%;height:auto;max-height:50vh;margin:0 0 16px;object-fit:contain;border-radius:calc(var(--hlb-radius) - 4px)}'
             . '.hlb-title{margin:0 0 10px;color:inherit;font-size:22px;line-height:1.2}.hlb-excerpt{margin:0;color:var(--hlb-muted)}'
             . 'html.hlb-lock{overflow:hidden}'
+            // Media layout: a large dialog, the photo filling the left, the details scrolling on the right.
+            . '.hlb.is-media{width:min(var(--hlb-media-width,1240px),calc(100vw - 48px));height:min(var(--hlb-media-height,880px),calc(100vh - 48px));height:min(var(--hlb-media-height,880px),calc(100dvh - 48px))}'
+            . '.hlb.is-media .hlb-bar{position:absolute;top:0;right:0;z-index:2;padding:14px;border:0;background:none}.hlb.is-media .hlb-close{background:var(--hlb-bg)}'
+            . '.hlb.is-media .hlb-body{display:flex;padding:0;overflow:hidden}.hlb.is-media .hlb-body>.hlb-msg{margin:auto;padding:24px}'
+            . '.hlb-item{display:grid;flex:1;grid-template-columns:minmax(0,1fr) minmax(320px,var(--hlb-details-width,440px));width:100%;min-height:0}.hlb-item--text{grid-template-columns:minmax(0,1fr)}'
+            . '.hlb-item__media{display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;background:var(--hlb-media-bg,#000)}'
+            . '.hlb-item__image{display:block;width:100%;height:100%;max-width:none;object-fit:contain}'
+            . '.hlb-item__details{display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0;padding:64px 32px 32px;overflow-y:auto;overscroll-behavior:contain;border-left:1px solid var(--hlb-border)}'
+            . '@media(max-width:760px){.hlb.is-media{width:100vw;height:auto;max-height:94vh;max-height:94dvh}.hlb.is-media .hlb-body{display:block;overflow:auto}.hlb-item{display:block}.hlb-item__image{height:auto;max-height:64vh;max-height:64dvh}.hlb-item__details{padding:20px 18px 28px;overflow:visible;border:0}}'
             . '@media(max-width:600px){.hlb{width:100vw;max-height:92vh;max-height:92dvh;margin:auto 0 0;border-width:1px 0 0;border-radius:var(--hlb-radius) var(--hlb-radius) 0 0}.hlb-body{padding:16px}}'
             . '@media(prefers-reduced-motion:no-preference){.hlb[open]{animation:hlbIn .2s ease-out}}@keyframes hlbIn{from{opacity:0;transform:translateY(16px)}}';
     }
@@ -175,7 +206,7 @@ function show(a){if(!dlg)build();
 var root=a.closest('[data-hlb-labels]')||a,l={},cs=getComputedStyle(root),url=a.getAttribute('data-hlb'),href=a.href,n=++seq;
 try{l=JSON.parse(root.getAttribute('data-hlb-labels')||'{}')||{};}catch(e){}
 TOKENS.forEach(function(t){var v=cs.getPropertyValue('--hlb-'+t).trim();if(v){dlg.style.setProperty('--hlb-'+t,v);}else{dlg.style.removeProperty('--hlb-'+t);}});
-close.setAttribute('aria-label',l.close||'Close');full.href=href;full.textContent=l.open||'';full.hidden=l.page===false||!l.open;dlg.classList.toggle('is-bare',full.hidden);
+dlg.classList.toggle('is-media',l.layout==='media');close.setAttribute('aria-label',l.close||'Close');full.href=href;full.textContent=l.open||'';full.hidden=l.page===false||!l.open;dlg.classList.toggle('is-bare',full.hidden);
 dlg.setAttribute('aria-label',(a.getAttribute('title')||a.textContent||'').trim().slice(0,120));
 body.classList.add('is-loading');body.innerHTML='<p class="hlb-msg" role="status">'+esc(l.loading||'')+'</p>';
 trigger=a;if(!dlg.open){dlg.showModal();document.documentElement.classList.add('hlb-lock');if(window.history&&history.pushState){history.pushState({hlb:1},'');pushed=true;}}

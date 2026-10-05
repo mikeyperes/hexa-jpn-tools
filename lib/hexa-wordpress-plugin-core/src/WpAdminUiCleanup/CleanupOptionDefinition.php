@@ -18,6 +18,10 @@ final class CleanupOptionDefinition {
     public string $off_label;
     public array $footer_patterns;
     public bool $hide_update_footer;
+    public array $meta_boxes;
+    public array $post_types;
+    public mixed $auto_enabled;
+    public string $auto_reason;
 
     public function __construct( array $config ) {
         $this->key                = self::clean_key( (string) ( $config["key"] ?? "" ) );
@@ -35,10 +39,22 @@ final class CleanupOptionDefinition {
         $this->off_label          = (string) ( $config["off_label"] ?? self::default_off_label( $this->mode ) );
         $this->footer_patterns    = self::string_list( $config["footer_patterns"] ?? [] );
         $this->hide_update_footer = (bool) ( $config["hide_update_footer"] ?? false );
+        $this->meta_boxes         = self::string_list( $config["meta_boxes"] ?? [] );
+        $this->post_types         = self::string_list( $config["post_types"] ?? [] );
+        $this->auto_enabled       = $config["auto_enabled"] ?? null;
+        $this->auto_reason        = (string) ( $config["auto_reason"] ?? "" );
     }
 
     public static function from_array( array $config ): self {
         return new self( $config );
+    }
+
+    public function applies_to_post_type( string $post_type ): bool {
+        return [] === $this->post_types || in_array( $post_type, $this->post_types, true );
+    }
+
+    public function is_auto_enabled(): bool {
+        return is_callable( $this->auto_enabled ) && (bool) call_user_func( $this->auto_enabled, $this );
     }
 
     public function applies_to_admin_page( string $pagenow ): bool {
@@ -78,10 +94,12 @@ final class CleanupOptionDefinition {
     }
 
     private static function default_on_label( string $mode ): string {
+        if ( "meta_box_remove" === $mode ) return "Removed";
         return "postbox_collapse" === $mode ? "Collapsed" : "Hidden";
     }
 
     private static function default_off_label( string $mode ): string {
+        if ( "meta_box_remove" === $mode ) return "Shown";
         return "postbox_collapse" === $mode ? "Expanded" : "Visible";
     }
 }

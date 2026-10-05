@@ -882,51 +882,27 @@ a.jpn-host__chip--link:focus-visible {
     }
 }
 
-/* Event in Hexa WP Core's lightbox (calendar and host map): flyer beside the card parts, stacked on phones. */
+/* Event details in Hexa WP Core's media lightbox (calendar and host map); Core owns the photo and layout. */
 .jpn-lightbox {
-    display: grid;
-    gap: 24px;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-}
-
-.jpn-lightbox--no-image {
-    grid-template-columns: minmax(0, 1fr);
-}
-
-.jpn-lightbox__media {
-    align-self: start;
-    background: #000;
-    border: 1px solid rgba(255, 255, 255, .08);
-}
-
-.jpn-lightbox__image {
-    display: block;
-    height: auto;
-    max-height: 70vh;
-    object-fit: contain;
-    width: 100%;
-}
-
-.jpn-lightbox__body {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 16px;
     min-width: 0;
 }
 
 .jpn-lightbox__title {
     color: #fff;
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 900;
     letter-spacing: .01em;
-    line-height: 1.15;
+    line-height: 1.12;
     margin: 0;
     text-transform: uppercase;
 }
 
 .jpn-lightbox__excerpt {
     color: #c9cfcb;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.6;
     margin: 0;
 }
@@ -943,22 +919,17 @@ a.jpn-host__chip--link:focus-visible {
     border-top: 1px solid rgba(255, 255, 255, .08);
 }
 
+.jpn-lightbox .jpn-card-actions {
+    margin-top: auto;
+}
+
 .jpn-lightbox .jpn-card-actions .jpn-btn {
     flex: 1;
 }
 
-@media (max-width: 700px) {
-    .jpn-lightbox {
-        gap: 16px;
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .jpn-lightbox__image {
-        max-height: 46vh;
-    }
-
+@media (max-width: 760px) {
     .jpn-lightbox__title {
-        font-size: 20px;
+        font-size: 22px;
     }
 }
 

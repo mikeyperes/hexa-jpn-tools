@@ -31,6 +31,7 @@ click still opens the page.
     'render'     => fn( int $post_id ): string => '…', // dialog body (escape it); default: image, title, excerpt
     'assets'     => fn() => wp_enqueue_style( '…' ),   // styles the render markup needs
     'page_link'  => true,                             // false hides the dialog's "Open full page" link
+    'layout'     => 'default',                        // 'media': large dialog, photo beside the details
 ],
 ```
 
@@ -67,3 +68,14 @@ builder styles it where it styles the calendar or map: `--hlb-bg`, `--hlb-fg`,
 ## Testing
 
 `php tests/item-link.php`.
+
+## Media layout
+
+`'layout' => 'media'` opens a large dialog (`--hlb-media-width`, default
+1240px; `--hlb-media-height`, default 880px; both capped to the viewport) with
+the photo filling the left and the details scrolling in a right column
+(`--hlb-details-width`, default 440px). On screens up to 760px the photo
+stacks above the details. Host renders call
+`ItemLightbox::media( $attachment_id, $details_html, $alt = '' )`, which prints
+the original upload with its responsive `srcset` so the browser loads a sharp
+rendition; the default body uses the same layout when no `render` is set.
