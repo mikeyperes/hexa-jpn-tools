@@ -6,6 +6,7 @@ namespace Hexa\JpnTools\Frontend;
 
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventQueries;
+use Hexa\JpnTools\Events\RecentlyAdded;
 use WP_Post;
 
 /** Live, bounded event data for the native Elementor WhatsApp phone mockup. */
@@ -48,7 +49,7 @@ final class WhatsAppFeed
             . '<script type="application/json" class="jpn-whatsapp-feed-data">' . ($payload ?: '{}') . '</script>';
     }
 
-    /** @return array{title:string,host:string,date:string,url:string,image:string} */
+    /** @return array{title:string,host:string,date:string,url:string,image:string,recent_until:int} */
     private function eventData(WP_Post $event): array
     {
         $eventId = (int) $event->ID;
@@ -89,6 +90,7 @@ final class WhatsAppFeed
             'date' => $date,
             'url' => esc_url_raw((string) get_permalink($eventId), ['http', 'https']),
             'image' => esc_url_raw((string) get_the_post_thumbnail_url($eventId, 'medium_large'), ['http', 'https']),
+            'recent_until' => RecentlyAdded::until($eventId),
         ];
     }
 

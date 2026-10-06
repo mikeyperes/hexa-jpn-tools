@@ -65,7 +65,7 @@ final class AreaMapDetails
             }
             $hostName = $eventHost ? html_entity_decode((string) $eventHost->display_name, ENT_QUOTES, 'UTF-8') : '';
             $now = time();
-            $tags = [];
+            $tags = RecentlyAdded::is($id) ? [RecentlyAdded::LABEL] : [];
             if ($start > 0 && $start <= $now && ($end <= 0 || $end >= $now)) {
                 $tags[] = __('Happening now', 'hexa-jpn-tools');
             }

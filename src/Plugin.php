@@ -17,6 +17,7 @@ use Hexa\JpnTools\Events\EventLightbox;
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventQueries;
 use Hexa\JpnTools\Events\EventRelations;
+use Hexa\JpnTools\Events\RecentlyAdded;
 use Hexa\JpnTools\Frontend\PhotoDownloads;
 use Hexa\JpnTools\Frontend\Privacy;
 use Hexa\JpnTools\Frontend\Shortcodes;
@@ -72,6 +73,7 @@ final class Plugin
         (new EventExports($queries))->register();
         (new NotificationDashboard($queries, $dates))->register();
         $relations->register();
+        (new RecentlyAdded())->register();
         $downloads = new PhotoDownloads($queries, $dates);
         $downloads->register();
         (new Shortcodes($queries, $dates, $downloads))->register();

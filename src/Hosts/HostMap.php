@@ -6,6 +6,7 @@ namespace Hexa\JpnTools\Hosts;
 
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventLightbox;
+use Hexa\JpnTools\Events\RecentlyAdded;
 use Hexa\JpnTools\Events\AreaMapDetails;
 use Hexa\PluginCore\Map\MapRegistry;
 
@@ -72,6 +73,8 @@ final class HostMap
                 'details_shown' => __('Showing %1$d of %2$d events', 'hexa-jpn-tools'),
                 'details_more' => __('Show more events', 'hexa-jpn-tools'),
             ] + $this->lightbox->labels(),
+            // Short cache so a "recently added" marker in a host card clears soon after its window ends.
+            'cache_ttl' => 900,
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-hosts-map',
         ]);
@@ -103,7 +106,7 @@ final class HostMap
         foreach ((array) ($host['events'] ?? []) as $event) {
             $list[] = [
                 'label' => $this->dates->formatTimestamp((int) $event['ts'], 'M j'),
-                'text' => (string) $event['title'],
+                'text' => (RecentlyAdded::is((int) ($event['id'] ?? 0)) ? RecentlyAdded::SHORT_LABEL . ' · ' : '') . (string) $event['title'],
                 'url' => (string) $event['url'],
                 'id' => (int) ($event['id'] ?? 0),
             ];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Hexa\JpnTools\Hosts;
 
 use Hexa\JpnTools\Events\EventDates;
+use Hexa\JpnTools\Events\RecentlyAdded;
 use Hexa\JpnTools\Rest\HostController;
 use Hexa\PluginCore\DirectorySearch\DirectorySearchRegistry;
 
@@ -366,7 +367,7 @@ final class HostDirectory
             foreach ($host['events'] as $event) {
                 $eventsHtml .= '<li' . ($event['upcoming'] ? ' class="is-upcoming"' : '') . '><a href="' . esc_url($event['url']) . '">'
                     . '<time datetime="' . esc_attr(gmdate('c', $event['ts'])) . '">' . esc_html($this->dates->formatTimestamp($event['ts'], 'M j')) . '</time>'
-                    . '<span>' . esc_html($event['title']) . '</span></a></li>';
+                    . '<span>' . RecentlyAdded::marker((int) $event['id'], 'jpn-new jpn-new--inline', true) . esc_html($event['title']) . '</span></a></li>';
             }
             $eventsHtml .= '</ul></div>';
         }

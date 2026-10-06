@@ -1,0 +1,64 @@
+/* "🆕 NEW · Recently added" markers (Events\RecentlyAdded). */
+.jpn-new,
+.jpn-badge--recent {
+    animation: jpn-new-pulse 2.4s ease-in-out infinite;
+    background: #ff3b5c;
+    box-shadow: 0 0 0 0 rgba(255, 59, 92, .55);
+    color: #fff;
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .12em;
+    line-height: 1.4;
+    padding: 3px 8px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.jpn-badge--recent {
+    letter-spacing: .18em;
+}
+
+.jpn-new--inline {
+    font-size: 9px;
+    letter-spacing: .08em;
+    margin-right: 6px;
+    padding: 1px 5px;
+    vertical-align: middle;
+}
+
+.jpn-new--overlay {
+    left: 10px;
+    pointer-events: none;
+    position: absolute;
+    top: 10px;
+    z-index: 2;
+}
+
+.jpn-calendar .is-recent {
+    box-shadow: inset 3px 0 0 #ff3b5c;
+}
+
+.jpn-calendar .jpn-new--cal {
+    display: table;
+    font-size: 9px;
+    letter-spacing: .08em;
+    margin-bottom: 2px;
+    padding: 1px 5px;
+}
+
+.jpn-event-new {
+    margin: 0 0 12px;
+}
+
+@keyframes jpn-new-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 92, .5); }
+    50% { box-shadow: 0 0 0 5px rgba(255, 59, 92, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .jpn-new,
+    .jpn-badge--recent {
+        animation: none;
+    }
+}

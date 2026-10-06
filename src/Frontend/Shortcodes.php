@@ -6,6 +6,7 @@ namespace Hexa\JpnTools\Frontend;
 
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventQueries;
+use Hexa\JpnTools\Events\RecentlyAdded;
 
 final class Shortcodes
 {
@@ -21,6 +22,7 @@ final class Shortcodes
         add_shortcode('jpn_event_time_range', [$this, 'timeRange']);
         add_shortcode('jpn_event_photos', [$this, 'eventPhotos']);
         add_shortcode('jpn_event_badges', [$this, 'badges']);
+        add_shortcode('jpn_event_recent', [$this, 'recent']);
         add_shortcode('jpn_event_facts', [$this, 'facts']);
         add_shortcode('jpn_event_actions', [$this, 'actions']);
         add_shortcode('jpn_event_field', [$this, 'eventField']);
@@ -61,13 +63,14 @@ final class Shortcodes
             'area' => $area,
             'featured_label' => $this->flag($eventId, 'featured_event') ? __('Featured', 'hexa-jpn-tools') : '',
             'kids_label' => $this->flag($eventId, 'kids_event') ? __('Kids', 'hexa-jpn-tools') : '',
+            'recent_label' => RecentlyAdded::is($eventId) ? RecentlyAdded::LABEL : '',
             default => '',
         };
 
         return $key === 'rsvp_url' ? esc_url($value) : esc_html($value);
     }
 
-    /** Featured / Kids badges for the current event card; empty when neither flag is set. */
+    /** Recently added / Featured / Kids badges for the current event card; empty when none applies. */
     public function badges(): string
     {
         $eventId = $this->currentEventId();
@@ -75,20 +78,29 @@ final class Shortcodes
             return '';
         }
 
+        $recent = RecentlyAdded::marker($eventId, 'jpn-badge jpn-badge--recent');
         $badges = array_filter([
             'featured' => $this->flag($eventId, 'featured_event') ? '★ ' . __('Featured', 'hexa-jpn-tools') : '',
             'kids' => $this->flag($eventId, 'kids_event') ? __('Kids', 'hexa-jpn-tools') : '',
         ]);
-        if ($badges === []) {
+        if ($badges === [] && $recent === '') {
             return '';
         }
 
         $this->enqueueStyle();
-        $html = '';
+        $html = $recent;
         foreach ($badges as $type => $label) {
             $html .= '<span class="jpn-badge jpn-badge--' . esc_attr($type) . '">' . esc_html($label) . '</span>';
         }
         return '<div class="jpn-badges">' . $html . '</div>';
+    }
+
+    /** Recently added marker alone, for templates that already show Featured / Kids themselves. */
+    public function recent(): string
+    {
+        $eventId = $this->currentEventId();
+
+        return $eventId > 0 ? RecentlyAdded::marker($eventId, 'jpn-new jpn-event-new') : '';
     }
 
     /** Labelled When / Where / Host / Who facts for the current event card; empty facts are omitted. */
@@ -203,7 +215,7 @@ final class Shortcodes
             }
             $link = trim((string) get_post_meta($event->ID, 'link', true));
             $class = 'event-photo' . ($link !== '' ? ' clickable' : '');
-            $output .= '<div class="' . esc_attr($class) . '">';
+            $output .= '<div class="' . esc_attr($class) . '">' . RecentlyAdded::marker($event->ID, 'jpn-new jpn-new--overlay');
             if ($link !== '') {
                 $output .= '<a href="' . esc_url($this->normalizeUrl($link, get_permalink($event->ID))) . '" target="_blank" rel="noopener">'
                     . $image . '</a><div class="click-overlay">' . esc_html__('Click to register', 'hexa-jpn-tools') . '</div>';
@@ -232,7 +244,7 @@ final class Shortcodes
         $timestamp = (int) get_post_meta($event->ID, 'start_date_timestamp', true);
         $date = $timestamp > 0 ? strtoupper($this->dates->formatTimestamp($timestamp, 'D M j')) : '';
         $link = $this->normalizeUrl((string) get_post_meta($event->ID, 'link', true), get_permalink($event->ID));
-        $label = get_post_meta($event->ID, 'featured_event', true) === '1' ? 'FEATURED' : 'UPCOMING';
+        $label = RecentlyAdded::is($event->ID) ? RecentlyAdded::SHORT_LABEL : (get_post_meta($event->ID, 'featured_event', true) === '1' ? 'FEATURED' : 'UPCOMING');
 
         return '<a class="jpn-upcoming-event-banner" href="' . esc_url($link) . '" target="_blank" rel="noopener">'
             . '<span class="jpn-event-banner-main"><span class="jpn-event-banner-label">' . esc_html($label) . '</span><span class="jpn-event-banner-title">' . esc_html($title) . '</span></span>'

@@ -257,7 +257,7 @@ final class EventRelations
         wp_enqueue_style('hexa-jpn-frontend', HEXA_JPN_TOOLS_PLUGIN_URL . 'assets/frontend.css', [], HEXA_JPN_TOOLS_VERSION);
         $html = '<section class="jpn-related-events"><h2>' . esc_html__('Related events', 'hexa-jpn-tools') . '</h2><ul>';
         foreach ($items as $item) {
-            $html .= '<li><a href="' . esc_url($item['permalink']) . '">' . esc_html($item['title']) . '</a></li>';
+            $html .= '<li><a href="' . esc_url($item['permalink']) . '">' . RecentlyAdded::marker((int) $item['post_id'], 'jpn-new jpn-new--inline', true) . esc_html($item['title']) . '</a></li>';
         }
         $html .= '</ul></section>';
 

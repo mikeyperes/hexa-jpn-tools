@@ -97,11 +97,11 @@ final class EventCalendar
     }
 
     /**
-     * Area name and flags for exactly the events in the visible month: one
-     * meta query and one term query.
+     * Area name, flags and recently-added expiry for exactly the events in the
+     * visible month: one meta query and one term query.
      *
      * @param int[] $ids
-     * @return array<int,array{area:string,featured:bool,kids:bool}>
+     * @return array<int,array{area:string,featured:bool,kids:bool,recent_until:int}>
      */
     public function prepare(array $ids): array
     {
@@ -112,7 +112,11 @@ final class EventCalendar
             return [];
         }
 
-        $data = array_fill_keys($ids, ['area' => '', 'featured' => false, 'kids' => false]);
+        _prime_post_caches($ids, false, false);
+        $data = [];
+        foreach ($ids as $id) {
+            $data[$id] = ['area' => '', 'featured' => false, 'kids' => false, 'recent_until' => RecentlyAdded::until($id)];
+        }
         $list = implode(',', $ids);
         $rows = (array) $wpdb->get_results(
             "SELECT post_id, meta_key, meta_value FROM {$wpdb->postmeta}
@@ -140,7 +144,7 @@ final class EventCalendar
     /** @param array<string,mixed> $item @param array<string,mixed> $data */
     public function itemClass(array $item, array $data): string
     {
-        return trim((!empty($data['featured']) ? 'is-featured ' : '') . (!empty($data['kids']) ? 'is-kids' : ''));
+        return trim((!empty($data['featured']) ? 'is-featured ' : '') . (!empty($data['kids']) ? 'is-kids ' : '') . ($this->isRecent($data) ? 'is-recent' : ''));
     }
 
     /**
@@ -151,7 +155,10 @@ final class EventCalendar
      */
     public function renderItem(array $item, array $data): string
     {
-        $html = (string) $item['when'] !== '' ? '<span class="hcal-time">' . esc_html((string) $item['when']) . '</span>' : '';
+        $html = $this->isRecent($data)
+            ? '<span class="jpn-new jpn-new--cal" data-jpn-new-until="' . esc_attr((string) $data['recent_until']) . '">' . esc_html(RecentlyAdded::SHORT_LABEL) . '</span>'
+            : '';
+        $html .= (string) $item['when'] !== '' ? '<span class="hcal-time">' . esc_html((string) $item['when']) . '</span>' : '';
         $html .= '<span class="hcal-name">'
             . (!empty($data['featured']) ? '<span class="jpn-cal-star" role="img" aria-label="' . esc_attr__('Featured', 'hexa-jpn-tools') . '">★</span> ' : '')
             . esc_html(html_entity_decode((string) $item['title'], ENT_QUOTES, 'UTF-8'))
@@ -166,5 +173,11 @@ final class EventCalendar
         }
 
         return $html;
+    }
+
+    /** @param array<string,mixed> $data */
+    private function isRecent(array $data): bool
+    {
+        return (int) ($data['recent_until'] ?? 0) > time();
     }
 }

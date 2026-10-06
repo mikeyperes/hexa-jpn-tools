@@ -7,6 +7,9 @@
     const NOTIFICATION_DURATION = 2600;
     const NOTIFICATION_EXIT = 550;
     const MAX_CHILDREN = 14;
+    const RECENT_LABEL = '🆕 NEW · Recently added';
+
+    const isRecent = (event) => Number(event && event.recent_until) > Date.now() / 1000;
 
     const element = (tag, className, text) => {
         const node = document.createElement(tag);
@@ -101,6 +104,10 @@
             link.href = String(event.url || '');
             link.target = '_blank';
             link.rel = 'noopener';
+            // Same "recently added" line the real WhatsApp roundup puts above a new event.
+            if (isRecent(event)) {
+                bubble.append(element('b', '', RECENT_LABEL), document.createElement('br'));
+            }
             bubble.append(
                 title,
                 document.createElement('br'),
@@ -128,7 +135,7 @@
             const body = element('div', 'jpn-wa-drop-body');
             body.append(
                 element('b', '', 'JPN Miami · Events'),
-                element('p', '', `📣 ${event.title} · 🗓️ ${event.date || ''}`)
+                element('p', '', `${isRecent(event) ? '🆕 NEW · ' : ''}📣 ${event.title} · 🗓️ ${event.date || ''}`)
             );
             notification.appendChild(body);
             notification.classList.add('is-visible');

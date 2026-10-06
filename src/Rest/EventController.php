@@ -6,6 +6,7 @@ namespace Hexa\JpnTools\Rest;
 
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventRelations;
+use Hexa\JpnTools\Events\RecentlyAdded;
 use Hexa\JpnTools\Security\IntegrationAccess;
 use RuntimeException;
 use Throwable;
@@ -478,6 +479,7 @@ final class EventController
             'additional_information' => (string) get_post_meta($postId, 'additional_information', true),
             'featured_event' => get_post_meta($postId, 'featured_event', true) === '1',
             'kids_event' => get_post_meta($postId, 'kids_event', true) === '1',
+            'recently_added' => RecentlyAdded::is($postId),
             'host_user_id' => $hostId ?: null,
             'host_display_name' => $host ? (string) $host->display_name : null,
             'area_term_id' => $areaId ?: null,
