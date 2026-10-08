@@ -170,7 +170,7 @@ final class Shortcodes
         $eventId = $this->currentEventId();
 
         return $eventId > 0 ? ImageZoom::html((int) get_post_thumbnail_id($eventId), [
-            'class' => 'jpn-flyer', 'fit' => 'contain', 'sizes' => '(max-width: 767px) 100vw, 640px', 'alt' => get_the_title($eventId),
+            'class' => 'jpn-flyer', 'fit' => 'contain', 'loading' => 'eager', 'sizes' => '(max-width: 767px) 100vw, 640px', 'alt' => get_the_title($eventId),
         ]) : '';
     }
 
