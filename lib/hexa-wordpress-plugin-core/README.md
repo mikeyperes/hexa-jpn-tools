@@ -110,6 +110,8 @@ Version 3.7.2 keeps every `Map` item card fully inside the map, including on pho
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
 
+Version 3.18.3 keeps theme and page-builder image rules (such as `height: auto`) from shrinking the ImageZoom thumbnail inside its box.
+
 Version 3.18.2 adds the ImageZoom `fit => contain` option (the whole image over a blurred fill of itself, nothing cropped) and keeps an explicit `sizes` list from being overridden by lazy `auto` sizing, so tall thumbnails stay sharp.
 
 Version 3.18.1 keeps page-builder lightboxes (Elementor) from opening on top of the ImageZoom viewer.

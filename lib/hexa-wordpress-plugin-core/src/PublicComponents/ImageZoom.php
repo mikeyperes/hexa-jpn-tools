@@ -65,8 +65,8 @@ final class ImageZoom {
 
     public static function css(): string {
         return '.hiz{display:block;position:relative;width:100%;height:100%;overflow:hidden;cursor:zoom-in;-webkit-tap-highlight-color:transparent}'
-            . '.hiz__img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}.hiz:hover .hiz__img{transform:scale(1.03)}'
-            . '.hiz--contain{background:#000}.hiz--contain::before{content:"";position:absolute;inset:-24px;background:var(--hiz-fill) center/cover;filter:blur(18px) brightness(.55);transform:scale(1.1)}.hiz--contain .hiz__img{position:relative;object-fit:contain}'
+            . '.hiz .hiz__img{display:block;width:100%;height:100%;max-width:none;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}.hiz:hover .hiz__img{transform:scale(1.03)}'
+            . '.hiz--contain{background:#000}.hiz--contain::before{content:"";position:absolute;inset:-24px;background:var(--hiz-fill) center/cover;filter:blur(18px) brightness(.55);transform:scale(1.1)}.hiz.hiz--contain .hiz__img{position:relative;object-fit:contain}'
             . '.hiz-pop{position:fixed;z-index:99998;top:50%;left:50%;max-width:min(var(--hiz-pop-width,720px),92vw);max-height:92vh;max-height:92dvh;pointer-events:none;'
             . 'opacity:0;transform:translate(-50%,-50%) scale(.96);transition:opacity .22s ease,transform .28s cubic-bezier(.2,.7,.2,1);'
             . 'border:1px solid var(--hiz-border,rgba(255,255,255,.14));border-radius:var(--hiz-radius,10px);background:var(--hiz-bg,#000);box-shadow:0 30px 90px rgba(0,0,0,.6);overflow:hidden}'
