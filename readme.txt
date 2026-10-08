@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.11.2
+Stable tag: 1.11.3
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.11.3 =
+* Glow Rail flyer shows the whole flyer (nothing cropped) over a blurred fill, sharp at full card height; bundles HexaWP Core 3.18.2.
 
 = 1.11.2 =
 * Sharper Glow Rail flyer thumbnail; bundles HexaWP Core 3.18.1 (no Elementor lightbox over the flyer viewer).

@@ -110,6 +110,8 @@ Version 3.7.2 keeps every `Map` item card fully inside the map, including on pho
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
 
+Version 3.18.2 adds the ImageZoom `fit => contain` option (the whole image over a blurred fill of itself, nothing cropped) and keeps an explicit `sizes` list from being overridden by lazy `auto` sizing, so tall thumbnails stay sharp.
+
 Version 3.18.1 keeps page-builder lightboxes (Elementor) from opening on top of the ImageZoom viewer.
 
 Version 3.18.0 adds `PublicComponents\ImageZoom`, a reusable flyer/poster viewer: `ImageZoom::html( $attachment_id )` prints the thumbnail; hovering shows the original image large in a centered preview that fades out when the pointer leaves, and a click or tap opens a full-screen viewer with pinch, wheel and double-tap zoom, finger panning, and swipe-down, Escape or backdrop to close. Docs: `docs/image-zoom.md`.
