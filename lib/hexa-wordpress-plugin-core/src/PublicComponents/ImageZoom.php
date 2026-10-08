@@ -11,7 +11,7 @@ namespace Hexa\PluginCore\PublicComponents;
  *    the pointer leaves the thumbnail (or the window loses focus);
  *  - click, tap or Enter: a full-screen viewer with pinch, wheel and double-tap zoom, finger or
  *    mouse panning, swipe-down / Escape / backdrop to close, fading out as it closes.
- * Without JavaScript the link simply opens the original image. `--hiz-*` custom properties on
+ * Without JavaScript the link simply opens the original image. Page-builder lightboxes are opted out. `--hiz-*` custom properties on
  * any ancestor restyle the preview and viewer.
  */
 final class ImageZoom {
@@ -38,7 +38,7 @@ final class ImageZoom {
             'alt'     => $alt,
         ], static fn( $v ): bool => null !== $v ) );
 
-        return '<a class="' . esc_attr( trim( 'hiz ' . ( $args['class'] ?? '' ) ) ) . '" href="' . esc_url( (string) $full[0] ) . '" data-hiz'
+        return '<a class="' . esc_attr( trim( 'hiz ' . ( $args['class'] ?? '' ) ) ) . '" href="' . esc_url( (string) $full[0] ) . '" data-hiz data-elementor-open-lightbox="no"'
             . ' data-hiz-w="' . (int) $full[1] . '" data-hiz-h="' . (int) $full[2] . '" aria-label="' . esc_attr( '' !== $alt ? $alt : __( 'View full image' ) ) . '">'
             . $image . '</a>' . self::assets();
     }
@@ -105,7 +105,7 @@ function up(e){delete pts[e.pointerId];if(!start)return;var st=start;if(Object.k
 if(st.pinch){if(s<1.05){s=1;tx=ty=0;}apply(1);return;}
 if(s<=1.01&&ty>110){close();return;}if(s<=1.01){ty=0;view.style.opacity='';apply(1);}
 if(!st.moved){var now=Date.now();if(now-lastTap<300){zoomAt(s>1.01?1:2.5,e.clientX,e.clientY);apply(1);lastTap=0;}else{lastTap=now;if(e.target===view&&s<=1.01)setTimeout(function(){if(lastTap===now)close();},300);}}}
-document.addEventListener('click',function(e){var a=trig(e);if(!a||e.ctrlKey||e.metaKey||e.shiftKey)return;e.preventDefault();open(a);});
+document.addEventListener('click',function(e){var a=trig(e);if(!a||e.ctrlKey||e.metaKey||e.shiftKey)return;e.preventDefault();e.stopImmediatePropagation();open(a);},true);
 document.addEventListener('keydown',function(e){if(view&&e.key==='Escape'){e.preventDefault();close();}});
 window.addEventListener('popstate',function(){if(view)close(true);});
 })();
