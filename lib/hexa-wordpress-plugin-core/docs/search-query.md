@@ -53,6 +53,8 @@ phrases and uncued prose such as `Open 24 hours` remain ordinary search text.
 Durations are limited to 366 days. Field meaning and eligible post types remain
 host-owned; parsing and bounded constraints remain in `QueryFilter`.
 
+`SearchQueryConfiguration::searchable_post_types(): array` returns every public post type except attachments and types excluded from search, and `SearchQueryConfiguration::searchable_taxonomies(): array` every public taxonomy except post formats. Use them for a full-site search after types register on `init`, instead of repeating discovery in each host.
+
 ### `SearchTermParser`
 
 `SearchTermParser::parse(string $query, string $term_logic = 'all'): array`
@@ -105,6 +107,12 @@ The optional configurator receives the exact query, normalized settings, and ver
 Elementor document saves, exact `_elementor_data` changes, publication changes, and reusable-template saves refresh the index. Template dependency discovery reads only exact `template_id` values from Elementor document objects, limits each document traversal to 32 levels and 10,000 nodes, follows at most 100 reusable templates, and refreshes the public documents that depend on them. It does not persist document structure or other widget settings.
 
 `ElementorPublicTextIndex::rebuild(int $page = 1, int $per_page = 100, bool $dry_run = false): array` selects only published, non-password Elementor documents in bounded pages of at most 200. Dry-run items contain only post ID, action, character count, before/after SHA-256 hashes, and a changed flag. A host owns the CLI or deployment wrapper and must opt `ElementorPublicTextIndex::META_KEY` into its existing `custom_fields` search configuration.
+
+### `ResultTypeLabels`
+
+`ResultTypeLabels::register(array $labels, string $default = ''): void` lets a host flag what kind of content each search result is, as `post type => label` plus an optional label for every other type, for example `['post' => 'Press Release', 'press-release' => 'External PR']` with `'Site Content'`. Several hosts may register; a later call replaces the same type and a non-empty default. Labels are plain text of at most 60 characters. `ResultTypeLabels::label_for(string $post_type): string` returns the mapped label, then the default, then the post type's singular name.
+
+The first registration adds Core's **Result Type** Elementor text dynamic tag (`ElementorResultTypeTag`, name `hexa-result-type`, group Post). Place it in a search-result Loop Item, for example in a Heading used as a badge. Each Elementor loop item already carries WordPress's `type-{post_type}` class, so per-type badge colors need only CSS such as `.type-press-release .result-badge`.
 
 ## Required Host Protocol
 

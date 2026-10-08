@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.11.0
+Stable tag: 1.11.1
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,10 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.11.1 =
+* Glow Rail timeline pieces: [jpn_event_date_stack], [jpn_event_place] and [jpn_event_flyer] (hover preview and touch zoom viewer from Core ImageZoom).
+* Bundles HexaWP Core 3.18.0.
 
 = 1.11.0 =
 * "🆕 NEW · Recently added" marker on every event first published within the last 24 hours: event cards and badges (home, Upcoming Events, search, host profiles, the event popup), the single event page (`[jpn_event_recent]`), the calendar, the live map's area events and host cards, the host directory, related events, the Daily Feed photos, the top banner and the on-site WhatsApp preview. Markers carry their expiry and are removed from cached pages once the 24 hours pass. The event REST snapshot adds `recently_added`.

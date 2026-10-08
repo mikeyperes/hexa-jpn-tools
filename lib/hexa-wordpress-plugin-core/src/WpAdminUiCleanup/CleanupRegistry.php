@@ -43,8 +43,9 @@ final class CleanupRegistry implements ModuleInterface {
         if ( $this->callbacks_applied ) return;
         $this->callbacks_applied = true;
         foreach ( $this->options as $option ) {
-            if ( ! $this->is_enabled( $option->key ) ) continue;
+            if ( ! $this->is_enabled( $option->key ) || ! $option->applies_to_current_user() ) continue;
             if ( "footer_filter" === $option->mode ) $this->register_footer_filters( $option );
+            $this->register_column_and_admin_bar_removal( $option );
             if ( is_callable( $option->callback ) ) call_user_func( $option->callback, $option, $this );
         }
     }
@@ -57,7 +58,7 @@ final class CleanupRegistry implements ModuleInterface {
         if ( ! function_exists( "remove_meta_box" ) ) return;
         $post_type = is_string( $post_type ) ? $post_type : "";
         foreach ( $this->options as $option ) {
-            if ( "meta_box_remove" !== $option->mode || ! $option->applies_to_post_type( $post_type ) || ! $this->is_enabled( $option->key ) ) continue;
+            if ( "meta_box_remove" !== $option->mode || ! $option->applies_to_post_type( $post_type ) || ! $option->applies_to_current_user() || ! $this->is_enabled( $option->key ) ) continue;
             foreach ( $option->meta_boxes as $meta_box ) {
                 foreach ( [ "normal", "side", "advanced" ] as $context ) remove_meta_box( $meta_box, $post_type, $context );
             }
@@ -166,7 +167,27 @@ final class CleanupRegistry implements ModuleInterface {
     public function option_prefix(): string { return $this->option_prefix; }
 
     public function active_options_for_page( string $pagenow ): array {
-        return array_values( array_filter( $this->options, fn( CleanupOptionDefinition $option ): bool => $this->is_enabled( $option->key ) && $option->applies_to_admin_page( $pagenow ) ) );
+        return array_values( array_filter( $this->options, fn( CleanupOptionDefinition $option ): bool => $this->is_enabled( $option->key ) && $option->applies_to_admin_page( $pagenow ) && $option->applies_to_current_user() ) );
+    }
+
+    private function register_column_and_admin_bar_removal( CleanupOptionDefinition $option ): void {
+        $columns = $option->columns;
+        if ( [] !== $columns ) {
+            foreach ( $option->column_hooks as $hook ) {
+                add_filter( $hook, static function ( mixed $list ) use ( $columns ): mixed {
+                    if ( ! is_array( $list ) ) return $list;
+                    foreach ( $columns as $column ) unset( $list[ $column ] );
+                    return $list;
+                }, PHP_INT_MAX );
+            }
+        }
+        $nodes = $option->admin_bar_nodes;
+        if ( [] !== $nodes ) {
+            add_action( "admin_bar_menu", static function ( mixed $bar ) use ( $nodes ): void {
+                if ( ! is_object( $bar ) || ! method_exists( $bar, "remove_node" ) ) return;
+                foreach ( $nodes as $node ) $bar->remove_node( $node );
+            }, PHP_INT_MAX );
+        }
     }
 
     private function register_footer_filters( CleanupOptionDefinition $option ): void {

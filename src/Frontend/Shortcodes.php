@@ -7,6 +7,7 @@ namespace Hexa\JpnTools\Frontend;
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventQueries;
 use Hexa\JpnTools\Events\RecentlyAdded;
+use Hexa\PluginCore\PublicComponents\ImageZoom;
 
 final class Shortcodes
 {
@@ -26,6 +27,9 @@ final class Shortcodes
         add_shortcode('jpn_event_facts', [$this, 'facts']);
         add_shortcode('jpn_event_actions', [$this, 'actions']);
         add_shortcode('jpn_event_field', [$this, 'eventField']);
+        add_shortcode('jpn_event_date_stack', [$this, 'dateStack']);
+        add_shortcode('jpn_event_place', [$this, 'place']);
+        add_shortcode('jpn_event_flyer', [$this, 'flyer']);
     }
 
     /** Scalar current-event value for native Elementor Loop Item controls. */
@@ -136,6 +140,72 @@ final class Shortcodes
             $html .= '<div><dt>' . esc_html((string) $label) . '</dt><dd>' . $value . '</dd></div>';
         }
         return '<dl class="jpn-facts">' . $html . '</dl>';
+    }
+
+    /** Timeline date stack: weekday, day number, month, then the start time under a rule (omitted for date-only events). */
+    public function dateStack(): string
+    {
+        $eventId = $this->currentEventId();
+        $start = $eventId > 0 ? (int) get_post_meta($eventId, 'start_date_timestamp', true) : 0;
+        if ($start <= 0) {
+            return '';
+        }
+
+        $this->enqueueStyle();
+        $time = '';
+        if (get_post_meta($eventId, 'start_date_precision', true) !== 'date') {
+            $time = '<span class="jpn-ds__time"><b>' . esc_html($this->dates->formatTimestamp($start, 'g:i')) . '</b><small>'
+                . esc_html($this->dates->formatTimestamp($start, 'A')) . '</small></span>';
+        }
+        return '<time class="jpn-ds" datetime="' . esc_attr(gmdate('c', $start)) . '">'
+            . '<span class="jpn-ds__wd">' . esc_html($this->dates->formatTimestamp($start, 'D')) . '</span>'
+            . '<b class="jpn-ds__day">' . esc_html($this->dates->formatTimestamp($start, 'j')) . '</b>'
+            . '<span class="jpn-ds__mo">' . esc_html($this->dates->formatTimestamp($start, 'M')) . '</span>'
+            . $time . '</time>';
+    }
+
+    /** The event flyer filling its container: hover previews it large, click or tap opens the zoom viewer. */
+    public function flyer(): string
+    {
+        $eventId = $this->currentEventId();
+
+        return $eventId > 0 ? ImageZoom::html((int) get_post_thumbnail_id($eventId), [
+            'class' => 'jpn-flyer', 'sizes' => '(max-width: 767px) 100vw, 360px', 'alt' => get_the_title($eventId),
+        ]) : '';
+    }
+
+    /** Location (where label or area, with the venue under it when it differs) and Hosted by, each on its own row. */
+    public function place(): string
+    {
+        $eventId = $this->currentEventId();
+        if ($eventId === 0) {
+            return '';
+        }
+
+        $where = $this->eventWhere($eventId);
+        $venue = trim((string) get_post_meta($eventId, 'jpn_event_venue_label', true));
+        if (strcasecmp($venue, $where) === 0) {
+            $venue = '';
+        }
+        $host = get_userdata((int) get_post_meta($eventId, 'event_host', true));
+        $rows = '';
+        if ($where !== '' || $venue !== '') {
+            $rows .= '<div class="jpn-place__row jpn-place__row--loc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><div>'
+                . '<span class="jpn-place__lbl">' . esc_html__('Location', 'hexa-jpn-tools') . '</span>'
+                . '<b>' . esc_html($where !== '' ? $where : $venue) . '</b>'
+                . ($where !== '' && $venue !== '' ? '<span class="jpn-place__venue">' . esc_html($venue) . '</span>' : '') . '</div></div>';
+        }
+        if ($host) {
+            $rows .= '<div class="jpn-place__row jpn-place__row--host"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><div>'
+                . '<span class="jpn-place__lbl">' . esc_html__('Hosted by', 'hexa-jpn-tools') . '</span>'
+                . '<b>' . esc_html(html_entity_decode((string) $host->display_name, ENT_QUOTES, 'UTF-8')) . '</b></div></div>';
+        }
+        if ($rows === '') {
+            return '';
+        }
+
+        $this->enqueueStyle();
+        return '<div class="jpn-place">' . $rows . '</div>';
     }
 
     /** RSVP (the event's registration link, when set) and Details (the event page) buttons. */

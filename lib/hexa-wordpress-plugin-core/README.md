@@ -110,6 +110,12 @@ Version 3.7.2 keeps every `Map` item card fully inside the map, including on pho
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
 
+Version 3.18.0 adds `PublicComponents\ImageZoom`, a reusable flyer/poster viewer: `ImageZoom::html( $attachment_id )` prints the thumbnail; hovering shows the original image large in a centered preview that fades out when the pointer leaves, and a click or tap opens a full-screen viewer with pinch, wheel and double-tap zoom, finger panning, and swipe-down, Escape or backdrop to close. Docs: `docs/image-zoom.md`.
+
+Version 3.17.0 adds `SearchQuery\ResultTypeLabels`, host-declared labels that flag each search result's kind (for example Press Release, External PR or Site Content), the matching **Result Type** Elementor dynamic tag for search-result Loop Items, and `SearchQueryConfiguration::searchable_post_types()` / `searchable_taxonomies()` for full-site search scopes.
+
+Version 3.16.0 lets any cleanup option apply only to non-administrators (`audience` => `non_admins`, with `audience_capability`), removes list-table columns (`columns` + `column_hooks`) and admin-bar nodes (`admin_bar_nodes`), adds the `rankmath_lock_modified_date()` and `litespeed_ui()` presets, and adds `Taxonomies\TermChoiceLimits`, which limits how many terms users without a capability may pick (radio buttons when the limit is one), enforced again on save.
+
 Version 3.15.0 adds the `meta_box_remove` cleanup mode, which removes editor meta boxes through WordPress's `remove_meta_box()` after every plugin has added its boxes (optionally per post type), an `auto_enabled` condition that turns an option on by itself with a shown reason, and `CleanupPresets` with the shared Comments box (on automatically while comments are closed) and FIFU box options, so host plugins stop re-implementing them.
 
 Version 3.14.4 synchronizes the registered native Elementor Search input's collapsed state when an outside click closes its result list, while preserving inside clicks and unregistered widgets. It includes the 3.14.3 native reopen lifecycle bridge.

@@ -959,3 +959,31 @@ a.jpn-host__chip--link:focus-visible {
 .jpn-photos-download__zip {
     text-decoration: underline;
 }
+
+/* Glow Rail event row (home Upcoming Events): date stack and Location / Hosted by rows. */
+.jpn-ds{display:flex;flex-direction:column;align-items:flex-end;text-align:right;line-height:1;font-family:"Segoe UI",system-ui,sans-serif}
+.jpn-ds__wd{color:#25D366;font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase}
+.jpn-ds__day{margin:6px 0 4px;color:#fff;font-size:46px;font-weight:900;letter-spacing:-.02em}
+.jpn-ds__mo{color:#9aa39c;font-size:13px;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.jpn-ds__time{display:flex;align-items:baseline;justify-content:flex-end;gap:4px;width:76px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(37,211,102,.35)}
+.jpn-ds__time b{color:#fff;font-size:22px;font-weight:800;letter-spacing:-.01em}
+.jpn-ds__time small{color:#25D366;font-size:11px;font-weight:700;letter-spacing:.16em}
+.jpn-place{display:grid;gap:8px;font-family:"Segoe UI",system-ui,sans-serif}
+.jpn-place__row{display:flex;gap:12px;align-items:flex-start;padding:9px 12px;border-left:3px solid rgba(255,255,255,.14);background:rgba(255,255,255,.025)}
+.jpn-place__row svg{flex:none;width:18px;height:18px;margin-top:3px;fill:none;stroke:#9aa39c;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.jpn-place__row b{display:block;color:#fff;font-size:15px;font-weight:700;line-height:1.3}
+.jpn-place__lbl{display:block;margin-bottom:1px;color:#9aa39c;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+.jpn-place__venue{display:block;margin-top:2px;color:#c6cec8;font-size:14px}
+.jpn-place__row--loc{border-left-color:#25D366;background:linear-gradient(90deg,rgba(37,211,102,.12),rgba(37,211,102,0) 80%)}
+.jpn-place__row--loc svg{width:19px;height:19px;stroke:#25D366}
+.jpn-place__row--loc b{font-size:18px;font-weight:800}
+@media (max-width:767px){
+.jpn-ds{flex-direction:row;align-items:center;gap:10px;text-align:left}
+.jpn-ds__day{margin:0;font-size:30px}
+.jpn-ds__time{width:auto;margin:0 0 0 auto;padding:0 0 0 12px;border-top:0;border-left:1px solid rgba(37,211,102,.35)}
+.jpn-ds__time b{font-size:20px}
+.jpn-place__row--loc b{font-size:17px}
+}
+
+/* Glow Rail flyer: fills its column edge to edge */
+.jpn-flyer{min-height:100%;background:#000}

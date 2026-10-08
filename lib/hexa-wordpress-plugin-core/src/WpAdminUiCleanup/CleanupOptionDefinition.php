@@ -22,6 +22,11 @@ final class CleanupOptionDefinition {
     public array $post_types;
     public mixed $auto_enabled;
     public string $auto_reason;
+    public string $audience;
+    public string $audience_capability;
+    public array $columns;
+    public array $column_hooks;
+    public array $admin_bar_nodes;
 
     public function __construct( array $config ) {
         $this->key                = self::clean_key( (string) ( $config["key"] ?? "" ) );
@@ -43,6 +48,11 @@ final class CleanupOptionDefinition {
         $this->post_types         = self::string_list( $config["post_types"] ?? [] );
         $this->auto_enabled       = $config["auto_enabled"] ?? null;
         $this->auto_reason        = (string) ( $config["auto_reason"] ?? "" );
+        $this->audience           = "non_admins" === ( $config["audience"] ?? "all" ) ? "non_admins" : "all";
+        $this->audience_capability = (string) ( $config["audience_capability"] ?? "manage_options" );
+        $this->columns            = self::string_list( $config["columns"] ?? [] );
+        $this->column_hooks       = self::string_list( $config["column_hooks"] ?? [] );
+        $this->admin_bar_nodes    = self::string_list( $config["admin_bar_nodes"] ?? [] );
     }
 
     public static function from_array( array $config ): self {
@@ -51,6 +61,12 @@ final class CleanupOptionDefinition {
 
     public function applies_to_post_type( string $post_type ): bool {
         return [] === $this->post_types || in_array( $post_type, $this->post_types, true );
+    }
+
+    /** "non_admins" options skip users who hold the audience capability (manage_options by default). */
+    public function applies_to_current_user(): bool {
+        if ( "all" === $this->audience ) return true;
+        return ! function_exists( "current_user_can" ) || ! current_user_can( $this->audience_capability );
     }
 
     public function is_auto_enabled(): bool {

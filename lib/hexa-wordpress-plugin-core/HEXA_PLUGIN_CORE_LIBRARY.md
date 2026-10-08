@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.15.0
+Current release: 3.18.0
 ```
 
 Do not rename these.
@@ -216,7 +216,9 @@ Hexa\PluginCore\WpAdminUiCleanup
 
 Use `CleanupRegistry` to define admin cleanup options once, render toggle rows, save settings through AJAX, and apply behavior on the target admin screens.
 
-Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()` and `CleanupPresets::fifu_meta_box()` instead of redefining those boxes; pass overrides such as `section` or `label` as the argument.
+Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()`, `fifu_meta_box()`, `rankmath_lock_modified_date()` and `litespeed_ui()` instead of redefining them; pass overrides such as `section`, `label` or `audience` as the argument. `audience` => `non_admins` applies an option only to users without `audience_capability` (default `manage_options`). `columns` with `column_hooks` removes list-table columns; `admin_bar_nodes` removes admin-bar items.
+
+`Hexa\PluginCore\Taxonomies\TermChoiceLimits` takes rules (`taxonomy`, `max`, `capability`, `post_types`) and limits users without the capability: radio buttons for a hierarchical taxonomy with `max` 1, a stopped tag picker otherwise, and the limit re-applied on save.
 
 Required rules:
 
@@ -878,6 +880,8 @@ MetaConstraintSql
 JetEngineSearchAdapter
 ElementorSearchAdapter
 ElementorPublicTextIndex
+ResultTypeLabels
+ElementorResultTypeTag
 ```
 
 Use this namespace to alter one explicitly eligible native WordPress search-results query. The host owns option storage, capability/nonce checks, available public post types and taxonomies, and the request marker. Core owns normalization, bounded parsing, selected-source SQL, and query scoping.
@@ -926,6 +930,8 @@ Supported behavior:
 - `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
 
 Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+
+To flag what kind of content each result is, call `ResultTypeLabels::register( [ 'post' => 'Press Release' ], 'Site Content' )` and place Core's **Result Type** Elementor dynamic tag in the result Loop Item; style per type through the loop item's `type-{post_type}` class.
 
 Do not copy this into host `pre_get_posts` callbacks. Do not use it for suggestions: `SmartSearch` remains the separate AJAX typeahead/content-picker system. Full protocol: `docs/search-query.md`.
 

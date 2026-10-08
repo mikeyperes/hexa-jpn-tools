@@ -37,6 +37,41 @@ final class SearchQueryConfiguration {
     }
 
     /**
+     * Public post types a full-site search may cover: everything public except
+     * attachments and types excluded from search. Call after types register on `init`.
+     *
+     * @return string[]
+     */
+    public static function searchable_post_types(): array {
+        $types = [];
+        foreach ( function_exists( 'get_post_types' ) ? (array) get_post_types( [ 'public' => true ], 'objects' ) : [] as $name => $object ) {
+            $name = sanitize_key( (string) $name );
+            if ( '' !== $name && 'attachment' !== $name && is_object( $object ) && empty( $object->exclude_from_search ) ) {
+                $types[] = $name;
+            }
+        }
+
+        return array_values( array_unique( $types ) );
+    }
+
+    /**
+     * Public taxonomies whose term names a full-site search may match, without post formats.
+     *
+     * @return string[]
+     */
+    public static function searchable_taxonomies(): array {
+        $taxonomies = [];
+        foreach ( function_exists( 'get_taxonomies' ) ? (array) get_taxonomies( [ 'public' => true ], 'names' ) : [] as $name ) {
+            $name = sanitize_key( (string) $name );
+            if ( '' !== $name && 'post_format' !== $name ) {
+                $taxonomies[] = $name;
+            }
+        }
+
+        return array_values( array_unique( $taxonomies ) );
+    }
+
+    /**
      * @param array<string,mixed> $settings
      * @param array<int|string,mixed> $available_post_types
      * @param array<int|string,mixed> $available_taxonomies
