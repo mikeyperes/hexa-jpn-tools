@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.13.2
+Stable tag: 1.13.3
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.13.3 =
+* Flyer hover preview hint line is brighter and easier to read. Bundles HexaWP Core 3.27.3.
 
 = 1.13.2 =
 * Flyer hover preview stays open while the pointer is on it and closes only when the pointer leaves it or on a click outside; its RSVP and event page links are clickable. Bundles HexaWP Core 3.27.2.
