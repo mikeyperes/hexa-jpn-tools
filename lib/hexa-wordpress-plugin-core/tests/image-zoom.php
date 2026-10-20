@@ -79,7 +79,7 @@ $expect( 1 === preg_match( '#</a><template class="hiz-detail"><div class="hiz-d"
 $expect( ! str_contains( $html, '<b>Hop</b>' ) && ! str_contains( $html, '<script>alert' ), 'Title and text are escaped.' );
 $expect( str_contains( $html, '<dt>When</dt><dd>Wed, Oct 21</dd>' ) && str_contains( $html, 'A &amp; B' ), 'Facts print label and value, escaped.' );
 $expect( ! str_contains( $html, '<dt>Where</dt>' ), 'A fact with no value is skipped.' );
-$expect( str_contains( $html, '<li class="is-primary"><b>RSVP</b><span>example.org/hip-hop</span></li>' ), 'The primary link shows its label and a tidy address.' );
+$expect( 1 === preg_match( '#<li class="is-primary"><a href="[^"]*example\.org/hip-hop/?"[^>]*><b>RSVP</b><span>example\.org/hip-hop</span></a></li>#', $html ), 'The primary link is a real link showing its label and a tidy address.' );
 $expect( str_contains( $html, '<b>Event page</b><span>example.test/e/1</span>' ) && ! str_contains( $html, 'skipped.test' ) && ! str_contains( $html, 'No url' ), 'Links missing a label or an address are skipped.' );
 $expect( '' === ImageZoom::detail( [] ) && '' === ImageZoom::detail( [ 'title' => '  ', 'meta' => [ 'A' => '' ] ] ), 'An empty detail renders nothing.' );
 
