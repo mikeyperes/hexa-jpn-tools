@@ -1,11 +1,13 @@
 # Hexa JPN Tools
 
-Hexa JPN Tools owns JPN Miami's WordPress-specific event, host, notification,
+Hexa JPN Tools owns each JPN city's WordPress-specific event, host, notification,
 shortcode, and Code.Hexa integration behavior. The plugin replaces the legacy
 `jpn-structure` plugin without changing its event post type, taxonomies, ACF
 keys, shortcodes, options, or stored content.
 
 ## Features
+
+- City timezone: event parsing, calendar filters, current-day boundaries and the integration manifest follow WordPress Settings > General. Date maintenance preserves that setting.
 
 - Events: JPN event post type, fields and the "Recently added" marker for events published in the last 24 hours.
 - Timeline pieces: `[jpn_event_date_stack]`, `[jpn_event_place]`, `[jpn_event_facts]`, `[jpn_event_actions]`, `[jpn_event_badges]`, `[jpn_event_time_range]`, `[jpn_event_venue]`, `[jpn_event_host]`, `[jpn_event_field]`, `[jpn_event_recent]`, `[jpn_event_photos]`.

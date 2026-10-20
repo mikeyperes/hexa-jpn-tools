@@ -147,14 +147,14 @@ final class Migration
         } while ($page <= (int) $query->max_num_pages);
 
         if ($execute) {
-            update_option('timezone_string', EventDates::TIMEZONE);
+            // Preserve the site's configured city timezone during date maintenance.
             update_option('hexa_jpn_date_schema_version', 1, false);
         }
 
         return [
             'execute' => $execute,
             'timezone_before' => $timezoneBefore,
-            'timezone_target' => EventDates::TIMEZONE,
+            'timezone_target' => EventDates::timezoneName(),
             'events_seen' => $seen,
             'events_valid' => $updated,
             'invalid_count' => $seen - $updated,

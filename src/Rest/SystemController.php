@@ -63,7 +63,7 @@ final class SystemController
             'schema_version' => 1,
             'plugin' => self::pluginIdentity(),
             'site' => ['home_url' => home_url('/'), 'site_url' => site_url('/')],
-            'timezone' => EventDates::TIMEZONE,
+            'timezone' => EventDates::timezoneName(),
             'authentication' => [
                 'type' => 'wordpress_application_password',
                 'role' => IntegrationAccess::ROLE,

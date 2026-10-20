@@ -15,9 +15,15 @@ final class EventDates
     public const TIMEZONE = 'America/New_York';
     public const STORAGE_FORMAT = 'Y-m-d H:i:s';
 
+    /** The site owns its event timezone; the constant remains a legacy fixture fallback. */
+    public static function timezoneName(): string
+    {
+        return function_exists('wp_timezone') ? wp_timezone()->getName() : self::TIMEZONE;
+    }
+
     public function timezone(): DateTimeZone
     {
-        return new DateTimeZone(self::TIMEZONE);
+        return new DateTimeZone(self::timezoneName());
     }
 
     public function parse(string $value): DateTimeImmutable
@@ -78,7 +84,7 @@ final class EventDates
     public static function startOfToday(?int $now = null): int
     {
         return (new DateTimeImmutable('@' . (string) ($now ?? time())))
-            ->setTimezone(new DateTimeZone(self::TIMEZONE))
+            ->setTimezone(new DateTimeZone(self::timezoneName()))
             ->setTime(0, 0, 0)
             ->getTimestamp();
     }

@@ -34,7 +34,7 @@ final class EventCalendar
             'start' => ['meta' => 'start_date_timestamp', 'format' => 'timestamp'],
             // Date-only events store their last day at local midnight; Core's end_midnight 'auto' keeps that day for all-day events.
             'end' => 'end_date_timestamp',
-            'timezone' => EventDates::TIMEZONE,
+            'timezone' => EventDates::timezoneName(),
             'week_start' => 0,
             'months_back' => 12,
             'months_ahead' => 12,
@@ -59,7 +59,7 @@ final class EventCalendar
                     'meta_key' => 'start_date_timestamp',
                     'end_meta_key' => 'end_date_timestamp',
                     'format' => 'timestamp',
-                    'timezone' => EventDates::TIMEZONE,
+                    'timezone' => EventDates::timezoneName(),
                     'label' => __('Dates', 'hexa-jpn-tools'),
                     'from_label' => __('From', 'hexa-jpn-tools'),
                     'to_label' => __('To', 'hexa-jpn-tools'),
