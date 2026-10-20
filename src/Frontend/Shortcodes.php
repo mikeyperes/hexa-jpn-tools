@@ -174,7 +174,7 @@ final class Shortcodes
 
         return $eventId > 0 ? ImageZoom::html((int) get_post_thumbnail_id($eventId), [
             'class' => 'jpn-flyer', 'fit' => 'contain', 'loading' => 'eager', 'sizes' => '(max-width: 767px) 100vw, 640px', 'alt' => get_the_title($eventId),
-            'delay' => 1500,
+            'delay' => 400,
             'hint' => __("You're seeing this because you hovered over the event. Click the flyer to open it full screen.", 'hexa-jpn-tools'),
             'detail' => $this->flyerDetail($eventId),
         ]) : '';

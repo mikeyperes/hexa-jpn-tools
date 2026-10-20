@@ -52,9 +52,43 @@ final class AcfFieldGroupRenderer {
                 <?php echo CoreUi::toggle( 'acf_group_' . $definition['id'], $enabled, 'Enable this ACF structure', [ 'class' => 'hpc-acf-group-toggle', 'disabled' => ! $available ] ); ?>
                 <span class="hpc-acf-group-status" aria-live="polite"></span>
             </div>
+            <?php echo $this->client_view_controls( $definition ); ?>
         </div>
         <?php
         return CoreUi::collapsible( [ 'title' => $definition['label'], 'body_html' => (string) ob_get_clean(), 'meta_html' => $meta, 'open' => false, 'persist_key' => $persist . '-acf-' . $definition['id'], 'query_state' => false ] );
+    }
+
+    /**
+     * Client-friendly view: who sees only the friendly field help, without the
+     * developer notes (shortcodes, storage details). See Fields\Audience.
+     *
+     * @param array<string,mixed> $definition
+     */
+    private function client_view_controls( array $definition ): string {
+        $state = (array) ( $definition['client_view_state'] ?? \Hexa\PluginCore\Fields\Audience::normalize( [] ) );
+        $below = \Hexa\PluginCore\Fields\Audience::BELOW_ADMIN === ( $state['roles'] ?? '' );
+        $chosen = is_array( $state['roles'] ?? null ) ? $state['roles'] : [];
+        $roles = function_exists( 'wp_roles' ) ? wp_roles()->get_names() : [];
+        unset( $roles['administrator'] );
+        $name = 'hpc_client_scope_' . $definition['id'];
+        ob_start();
+        ?>
+        <div class="hpc-acf-client" data-client-view>
+            <p><strong>Client-friendly view</strong><br><span class="hpc-small">Hides developer notes (shortcodes, storage details) in this group's field help for the people below.</span></p>
+            <?php echo CoreUi::toggle( 'acf_client_' . $definition['id'], ! empty( $state['enabled'] ), 'Client-friendly view', [ 'class' => 'hpc-acf-client-toggle' ] ); ?>
+            <p class="hpc-acf-client-scope">
+                <label><input type="radio" name="<?php echo esc_attr( $name ); ?>" value="below_admin" <?php checked( $below ); ?>> Everyone below administrator</label><br>
+                <label><input type="radio" name="<?php echo esc_attr( $name ); ?>" value="roles" <?php checked( ! $below ); ?>> Only these roles:</label>
+            </p>
+            <p class="hpc-acf-client-roles">
+                <?php foreach ( $roles as $role => $label ) : ?>
+                    <label><input type="checkbox" value="<?php echo esc_attr( (string) $role ); ?>" <?php checked( in_array( (string) $role, $chosen, true ) ); ?>> <?php echo esc_html( translate_user_role( (string) $label ) ); ?></label>
+                <?php endforeach; ?>
+            </p>
+            <span class="hpc-acf-client-status" aria-live="polite"></span>
+        </div>
+        <?php
+        return (string) ob_get_clean();
     }
 
     private function assets(): string {
@@ -64,6 +98,8 @@ final class AcfFieldGroupRenderer {
         return <<<'HTML'
 <style>.hpc-acf-registry-intro{margin-bottom:14px}.hpc-acf-registry-intro h3{font-size:20px}.hpc-acf-facts{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr));margin:12px 0}.hpc-acf-facts div{background:#f8fafc;border:1px solid #e3e8f0;border-radius:8px;padding:9px 10px}.hpc-acf-facts dt{color:#65758b;font-size:11px;font-weight:800;text-transform:uppercase}.hpc-acf-facts dd{margin:4px 0 0;overflow-wrap:anywhere}.hpc-acf-group.is-saving{opacity:.7;pointer-events:none}.hpc-acf-group-status{color:var(--hpc-muted);font-size:13px}@media(max-width:700px){.hpc-acf-facts{grid-template-columns:1fr}}</style>
 <script>(function(){if(window.hexaAcfRegistryReady)return;window.hexaAcfRegistryReady=true;document.addEventListener('change',function(event){var input=event.target.closest('.hpc-acf-group-toggle input');if(!input)return;var group=input.closest('.hpc-acf-group');var root=input.closest('[data-hpc-acf-registry]');if(!group||!root)return;var status=group.querySelector('.hpc-acf-group-status');var body=new URLSearchParams();body.set('action',root.dataset.action||'');body.set(root.dataset.nonceField||'nonce',root.dataset.nonce||'');body.set('field_group_id',group.dataset.fieldGroupId||'');body.set('enabled',input.checked?'1':'0');group.classList.add('is-saving');if(status)status.textContent='Saving...';fetch(root.dataset.ajaxUrl||window.ajaxurl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'},body:body.toString()}).then(function(response){return response.json()}).then(function(payload){if(!payload||!payload.success)throw new Error(payload&&payload.data&&payload.data.message?payload.data.message:'Save failed');if(status)status.textContent=payload.data.message||'Saved.'}).catch(function(error){input.checked=!input.checked;if(status)status.textContent=error.message||'Unable to save.'}).finally(function(){group.classList.remove('is-saving')})})})();</script>
+<style>.hpc-acf-client{border-top:1px solid #e3e8f0;margin-top:14px;padding-top:12px}.hpc-acf-client p{margin:6px 0}.hpc-acf-client-roles label{display:inline-block;margin:0 14px 6px 0}.hpc-acf-client-roles[hidden]{display:none}.hpc-acf-client-status{color:var(--hpc-muted);font-size:13px}</style>
+<script>(function(){if(window.hexaAcfClientViewReady)return;window.hexaAcfClientViewReady=true;function sync(box){var scope=box.querySelector('.hpc-acf-client-scope input:checked');var roles=box.querySelector('.hpc-acf-client-roles');if(roles)roles.hidden=!scope||scope.value!=='roles';}document.querySelectorAll('[data-client-view]').forEach(sync);document.addEventListener('change',function(event){var box=event.target.closest('[data-client-view]');if(!box)return;sync(box);var group=box.closest('.hpc-acf-group');var root=box.closest('[data-hpc-acf-registry]');if(!group||!root)return;var status=box.querySelector('.hpc-acf-client-status');var toggle=box.querySelector('.hpc-acf-client-toggle input');var scope=box.querySelector('.hpc-acf-client-scope input:checked');var body=new URLSearchParams();body.set('action',root.dataset.action||'');body.set(root.dataset.nonceField||'nonce',root.dataset.nonce||'');body.set('field_group_id',group.dataset.fieldGroupId||'');body.set('setting','client_view');body.set('client_enabled',toggle&&toggle.checked?'1':'0');body.set('client_scope',scope?scope.value:'below_admin');box.querySelectorAll('.hpc-acf-client-roles input:checked').forEach(function(role){body.append('client_roles[]',role.value);});if(status)status.textContent='Saving...';fetch(root.dataset.ajaxUrl||window.ajaxurl,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8'},body:body.toString()}).then(function(response){return response.json()}).then(function(payload){if(!payload||!payload.success)throw new Error(payload&&payload.data&&payload.data.message?payload.data.message:'Save failed');if(status)status.textContent=payload.data.message||'Saved.'}).catch(function(error){if(status)status.textContent=error.message||'Unable to save.'})})})();</script>
 HTML;
     }
 }

@@ -37,6 +37,8 @@ final class FieldGroups {
         if ( '' === $group['key'] ) {
             return;
         }
+        // Developer notes (shortcodes, storage details) only for users outside the client view.
+        $group = Audience::apply( $group );
         self::$groups[ $group['key'] ] = $group;
 
         if ( ! Acf::active() ) {

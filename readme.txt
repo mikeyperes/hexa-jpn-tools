@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.13.0
+Stable tag: 1.13.1
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.13.1 =
+* Flyer hover preview opens after 0.4 seconds and eases in more smoothly, with rounder corners; bundles HexaWP Core 3.27.1.
 
 = 1.13.0 =
 * Timeline flyer hover preview opens after 1.5 seconds with a countdown ring, a line explaining why it opened, and the event details beside the flyer (title, when, where, host, description, RSVP and event page links), in JPN green.

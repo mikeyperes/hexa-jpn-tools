@@ -35,6 +35,7 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
                 'description' => '', 'group_key' => '', 'enabled_default' => true,
                 'legacy_option' => '', 'definition' => [], 'fields' => [],
                 'location' => '', 'dependencies' => [], 'available_when' => null,
+                'client_view' => [],
             ],
             $definition
         );
@@ -95,6 +96,8 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
             if ( empty( $group['title'] ) ) {
                 $group['title'] = $definition['label'];
             }
+            $declared = [] !== $definition['client_view'] ? $definition['client_view'] : ( $group['client_view'] ?? [] );
+            $group['client_view'] = $this->store->client_view( [ 'client_view' => $declared ] + $definition );
             \Hexa\PluginCore\Fields\FieldGroups::add( $group );
         }
     }
@@ -104,6 +107,7 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
         return array_map(
             function ( array $definition ): array {
                 $definition['enabled'] = $this->store->enabled( $definition );
+                $definition['client_view_state'] = $this->store->client_view( $definition );
                 $definition['available'] = ! is_callable( $definition['available_when'] ) || (bool) call_user_func( $definition['available_when'] );
                 return $definition;
             },

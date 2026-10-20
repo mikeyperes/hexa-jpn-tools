@@ -42,6 +42,31 @@ final class AcfFieldGroupSettingsStore {
         return $enabled;
     }
 
+    /**
+     * Who gets the client-friendly view of this group: a saved choice, else the
+     * definition's `client_view`, else everyone below administrator.
+     *
+     * @param array<string,mixed> $definition
+     * @return array{enabled:bool,roles:string|list<string>}
+     */
+    public function client_view( array $definition ): array {
+        $saved = $this->all()['_client_view'][ (string) $definition['id'] ] ?? null;
+        return \Hexa\PluginCore\Fields\Audience::normalize( is_array( $saved ) ? $saved : ( $definition['client_view'] ?? [] ) );
+    }
+
+    /** @param array<string,mixed> $definition @param array<string,mixed> $setting @return array{enabled:bool,roles:string|list<string>} */
+    public function save_client_view( array $definition, array $setting ): array {
+        $setting = \Hexa\PluginCore\Fields\Audience::normalize( $setting );
+        $saved = $this->all();
+        $views = is_array( $saved['_client_view'] ?? null ) ? $saved['_client_view'] : [];
+        $views[ (string) $definition['id'] ] = $setting;
+        $saved['_client_view'] = $views;
+        if ( function_exists( 'update_option' ) ) {
+            update_option( $this->option_name, $saved, false );
+        }
+        return $setting;
+    }
+
     public function option_name(): string {
         return $this->option_name;
     }
