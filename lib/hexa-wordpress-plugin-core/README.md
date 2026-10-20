@@ -4,6 +4,47 @@ Shared WordPress plugin core for Hexa plugins.
 
 This package exists to stop each plugin from re-implementing the same admin tabs, activity logs, updater wiring, shortcode lists, and setup patterns differently.
 
+> Feature base for HWS Skills. Read before building on this plugin; use or
+> extend these features instead of rebuilding them.
+
+**Purpose:** shared library bundled inside every Hexa plugin (admin tabs, updater, fields, search, public components). It has no admin screen of its own; the bundling plugin exposes its features.
+
+## Features
+
+### Site search display
+- **Use:** `[hexa_search style="icon-reveal|overlay|pill|underline|command" placeholder="" accent="" radius=""]` (registered by HWS Base Tools).
+- **Code:** `src/SearchDisplay/SearchDisplayRenderer.php`, results tuning in `src/SearchQuery/`, live results in `src/SmartSearch/`.
+- **Extend:** `hexa_plugin_core_search_query_should_handle`, `hexa_plugin_core_smart_search_results`.
+
+### Search results page (Elementor)
+- **Does:** turns an Elementor Pro Search widget into a full search page: live results appear in the page under the field instead of a dropdown, the current results stay in place (faded) under the spinner while the next ones load, and the page's default content (for example a "recent posts" grid) fades while the first results load and hides while results show. Outside clicks no longer close the results.
+- **Use:** register `ElementorSearchAdapter` for the widget's Query ID, then in Elementor add the CSS class `hexa-search-page-results` to the Search widget and `hexa-search-default` to the default content. Design stays in the site: native widget controls plus the optional `--hexa-search-field-max-width`, `--hexa-search-loading-opacity`, `--hexa-search-loader-*` properties.
+- **Code:** `src/SearchQuery/ElementorSearchAdapter.php`, `src/SearchQuery/assets/elementor-search.js|css`
+
+### Calendar
+- **Does:** a month calendar of posts from a registered profile.
+- **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` in a plugin, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/...`.
+- **Code:** `src/Calendar/`
+
+### Full-text search index
+- **Does:** fast live search on large sites: one MySQL FULLTEXT row per published post with the configured search sources; the search engine uses it instead of scanning posts and postmeta.
+- **Use:** `( new SearchIndex( $settings_provider ) )->register()`, `'index' => true` in the search settings, then build once with `rebuild()` pages.
+- **Code:** `src/SearchQuery/SearchIndex.php`
+
+### Directory search
+- **Does:** a searchable, filterable directory from a registered profile. More results load on scroll with a crawlable Load more link by default (`'load_mode' => 'infinite'`); `'load_mode' => 'load_more'` loads more only when the button is clicked (for a list with content below it, such as a form); `'load_mode' => 'numbered'` gives page links.
+- **Use:** `DirectorySearchRegistry::register( 'id', [...] )`, then `[hexa_directory id="id"]`.
+- **Code:** `src/DirectorySearch/`
+
+### Map
+- **Does:** a map of addresses geocoded without an API key.
+- **Use:** `MapRegistry::register( 'id', [...] )`, then `[hexa_map id="id"]`.
+- **Code:** `src/Map/`
+
+### Shared building blocks
+- Content types (`src/ContentTypes/`), ACF field factory (`src/AcfFieldFactory/`), front-end form fields (`src/FrontendForms/`), FAQ sets (`src/FaqSets/`), typography and brand colours (`src/Typography/`, `src/BrandColors/`).
+- **Extend:** `hexa_fields/load_field_groups`, `hexa_plugin_core_recommended_plugin_definitions`, `hexa_plugin_core/plugin_bridge_owners`.
+
 ## Package Identity
 
 These names are fixed. Do not rename them in plugin implementations.
@@ -109,6 +150,24 @@ Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds
 Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
 
 Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
+
+Version 3.21.0 makes site search public-only for everyone: `SearchQueryEngine::restrict_to_public()` limits every prepared search (the regular search page and the Elementor Search widget) to published, non-password items, drops anything marked noindex (Rank Math `rank_math_robots`, Yoast `_yoast_wpseo_meta-robots-noindex`) and never returns the site's front or posts page. Before, the regular search page used WordPress's default, which shows private posts to signed-in editors.
+
+Version 3.26.0 gives `ImageZoom` optional `delay` (ms, up to 5000) with a countdown ring on the thumbnail, a one-line `hint` above the preview (a default explainer when a delay is set; empty string hides it) and a `detail` side panel (title, label/value facts, short text, link lines). Without options the markup is unchanged.
+
+Version 3.25.0 gives `TaskRunner` a full dashboard look: `header()`, `segments()` (remembered panel switcher), KPI tiles with tones, toolbars with search and filter chips, a bulk-selection bar, soft badges, expandable lists, a slim progress bar with Stop and a light Activity log. `queue()` accepts `concurrency` for read-only steps. Root class: `hpc-runner-app`.
+
+Version 3.24.1 adds `WpAdminComponents\TaskRunner`, the shared live-progress pieces for admin jobs that run as AJAX steps: stat cards, progress meter, status badges, job tables, a live log and the `HexaWpCoreTaskRunner` client (`post`, one-at-a-time `queue`, batched `loop`, stop between steps). Docs: `docs/task-runner.md`. `DatabaseCleanup` (the WP-Optimize wrapper) is deprecated: HWS Base Tools now owns database cleanup itself, and the module will be removed once every site runs a Base Tools release that no longer calls it.
+
+Version 3.22.0 makes Core the one schema library: `SchemaNodes` builders, `SchemaSources` WordPress adapters, `SchemaIds`, the shared per-page graph `SchemaPage` (one `hexa-schema` block merged from every plugin) and `RankMathSchemaControl`. Plugins decide where they output; Core builds, merges and prints.
+
+Version 3.21.1 fixes a search hang from 3.21.0: the noindex rule was a `meta_query` that WordPress compiles into unkeyed postmeta joins, and Elementor searches applied it twice, so one query multiplied every post by its meta rows and ran for minutes. `restrict_to_public()` now only marks the query (`hexa_search_public_only`), and the search SQL excludes noindex with one indexed postmeta subquery (`SearchQueryEngine::noindex_exclusion_sql()`). Calling it twice changes nothing.
+
+Version 3.20.0 adds the Elementor search results page mode (`hexa-search-page-results` and `hexa-search-default` CSS classes): results in the page, the spinner over the current results while loading, default content hidden while results show.
+
+Version 3.19.1 makes short words such as "5G" or the "1" in "GLP-1" fast with the search index: they are matched on the indexed text, narrowed by the query's longer words.
+
+Version 3.19.0 adds `SearchQuery\SearchIndex`, an optional MySQL full-text index the search engine uses with `'index' => true`, so live search on sites with tens of thousands of posts answers in milliseconds instead of seconds.
 
 Version 3.18.3 keeps theme and page-builder image rules (such as `height: auto`) from shrinking the ImageZoom thumbnail inside its box.
 
@@ -228,7 +287,9 @@ Version 3.0.1 preserves explicit `@id` and `@type` relationship summaries when s
 
 ## Schema Tools
 
-The 1.x line includes reusable schema graph helpers and a generic schema dashboard renderer. Host plugins can build their own schema objects, normalize independently detectable graph nodes with `SchemaGraph::standalone_nodes()`, opt into explicit `@id` and `@type` relationship summaries for linked top-level nodes, expose debug JSON, show ideal-vs-actual graph examples, provide validator links, render collapsed shortcode cards, and pass plugin-specific schema action panels through HexaWP Core instead of duplicating dashboard UI.
+Every Hexa plugin builds schema with `SchemaNodes` and `SchemaSources` and adds it to `SchemaPage`, which merges all plugins' nodes into one `hexa-schema` block per page. Each plugin decides which pages it covers. HWS Base Tools owns the Rank Math schema switch (`RankMathSchemaControl`). See `docs/schema-tools.md`.
+
+The schema tools also include reusable schema graph helpers and a generic schema dashboard renderer. Host plugins can build their own schema objects, normalize independently detectable graph nodes with `SchemaGraph::standalone_nodes()`, opt into explicit `@id` and `@type` relationship summaries for linked top-level nodes, expose debug JSON, show ideal-vs-actual graph examples, provide validator links, render collapsed shortcode cards, and pass plugin-specific schema action panels through HexaWP Core instead of duplicating dashboard UI.
 
 Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`, or plugin-specific namespaces inside this package. Consuming plugins may have their own namespaces, but this shared package always stays under `Hexa\PluginCore`.
 
@@ -245,7 +306,7 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `ContentCleanup`: old content detection, backup file detection/deletion, article/media cleanup, all-matching and all-except-latest-X batch deletion, guarded AJAX actions, collapsible service cards, human-readable rule and scan-location detail cards, AJAX table updates, and collapsed Hexa Core Log Type 1 cleanup activity UI.
 - `ContentTypes`: immutable WordPress post-type keys with reusable registration, editable labels and rewrite slugs, guarded AJAX persistence, functional header toggles, collapsed CPT cards, and immediate external ACF sibling cards.
 - `CredentialVault`: encrypted API-key/secret storage, masking, and credential field examples.
-- `DatabaseCleanup`: guarded provider-backed cleanup sessions, per-task cleanup, per-table optimization, pre/post provider state restoration, and live AJAX progress.
+- `DatabaseCleanup` (deprecated, see 3.24.1): guarded provider-backed cleanup sessions, per-task cleanup, per-table optimization, pre/post provider state restoration, and live AJAX progress.
 - `DataNormalization`: compatibility-friendly scalar, ACF/meta field, and WordPress media normalizers for host-owned data mappings.
 - `EntitySources`: optional canonical website/entity selection, derived semantic types, legacy migration, user/post resolution, complete author/profile cards, attached-author extraction, field inspection, and reusable admin UI.
 - `FieldStructures`: reusable ACF group registration and settings panels, a generic live ACF gallery-details module, plus displays and status checks for ACF groups, custom post types, taxonomies, and option-backed feature structures.
@@ -265,7 +326,7 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `ShortcodeRegistry`: shortcode definition registry, dashboard display renderer, examples, live output, and test runner contracts.
 - `SiteStructure`: reusable critical page blueprint management, assigned page storage, WordPress navigation menu creation, custom menu-item creation, add-all-assigned-pages actions, menu structure attachment, and page-to-menu-item tools.
 - `SchemaDetection`: reusable JSON-LD URL scans, source detection, semantic property validation, duplicate schema conflict checks, FAQ validation, and dark admin report rendering.
-- `SchemaTools`: shared schema-document normalization, typed HTTP(S) URL guards, fail-closed URL-property sanitization, graph-node deduplication, JSON-LD rendering, and one-shot WordPress output injection while host plugins retain their schema builders.
+- `SchemaTools`: the one schema library for every Hexa plugin: generic node builders (`SchemaNodes`), WordPress data adapters (`SchemaSources`), shared `@id` conventions (`SchemaIds`), one merged graph per page (`SchemaPage`), the Rank Math schema switch (`RankMathSchemaControl`), URL guards, normalization and JSON-LD rendering. Host plugins decide which pages they cover; Core builds and prints.
 - `SearchDisplay`: five reusable front-end WordPress search-form templates with shared markup, CSS, and accessible interactions.
 - `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, optional natural time windows from shared QueryFilter rules, selected post types and sources, one-query-only SQL hooks, guarded JetEngine and native Elementor Search bridging, and a safe public Elementor text index.
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.

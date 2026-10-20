@@ -11,6 +11,10 @@ namespace Hexa\PluginCore\PublicComponents;
  *    the pointer leaves the thumbnail (or the window loses focus);
  *  - click, tap or Enter: a full-screen viewer with pinch, wheel and double-tap zoom, finger or
  *    mouse panning, swipe-down / Escape / backdrop to close, fading out as it closes.
+ * Options: `delay` (ms) holds the hover preview back and shows a small countdown ring on the thumbnail while it waits;
+ * `hint` is a one-line explainer shown above the preview (a translatable default is used when `delay` is set; pass
+ * an empty string to hide it); `detail` adds a side panel to the preview with a title, label/value facts, a short
+ * text and link lines, as if the item had been opened.
  * Without JavaScript the link simply opens the original image. Page-builder lightboxes are opted out. `--hiz-*` custom properties on
  * any ancestor restyle the preview and viewer.
  */
@@ -22,7 +26,7 @@ final class ImageZoom {
      *
      * `fit` => 'contain' shows the whole image over a blurred fill of itself instead of cropping it.
      *
-     * @param array{size?:string,class?:string,alt?:string,sizes?:string,loading?:string,fit?:string} $args
+     * @param array{size?:string,class?:string,alt?:string,sizes?:string,loading?:string,fit?:string,delay?:int,hint?:string,detail?:array{title?:string,meta?:array<string,string>,text?:string,links?:list<array{label:string,url:string,primary?:bool}>}} $args
      */
     public static function html( int $attachment_id, array $args = [] ): string {
         if ( $attachment_id <= 0 || ! function_exists( 'wp_get_attachment_image_src' ) ) {
@@ -45,12 +49,60 @@ final class ImageZoom {
             // for the box width and blur a cover/contain-fitted image in a tall box.
             $image = str_replace( 'sizes="auto, ', 'sizes="', $image );
         }
+        $delay   = max( 0, min( 5000, (int) ( $args['delay'] ?? 0 ) ) );
+        $hint    = array_key_exists( 'hint', $args )
+            ? trim( (string) $args['hint'] )
+            : ( $delay > 0 ? __( "You're seeing this preview because you hovered over it. Click to open it full screen." ) : '' );
+        $detail  = self::detail( is_array( $args['detail'] ?? null ) ? $args['detail'] : [] );
         $contain = 'contain' === ( $args['fit'] ?? 'cover' );
         $style   = $contain ? ' style="--hiz-fill:url(' . esc_url( (string) ( wp_get_attachment_image_src( $attachment_id, 'medium' )[0] ?? $full[0] ) ) . ')"' : '';
 
         return '<a class="' . esc_attr( trim( 'hiz ' . ( $contain ? 'hiz--contain ' : '' ) . ( $args['class'] ?? '' ) ) ) . '" href="' . esc_url( (string) $full[0] ) . '"' . $style . ' data-hiz data-elementor-open-lightbox="no"'
+            . ( $delay > 0 ? ' data-hiz-delay="' . $delay . '"' : '' ) . ( '' !== $hint ? ' data-hiz-hint="' . esc_attr( $hint ) . '"' : '' )
             . ' data-hiz-w="' . (int) $full[1] . '" data-hiz-h="' . (int) $full[2] . '" aria-label="' . esc_attr( '' !== $alt ? $alt : __( 'View full image' ) ) . '">'
-            . $image . '</a>' . self::assets();
+            . $image . '</a>' . ( '' !== $detail ? '<template class="hiz-detail">' . $detail . '</template>' : '' ) . self::assets();
+    }
+
+    /**
+     * The preview side panel: title, facts, text and link lines. Everything is escaped here; empty parts are skipped.
+     *
+     * @param array{title?:string,meta?:array<string,string>,text?:string,links?:list<array{label:string,url:string,primary?:bool}>} $detail
+     */
+    public static function detail( array $detail ): string {
+        $html  = '';
+        $title = trim( (string) ( $detail['title'] ?? '' ) );
+        if ( '' !== $title ) {
+            $html .= '<h3 class="hiz-d__t">' . esc_html( $title ) . '</h3>';
+        }
+        $facts = '';
+        foreach ( (array) ( $detail['meta'] ?? [] ) as $label => $value ) {
+            $value = trim( (string) $value );
+            if ( '' !== $value ) {
+                $facts .= '<div><dt>' . esc_html( (string) $label ) . '</dt><dd>' . esc_html( $value ) . '</dd></div>';
+            }
+        }
+        if ( '' !== $facts ) {
+            $html .= '<dl class="hiz-d__m">' . $facts . '</dl>';
+        }
+        $text = trim( (string) ( $detail['text'] ?? '' ) );
+        if ( '' !== $text ) {
+            $html .= '<p class="hiz-d__p">' . esc_html( $text ) . '</p>';
+        }
+        $links = '';
+        foreach ( (array) ( $detail['links'] ?? [] ) as $link ) {
+            $url   = trim( (string) ( $link['url'] ?? '' ) );
+            $label = trim( (string) ( $link['label'] ?? '' ) );
+            if ( '' === $url || '' === $label ) {
+                continue;
+            }
+            $shown  = preg_replace( '#^https?://(www\\.)?#i', '', $url );
+            $links .= '<li' . ( ! empty( $link['primary'] ) ? ' class="is-primary"' : '' ) . '><b>' . esc_html( $label ) . '</b><span>' . esc_html( rtrim( (string) $shown, '/' ) ) . '</span></li>';
+        }
+        if ( '' !== $links ) {
+            $html .= '<ul class="hiz-d__l">' . $links . '</ul>';
+        }
+
+        return '' !== $html ? '<div class="hiz-d">' . $html . '</div>' : '';
     }
 
     /** The preview/viewer style and script, once per page. */
@@ -67,27 +119,52 @@ final class ImageZoom {
         return '.hiz{display:block;position:relative;width:100%;height:100%;overflow:hidden;cursor:zoom-in;-webkit-tap-highlight-color:transparent}'
             . '.hiz .hiz__img{display:block;width:100%;height:100%;max-width:none;object-fit:cover;transition:transform .5s cubic-bezier(.2,.7,.2,1)}.hiz:hover .hiz__img{transform:scale(1.03)}'
             . '.hiz--contain{background:#000}.hiz--contain::before{content:"";position:absolute;inset:-24px;background:var(--hiz-fill) center/cover;filter:blur(18px) brightness(.55);transform:scale(1.1)}.hiz.hiz--contain .hiz__img{position:relative;object-fit:contain}'
-            . '.hiz-pop{position:fixed;z-index:99998;top:50%;left:50%;max-width:min(var(--hiz-pop-width,720px),92vw);max-height:92vh;max-height:92dvh;pointer-events:none;'
+            . '.hiz-pop{position:fixed;z-index:99998;top:50%;left:50%;width:max-content;max-width:min(var(--hiz-pop-width,720px),92%);max-height:92vh;max-height:92dvh;pointer-events:none;'
             . 'opacity:0;transform:translate(-50%,-50%) scale(.96);transition:opacity .22s ease,transform .28s cubic-bezier(.2,.7,.2,1);'
             . 'border:1px solid var(--hiz-border,rgba(255,255,255,.14));border-radius:var(--hiz-radius,10px);background:var(--hiz-bg,#000);box-shadow:0 30px 90px rgba(0,0,0,.6);overflow:hidden}'
-            . '.hiz-pop.is-in{opacity:1;transform:translate(-50%,-50%) scale(1)}.hiz-pop img{display:block;width:auto;height:auto;max-width:inherit;max-height:92vh;max-height:92dvh;object-fit:contain}'
+            . '.hiz-pop.is-in{opacity:1;transform:translate(-50%,-50%) scale(1)}.hiz-pop.has-detail{max-width:min(var(--hiz-pop-wide,1040px),94%)}'
+            . '.hiz-pop__note{display:flex;align-items:center;gap:9px;margin:0;padding:9px 16px;border-bottom:1px solid var(--hiz-border,rgba(255,255,255,.1));background:rgba(255,255,255,.04);color:rgba(255,255,255,.66);font:500 11.5px/1.4 inherit;letter-spacing:.01em}'
+            . '.hiz-pop__note::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--hiz-accent,#fff);box-shadow:0 0 0 3px rgba(255,255,255,.08)}.hiz-pop__note[hidden]{display:none}'
+            . '.hiz-pop__body{display:flex;align-items:stretch}.hiz-pop__fig{display:flex;flex:0 1 auto;min-width:0;background:var(--hiz-bg,#000)}'
+            . '.hiz-pop img{display:block;width:auto;height:auto;max-width:100%;max-height:86vh;max-height:86dvh;object-fit:contain}'
+            . '.hiz-pop.has-detail img{max-height:min(80vh,820px)}'
+            . '.hiz-pop__side{display:none;flex:0 0 300px;min-width:0;border-left:1px solid var(--hiz-border,rgba(255,255,255,.1));background:var(--hiz-panel,#0c0c0c);color:rgba(255,255,255,.86);overflow:hidden}.hiz-pop.has-detail .hiz-pop__side{display:block}'
+            . '.hiz-d{padding:22px 22px 24px}.hiz-d__t{margin:0 0 16px;color:#fff;font-size:20px;font-weight:600;line-height:1.22;letter-spacing:-.005em}'
+            . '.hiz-d__m{margin:0 0 16px;display:grid;gap:11px}.hiz-d__m dt{color:var(--hiz-accent,#fff);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;opacity:.9}.hiz-d__m dd{margin:2px 0 0;font-size:13.5px;line-height:1.4}'
+            . '.hiz-d__p{margin:0 0 16px;color:rgba(255,255,255,.66);font-size:13px;line-height:1.55;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6;overflow:hidden}'
+            . '.hiz-d__l{margin:0;padding:14px 0 0;list-style:none;display:grid;gap:9px;border-top:1px solid rgba(255,255,255,.1)}.hiz-d__l li{display:grid;gap:1px;min-width:0}'
+            . '.hiz-d__l b{font-size:12px;font-weight:600;color:#fff}.hiz-d__l .is-primary b{color:var(--hiz-accent,#fff)}.hiz-d__l span{font-size:12px;color:rgba(255,255,255,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+            . '@media(max-width:760px){.hiz-pop.has-detail .hiz-pop__body{flex-direction:column}.hiz-pop.has-detail img{max-height:48vh}.hiz-pop__side{flex:none;border-left:0;border-top:1px solid var(--hiz-border,rgba(255,255,255,.1))}.hiz-d{padding:16px 18px}.hiz-d__p{-webkit-line-clamp:3}}'
+            . '.hiz-timer{position:absolute;top:10px;right:10px;z-index:2;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.55);pointer-events:none;animation:hiz-in .18s ease both}'
+            . '.hiz-timer svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}.hiz-timer circle{fill:none;stroke-width:2.2}.hiz-timer__bg{stroke:rgba(255,255,255,.22)}.hiz-timer__fg{stroke:var(--hiz-accent,#fff);stroke-linecap:round}'
+            . '.hiz-timer b{position:relative;color:#fff;font:600 10.5px/1 inherit;font-variant-numeric:tabular-nums}@keyframes hiz-in{from{opacity:0}to{opacity:1}}'
             . '.hiz-view{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:var(--hiz-backdrop,rgba(0,0,0,.92));opacity:0;transition:opacity .25s ease;touch-action:none;overscroll-behavior:contain}'
             . '.hiz-view.is-in{opacity:1}.hiz-view img{max-width:100vw;max-height:100vh;max-height:100dvh;object-fit:contain;user-select:none;-webkit-user-drag:none;will-change:transform;transform-origin:50% 50%;cursor:zoom-in}'
             . '.hiz-view.is-zoomed img{cursor:grab}.hiz-view.is-anim img{transition:transform .3s cubic-bezier(.2,.7,.2,1)}'
             . '.hiz-x{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;z-index:1;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(0,0,0,.55);color:#fff;font:400 26px/1 sans-serif;cursor:pointer}'
-            . 'html.hiz-lock{overflow:hidden}@media(prefers-reduced-motion:reduce){.hiz-pop,.hiz-view,.hiz__img,.hiz-view.is-anim img{transition:none}}';
+            . 'html.hiz-lock{overflow:hidden}@media(prefers-reduced-motion:reduce){.hiz-pop,.hiz-view,.hiz__img,.hiz-view.is-anim img{transition:none}.hiz-timer{animation:none}}';
     }
 
     public static function js(): string {
         return <<<'JS'
 (function(){
 if(window.hexaImageZoom)return;window.hexaImageZoom=1;
-var hover=window.matchMedia('(hover:hover) and (pointer:fine)'),pop,popTimer,cur=null,view,img,s=1,tx=0,ty=0,pts={},start=null,lastTap=0,opener=null;
+var hover=window.matchMedia('(hover:hover) and (pointer:fine)'),pop,popTimer,raf,ring,cur=null,view,img,s=1,tx=0,ty=0,pts={},start=null,lastTap=0,opener=null;
 function trig(e){return e.target.closest?e.target.closest('a[data-hiz]'):null;}
-// Hover preview: the original image, centered and large, never capturing the pointer.
-function showPop(a){clearTimeout(popTimer);if(!pop){pop=document.createElement('div');pop.className='hiz-pop';pop.setAttribute('aria-hidden','true');pop.appendChild(document.createElement('img'));document.body.appendChild(pop);}
-cur=a;popTimer=setTimeout(function(){if(cur!==a)return;var i=pop.firstChild;if(i.getAttribute('src')!==a.href){i.src=a.href;}requestAnimationFrame(function(){pop.classList.add('is-in');});},90);}
-function hidePop(){clearTimeout(popTimer);cur=null;if(pop)pop.classList.remove('is-in');}
+// Hover preview: the original image, centered and large, never capturing the pointer. With data-hiz-delay it waits,
+// showing a small countdown ring on the thumbnail; a hint line and a detail side panel (template.hiz-detail) are optional.
+function stopRing(){cancelAnimationFrame(raf);if(ring){ring.remove();ring=null;}}
+function startRing(a,ms){stopRing();ring=document.createElement('span');ring.className='hiz-timer';ring.setAttribute('aria-hidden','true');
+ring.innerHTML='<svg viewBox="0 0 36 36"><circle class="hiz-timer__bg" cx="18" cy="18" r="15"/><circle class="hiz-timer__fg" cx="18" cy="18" r="15"/></svg><b></b>';a.appendChild(ring);
+var fg=ring.querySelector('.hiz-timer__fg'),n=ring.querySelector('b'),t0=performance.now(),C=2*Math.PI*15;fg.style.strokeDasharray=C;
+function f(t){var p=Math.min(1,(t-t0)/ms);fg.style.strokeDashoffset=C*(1-p);n.textContent=(ms*(1-p)/1000).toFixed(1);if(p<1)raf=requestAnimationFrame(f);}raf=requestAnimationFrame(f);}
+function ensurePop(){if(pop)return;pop=document.createElement('div');pop.className='hiz-pop';pop.setAttribute('aria-hidden','true');
+pop.innerHTML='<p class="hiz-pop__note" hidden></p><div class="hiz-pop__body"><div class="hiz-pop__fig"><img alt=""></div><div class="hiz-pop__side"></div></div>';document.body.appendChild(pop);}
+function fill(a){ensurePop();var i=pop.querySelector('img'),note=pop.querySelector('.hiz-pop__note'),side=pop.querySelector('.hiz-pop__side'),t=a.nextElementSibling,h=a.getAttribute('data-hiz-hint')||'',d=t&&t.matches&&t.matches('template.hiz-detail')?t.content.cloneNode(true):null;
+if(i.getAttribute('src')!==a.href){i.src=a.href;}note.textContent=h;note.hidden=!h;side.textContent='';if(d)side.appendChild(d);pop.classList.toggle('has-detail',!!d);}
+function showPop(a){hidePop();cur=a;var ms=+a.getAttribute('data-hiz-delay')||0;if(ms>0)startRing(a,ms);
+popTimer=setTimeout(function(){if(cur!==a)return;stopRing();fill(a);requestAnimationFrame(function(){pop.classList.add('is-in');});},ms>0?ms:90);}
+function hidePop(){clearTimeout(popTimer);stopRing();cur=null;if(pop)pop.classList.remove('is-in');}
 document.addEventListener('mouseover',function(e){var a=trig(e);if(a&&hover.matches&&a!==cur&&!view)showPop(a);});
 document.addEventListener('mouseout',function(e){var a=trig(e);if(a&&a===cur&&!(e.relatedTarget&&a.contains(e.relatedTarget)))hidePop();});
 window.addEventListener('blur',hidePop);window.addEventListener('scroll',hidePop,{passive:true});

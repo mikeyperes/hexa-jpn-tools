@@ -51,6 +51,7 @@ final class DirectorySearchRenderer {
         $html = '<div class="hds ' . esc_attr( $profile['class'] ) . '" id="' . esc_attr( $dom_id ) . '"'
             . PublicComponent::live_attributes( 'hds', 'directory/' . $profile['id'], $profile['public'] )
             . ' data-hds-base="' . esc_attr( $base ) . '"'
+            . ( 'infinite' === $profile['load_mode'] ? ' data-hds-auto="1"' : '' )
             . ' data-hds-min="' . esc_attr( (string) $profile['min_chars'] ) . '"'
             . ' data-hds-min-label="' . esc_attr( sprintf( $labels['min_chars'], $profile['min_chars'] ) ) . '"'
             . ' data-hds-error-label="' . esc_attr( $labels['error'] ) . '">';
@@ -167,6 +168,11 @@ final class DirectorySearchRenderer {
 
         $current = (int) $result['page'];
         $pages   = (int) $result['pages'];
+        if ( 'numbered' !== $profile['load_mode'] ) {
+            return $current < $pages
+                ? '<nav class="hds-more" aria-label="' . esc_attr( $profile['labels']['pagination'] ) . '">' . $this->page_link( $profile, $request, $base, $current + 1, $profile['labels']['load_more'], 'next', true ) . '</nav>'
+                : '';
+        }
         $window  = array_unique( array_filter( [ 1, $current - 2, $current - 1, $current, $current + 1, $current + 2, $pages ], static fn( int $page ): bool => $page >= 1 && $page <= $pages ) );
         sort( $window );
 
@@ -191,10 +197,11 @@ final class DirectorySearchRenderer {
         return $html . '</nav>';
     }
 
-    private function page_link( array $profile, array $request, string $base, int $page, string $label, string $rel ): string {
+    private function page_link( array $profile, array $request, string $base, int $page, string $label, string $rel, bool $append = false ): string {
         $url = PublicComponent::url( $base, array_merge( [ self::PARAM_DIRECTORY => $profile['id'] ], DirectorySearchRequest::to_args( $request, $profile, $page ) ) );
 
         return '<a class="hds-page" href="' . esc_url( $url ) . '" data-hds-page="' . esc_attr( (string) $page ) . '"'
+            . ( $append ? ' data-hds-append="1"' : '' )
             . ( '' !== $rel ? ' rel="' . esc_attr( $rel ) . '"' : '' ) . '>' . esc_html( $label ) . '</a>';
     }
 
@@ -225,6 +232,7 @@ final class DirectorySearchRenderer {
             . '.hds-pagination{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:24px}'
             . '.hds-page{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:0 12px;border:1px solid var(--hds-border);border-radius:var(--hds-radius);color:inherit;text-decoration:none}'
             . '.hds-page[aria-current=page]{background:var(--hds-accent);border-color:var(--hds-accent);color:var(--hds-accent-fg)}'
+            . '.hds-more{display:flex;justify-content:center;margin-top:24px}'
             . '.hds-gap{padding:0 4px;color:var(--hds-muted)}'
             . '.hds-empty{margin:0;padding:32px;border:1px dashed var(--hds-border);border-radius:var(--hds-radius);text-align:center;color:var(--hds-muted)}'
             . '.hds :focus-visible{outline:2px solid var(--hds-accent);outline-offset:2px}'
@@ -245,19 +253,22 @@ var nonce=root.getAttribute('data-hds-nonce'),min=parseInt(root.getAttribute('da
 var reduced=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 function params(page){var p=new URLSearchParams();Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.disabled)return;if((el.type==='checkbox'||el.type==='radio')&&!el.checked)return;var v=(el.value||'').trim();if(v!=='')p.append(el.name,v);});if(page>1)p.set('dpage',String(page));return p;}
 function pageUrl(p){var q=base.indexOf('?'),path=q>-1?base.slice(0,q):base,own=new URLSearchParams(q>-1?base.slice(q+1):'');p.forEach(function(v,k){if(!own.has(k))own.append(k,v);});var s=own.toString();return path+(s?'?'+s:'');}
-function run(page,push,typed){var q=input?(input.value||'').trim():'';
+function run(page,push,typed,append){var q=input?(input.value||'').trim():'';
 if(typed&&q&&q.length<min){if(controller)controller.abort();seq++;lastKey=null;root.removeAttribute('aria-busy');results.classList.remove('is-loading');summary.textContent=root.getAttribute('data-hds-min-label')||'';return;}
 var p=params(page),key=p.toString();if(key===lastKey&&!push)return;lastKey=key;var id=++seq;
 if(controller)controller.abort();controller=window.AbortController?new AbortController():null;
 root.setAttribute('aria-busy','true');results.classList.add('is-loading');
 var rp=new URLSearchParams(key);rp.set('base',base);var headers={'Accept':'application/json'};if(nonce)headers['X-WP-Nonce']=nonce;
-fetch(endpoint+(endpoint.indexOf('?')>-1?'&':'?')+rp.toString(),{credentials:nonce?'same-origin':'omit',headers:headers,signal:controller?controller.signal:undefined}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(id!==seq)return;results.innerHTML=d.html||'';summary.textContent=d.summary||'';
+fetch(endpoint+(endpoint.indexOf('?')>-1?'&':'?')+rp.toString(),{credentials:nonce?'same-origin':'omit',headers:headers,signal:controller?controller.signal:undefined}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(d){if(id!==seq)return;if(append){var t=document.createElement('div');t.innerHTML=d.html||'';var list=results.querySelector('.hds-list'),more=results.querySelector('.hds-more');Array.prototype.forEach.call(t.querySelectorAll('.hds-list > li'),function(li){list.appendChild(li);});if(more)more.remove();var nm=t.querySelector('.hds-more');if(nm)results.appendChild(nm);watch();return;}results.innerHTML=d.html||'';summary.textContent=d.summary||'';watch();
 if(push!==null&&window.history&&history.replaceState){var u=pageUrl(p);if(push){history.pushState({hds:root.id},'',u);}else{history.replaceState({hds:root.id},'',u);}}
 if(push){root.scrollIntoView({behavior:reduced?'auto':'smooth',block:'start'});}}).catch(function(e){if(id!==seq||(e&&e.name==='AbortError'))return;lastKey=null;summary.textContent=root.getAttribute('data-hds-error-label')||'';}).then(function(){if(id!==seq)return;root.removeAttribute('aria-busy');results.classList.remove('is-loading');});}
 form.addEventListener('submit',function(e){e.preventDefault();window.clearTimeout(timer);run(1,false,false);});
 if(input){input.addEventListener('input',function(){window.clearTimeout(timer);timer=window.setTimeout(function(){run(1,false,true);},300);});}
 form.addEventListener('change',function(e){if(e.target&&e.target!==input){window.clearTimeout(timer);run(1,false,false);}});
-results.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hds-page]'):null;if(!a)return;e.preventDefault();run(parseInt(a.getAttribute('data-hds-page'),10)||1,true,false);});
+results.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hds-page]'):null;if(!a)return;e.preventDefault();var n=parseInt(a.getAttribute('data-hds-page'),10)||1;if(a.hasAttribute('data-hds-append')){run(n,null,false,true);}else{run(n,true,false);}});
+var io=window.IntersectionObserver?new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting&&!root.getAttribute('aria-busy')){io.unobserve(en.target);en.target.click();}});},{rootMargin:'400px 0px'}):null;
+function watch(){if(!io||root.getAttribute('data-hds-auto')!=='1')return;io.disconnect();var m=results.querySelector('a[data-hds-append]');if(m)io.observe(m);}
+watch();
 window.addEventListener('popstate',function(){var sp=new URLSearchParams(location.search),owner=sp.get('hds')||sp.get('dir');if(owner&&('hds-'+owner)!==root.id){sp=new URLSearchParams();}Array.prototype.forEach.call(form.elements,function(el){if(!el.name||el.type==='hidden')return;if(el.type==='checkbox'){el.checked=sp.get(el.name)===el.value;}else if(el.tagName==='SELECT'||el.type==='search'||el.type==='text'||el.type==='date'){el.value=sp.get(el.name)||el.getAttribute('data-hds-default')||'';}});lastKey=null;run(parseInt(sp.get('dpage')||'1',10),null,false);});
 }
 function boot(){Array.prototype.forEach.call(document.querySelectorAll('.hds[data-hds-endpoint]'),init);}

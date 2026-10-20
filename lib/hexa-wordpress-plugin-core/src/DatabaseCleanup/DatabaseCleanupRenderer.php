@@ -5,6 +5,9 @@ namespace Hexa\PluginCore\DatabaseCleanup;
 use Hexa\PluginCore\WpAdminComponents\CoreUi;
 use Hexa\PluginCore\WpAdminComponents\DynamicButton;
 
+/**
+ * @deprecated 3.24.1 Site-wide database cleanup lives in HWS Base Tools. Kept until every site runs a Base Tools release that no longer calls it.
+ */
 final class DatabaseCleanupRenderer {
     /**
      * @param array<string,mixed> $config

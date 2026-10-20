@@ -202,6 +202,7 @@ $GLOBALS['wpdb'] = new ElementorAdapterDatabase();
 $sql = is_callable($searchFilter) ? $searchFilter('ORIGINAL', $query) : '';
 $expect(str_contains($sql, "post_title REGEXP '(^|[^[:alnum:]_])Miami'"), 'The exact query state prepared in pre_get_posts persists to Core bounded prefix matching.');
 $expect(str_contains($sql, 'hexa_sq_ur') && str_contains($sql, 'wp_users'), 'Organizer display names use the generic user-reference source.');
+$expect(substr_count($sql, 'NOT IN (SELECT hexa_sq_ni.post_id') === 1 && !is_array($query->get('meta_query')), 'Noindex is excluded once by one postmeta subquery, never by stacked meta_query joins.');
 
 $markCallback = $hooks['elementor/frontend/widget/before_render'][10][0] ?? null;
 if (is_callable($markCallback)) {

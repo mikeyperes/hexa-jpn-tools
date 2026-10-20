@@ -76,7 +76,7 @@ foreach ( [
     'PublicComponents/ProfileValues', 'PublicComponents/ProfileStore', 'PublicComponents/PublicComponent', 'PublicComponents/ItemLink', 'PublicComponents/ItemLightbox',
     'QueryFilter/QueryFilterType', 'QueryFilter/MetaFilterType', 'QueryFilter/TaxonomyFilterType', 'QueryFilter/DateRangeFilterType',
     'QueryFilter/CallbackFilterType', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet',
-    'Calendar/CalendarGrid', 'Calendar/CalendarProfile', 'Calendar/CalendarRegistry', 'Calendar/CalendarRequest', 'Calendar/CalendarQuery', 'Calendar/CalendarRenderer',
+    'Calendar/CalendarGrid', 'Calendar/CalendarSort', 'Calendar/CalendarProfile', 'Calendar/CalendarRegistry', 'Calendar/CalendarRequest', 'Calendar/CalendarQuery', 'Calendar/CalendarRenderer',
 ] as $class ) {
     require $root . '/src/' . $class . '.php';
 }

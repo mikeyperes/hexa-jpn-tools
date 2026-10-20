@@ -150,8 +150,7 @@ final class ElementorSearchAdapter {
             array_map( 'sanitize_key', (array) $query->get( 'post_type' ) )
         ) );
         $query->set( 'post_type', [] !== $allowed ? $allowed : $settings['post_types'] );
-        $query->set( 'post_status', 'publish' );
-        $query->set( 'has_password', false );
+        SearchQueryEngine::restrict_to_public( $query );
         $query->set( 'ignore_sticky_posts', true );
         $query->set( 'suppress_filters', false );
 

@@ -222,8 +222,13 @@
 .jpn-host .jpn-host__media img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
+}
+
+.jpn-host .jpn-host__media img.jpn-host__logo {
+    padding: 12px;
+    background: #fff;
 }
 
 .jpn-host__monogram {
@@ -987,3 +992,28 @@ a.jpn-host__chip--link:focus-visible {
 
 /* Glow Rail flyer: fills its column edge to edge */
 .jpn-flyer{min-height:100%;background:#000}
+.jpn-flyer,.hiz-pop{--hiz-accent:#25D366;--hiz-bg:#0A150D;--hiz-panel:#101712;--hiz-border:rgba(37,211,102,.22)}
+
+/* Claim a profile: the claim action is a button that fills the claim form on the page. */
+.jpn-host .jpn-host__claim,
+.jpn-host .jpn-host__claim:focus {
+    border: 1px solid rgba(37, 211, 102, .5);
+    border-radius: 0;
+    background: transparent;
+    color: #25D366;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color .25s, color .25s, border-color .25s;
+}
+
+.jpn-host .jpn-host__claim:hover,
+.jpn-host .jpn-host__claim:focus-visible,
+.jpn-host .jpn-host__claim.is-selected {
+    border-color: #25D366;
+    background: #25D366;
+    color: #0A150D;
+}
+
+.jpn-host--claim.is-selected {
+    border-color: rgba(37, 211, 102, .55);
+}

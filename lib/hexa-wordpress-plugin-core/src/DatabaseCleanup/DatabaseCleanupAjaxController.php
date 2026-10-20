@@ -6,6 +6,9 @@ use Hexa\PluginCore\CoreContracts\ModuleInterface;
 use Hexa\PluginCore\WpAdminAjax\AjaxActionRegistry;
 use Hexa\PluginCore\WpAdminAjax\AjaxRequest;
 
+/**
+ * @deprecated 3.24.1 Site-wide database cleanup lives in HWS Base Tools. Kept until every site runs a Base Tools release that no longer calls it.
+ */
 final class DatabaseCleanupAjaxController implements ModuleInterface {
     private DatabaseCleanupService $service;
 

@@ -13,6 +13,7 @@ use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
 final class SearchQueryEngine {
     public const EXPLICIT_QUERY_VAR = 'hexa_search_query_explicit';
     public const TIME_WINDOW_QUERY_VAR = 'hexa_search_time_window';
+    public const PUBLIC_ONLY_QUERY_VAR = 'hexa_search_public_only';
 
     /** @var callable */
     private $settings_provider;
@@ -130,9 +131,8 @@ final class SearchQueryEngine {
 
         $query->set( 'post_type', [] !== $post_types ? $post_types : $settings['post_types'] );
         $query->set( self::TIME_WINDOW_QUERY_VAR, $time_window );
+        self::restrict_to_public( $query );
         if ( $explicit ) {
-            $query->set( 'post_status', 'publish' );
-            $query->set( 'has_password', false );
             $query->set( 'ignore_sticky_posts', true );
         }
         if ( $settings['results_per_page'] > 0 ) {
@@ -151,6 +151,47 @@ final class SearchQueryEngine {
         ];
 
         return $settings;
+    }
+
+    /**
+     * Site search only ever returns what any visitor may see and search engines may list: published,
+     * not password-protected, not marked noindex (Rank Math or Yoast), and never the site's own front or
+     * posts page. This holds for signed-in editors too, whose default WordPress search includes private posts.
+     *
+     * @param object $query
+     */
+    public static function restrict_to_public( $query ): void {
+        $query->set( 'post_status', 'publish' );
+        $query->set( 'has_password', false );
+
+        $excluded = array_map( 'intval', (array) $query->get( 'post__not_in' ) );
+        if ( function_exists( 'get_option' ) ) {
+            foreach ( [ 'page_on_front', 'page_for_posts' ] as $option ) {
+                $page_id = (int) get_option( $option );
+                if ( $page_id > 0 ) {
+                    $excluded[] = $page_id;
+                }
+            }
+        }
+        $excluded = array_values( array_unique( array_filter( $excluded ) ) );
+        if ( [] !== $excluded ) {
+            $query->set( 'post__not_in', $excluded );
+        }
+
+        // Noindex is excluded by one indexed subquery in the search SQL, not a meta_query: WordPress
+        // turns OR/NOT EXISTS meta clauses into unkeyed postmeta joins that multiply per meta row.
+        $query->set( self::PUBLIC_ONLY_QUERY_VAR, 1 );
+    }
+
+    /**
+     * Excludes every post marked noindex by Rank Math or Yoast with one subquery on the indexed meta_key.
+     *
+     * @param object $database wpdb-compatible object.
+     */
+    public static function noindex_exclusion_sql( $database ): string {
+        return $database->posts . '.ID NOT IN (SELECT hexa_sq_ni.post_id FROM ' . $database->postmeta . ' hexa_sq_ni WHERE '
+            . "(hexa_sq_ni.meta_key = 'rank_math_robots' AND hexa_sq_ni.meta_value LIKE '%\"noindex\"%')"
+            . " OR (hexa_sq_ni.meta_key = '_yoast_wpseo_meta-robots-noindex' AND hexa_sq_ni.meta_value = '1'))";
     }
 
     /**
@@ -186,12 +227,19 @@ final class SearchQueryEngine {
         $prepared = $this->prepared_queries[ $query ];
         unset( $this->prepared_queries[ $query ] );
 
-        return $this->build_search_sql(
+        $sql = $this->build_search_sql(
             $prepared['raw_query'],
             $prepared['settings'],
             null,
             $prepared['meta_constraints']
         );
+
+        global $wpdb;
+        if ( method_exists( $query, 'get' ) && $query->get( self::PUBLIC_ONLY_QUERY_VAR ) && is_object( $wpdb ) ) {
+            $sql .= ' AND ' . self::noindex_exclusion_sql( $wpdb ) . ' ';
+        }
+
+        return $sql;
     }
 
     /**
@@ -217,6 +265,24 @@ final class SearchQueryEngine {
         $terms = SearchTermParser::parse( $raw_query, (string) $settings['term_logic'] );
 
         $groups = [];
+        if ( ! empty( $settings['index'] ) && 'exact' !== $settings['term_logic'] && SearchIndex::ready() ) {
+            $matching = 'whole' === $settings['word_matching'] ? 'whole' : 'prefix';
+            $boolean = SearchIndex::boolean_expression( $terms, (string) $settings['term_logic'], $matching, SearchIndex::min_token_length() );
+            $index_conditions = [];
+            foreach ( $boolean['remaining'] as $term ) {
+                $index_conditions[] = $this->match_condition( $database, 'hexa_sq_si.body', $term, $matching );
+            }
+            $relation = 'any' === $settings['term_logic'] ? ' OR ' : ' AND ';
+            $index_sql = implode( $relation, $index_conditions );
+            if ( '' !== $boolean['expression'] ) {
+                $match = $database->prepare( 'MATCH(hexa_sq_si.body) AGAINST (%s IN BOOLEAN MODE)', $boolean['expression'] );
+                $index_sql = '' === $index_sql ? $match : $match . ( ' OR ' === $relation ? ' OR (' : ' AND (' ) . $index_sql . ')';
+            }
+            if ( '' !== $index_sql ) {
+                $groups[] = $database->posts . '.ID IN (SELECT hexa_sq_si.post_id FROM ' . SearchIndex::table() . ' hexa_sq_si WHERE ' . $index_sql . ')';
+            }
+            $terms = [];
+        }
         foreach ( $terms as $term ) {
             $sources = $this->source_conditions( $database, $term, $settings );
             if ( [] !== $sources ) {

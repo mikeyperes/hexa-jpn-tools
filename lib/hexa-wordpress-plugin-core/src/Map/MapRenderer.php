@@ -261,7 +261,7 @@ final class MapRenderer {
 .hmap-windows{align-items:center}
 .hmap-windows__label{margin-right:6px;color:var(--hmap-muted);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
 .hmap .hmap-chip,.hmap .hmap-chip:hover,.hmap .hmap-chip:focus,.hmap .hmap-chip:active{appearance:none;display:inline-flex;align-items:center;gap:8px;min-height:38px;margin:0;padding:0 8px 0 14px;border:1px solid var(--hmap-border);border-radius:999px;background:var(--hmap-surface);box-shadow:none;color:var(--hmap-text);font:inherit;font-size:14px;font-weight:500;line-height:1;text-decoration:none;text-transform:none;letter-spacing:0;cursor:pointer;transition:border-color .15s,background-color .15s,color .15s}
-.hmap .hmap-chip:not(:has(span)){padding-right:14px}
+.hmap .hmap-chip:not(:has(span)),.hmap .hmap-chip:not(:has(span)):hover,.hmap .hmap-chip:not(:has(span)):focus,.hmap .hmap-chip:not(:has(span)):active{padding-right:14px}
 .hmap .hmap-chip:hover{border-color:var(--hmap-accent);background:var(--hmap-surface);color:var(--hmap-text)}
 .hmap .hmap-chip span{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:999px;background:rgba(255,255,255,.08);color:var(--hmap-muted);font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
 .hmap .hmap-chip[aria-pressed=true],.hmap .hmap-chip[aria-pressed=true]:hover,.hmap .hmap-chip[aria-pressed=true]:focus{border-color:var(--hmap-accent);background:var(--hmap-accent);color:var(--hmap-accent-fg);font-weight:700}

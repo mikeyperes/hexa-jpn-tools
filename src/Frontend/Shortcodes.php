@@ -168,10 +168,46 @@ final class Shortcodes
     public function flyer(): string
     {
         $eventId = $this->currentEventId();
+        if ($eventId > 0) {
+            $this->enqueueStyle();
+        }
 
         return $eventId > 0 ? ImageZoom::html((int) get_post_thumbnail_id($eventId), [
             'class' => 'jpn-flyer', 'fit' => 'contain', 'loading' => 'eager', 'sizes' => '(max-width: 767px) 100vw, 640px', 'alt' => get_the_title($eventId),
+            'delay' => 1500,
+            'hint' => __("You're seeing this because you hovered over the event. Click the flyer to open it full screen.", 'hexa-jpn-tools'),
+            'detail' => $this->flyerDetail($eventId),
         ]) : '';
+    }
+
+    /** The event as the flyer's hover preview shows it: title, when, where, host, a short description and its links. */
+    private function flyerDetail(int $eventId): array
+    {
+        $when = '';
+        $start = (int) get_post_meta($eventId, 'start_date_timestamp', true);
+        if ($start > 0) {
+            $parts = $this->dates->when($start, (int) get_post_meta($eventId, 'end_date_timestamp', true), get_post_meta($eventId, 'start_date_precision', true) === 'date');
+            $when = trim($parts['date'] . ($parts['time'] !== '' ? ' · ' . $parts['time'] : ''));
+        }
+        $host = get_userdata((int) get_post_meta($eventId, 'event_host', true));
+        $text = (string) get_post_field('post_excerpt', $eventId);
+        if (trim($text) === '') {
+            $text = (string) get_post_field('post_content', $eventId);
+        }
+        $link = trim((string) get_post_meta($eventId, 'link', true));
+        $links = $link !== '' ? [['label' => __('RSVP', 'hexa-jpn-tools'), 'url' => $this->normalizeUrl($link, ''), 'primary' => true]] : [];
+        $links[] = ['label' => __('Event page', 'hexa-jpn-tools'), 'url' => (string) get_permalink($eventId)];
+
+        return [
+            'title' => get_the_title($eventId),
+            'meta' => [
+                __('When', 'hexa-jpn-tools') => $when,
+                __('Where', 'hexa-jpn-tools') => $this->eventWhere($eventId),
+                __('Host', 'hexa-jpn-tools') => $host ? $host->display_name : '',
+            ],
+            'text' => wp_trim_words(wp_strip_all_tags(strip_shortcodes($text)), 40),
+            'links' => $links,
+        ];
     }
 
     /** Location (where label or area, with the venue under it when it differs) and Hosted by, each on its own row. */

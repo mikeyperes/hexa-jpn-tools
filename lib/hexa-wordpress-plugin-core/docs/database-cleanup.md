@@ -1,4 +1,6 @@
-# Database Cleanup
+# Database Cleanup (deprecated)
+
+Deprecated in 3.24.1. Site-wide database cleanup now lives in HWS Base Tools (Database Optimization tab), which needs no WP-Optimize. Do not use this module in new code; it is removed once every site runs a Base Tools release that no longer calls it.
 
 Namespace:
 

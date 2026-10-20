@@ -96,6 +96,17 @@ The adapter rejects admin, WP-CLI, AJAX, REST, cron, XML-RPC, feed, empty, suppr
 
 Core also marks only the registered widgets and loads a small native-search companion. It aborts a superseded request as soon as the visitor types again and rejects stale responses. When the current input becomes shorter than the widget's native minimum character setting, Core clears the old native result markup and collapsed combobox state; Elementor resumes ownership at the threshold. For marked widgets inside another keyboard component, the companion handles Escape before the parent can steal it, returns focus to the input, and closes the result list. When Elementor reopens an existing visible result list, the companion listens to the native `search:results-displayed` lifecycle hook and synchronizes the registered input's `aria-expanded` state; hidden, empty, and unregistered lists remain untouched. A document click outside a registered widget also synchronizes its collapsed input state with Elementor's native outside-click closure, without changing inside clicks or unregistered widgets. It also keeps native input icons anchored to the measured input height when a host deliberately places results in normal document flow. Loading, result-count, and empty updates use a visually hidden live region so they do not become result-grid items; request errors replace stale results with one visible full-width status. Elementor's native spinner and branded empty state stay visible. Core does not replace Elementor's renderer or endpoint.
 
+#### Page-results mode
+
+Add the CSS class `hexa-search-page-results` to a registered Search widget (Advanced → CSS Classes) to use it as a search page instead of a dropdown. The companion then:
+
+- shows live results in normal page flow under the field, spaced by the widget's native "distance from search field" control, and keeps them open on outside clicks and on another widget's `hideOtherResults`;
+- keeps the current results visible at `--hexa-search-loading-opacity` (default `0.4`) while the next request loads, with Elementor's native loader centered over them on a small disc (`--hexa-search-loader-offset`, `--hexa-search-loader-surface-size`, `--hexa-search-loader-surface`, `--hexa-search-loader-shadow`);
+- writes `data-hexa-search-view="idle|loading|results|error"` on the widget and `data-hexa-search-default="visible|loading|hidden"` on every element with the class `hexa-search-default`: default content dims while the first results load and hides while results or the native no-match message show, then returns when the field is cleared;
+- caps only the field with `--hexa-search-field-max-width` while results keep the widget's full width, and keeps the clear icon inside the capped field.
+
+The view settles on Elementor's native `search:results-updated` hook after it renders. All colors, type, borders, card design, and loader color or size stay with the site's native widget controls and Loop Item; Core ships only the layout and state mechanics.
+
 The optional configurator receives the exact query, normalized settings, and verified widget. Use native `WP_Query` arguments there for domain constraints such as an upcoming date window. Post types remain intersected with the normalized allowlist after the callback.
 
 ### `ElementorPublicTextIndex`
@@ -113,6 +124,12 @@ Elementor document saves, exact `_elementor_data` changes, publication changes, 
 `ResultTypeLabels::register(array $labels, string $default = ''): void` lets a host flag what kind of content each search result is, as `post type => label` plus an optional label for every other type, for example `['post' => 'Press Release', 'press-release' => 'External PR']` with `'Site Content'`. Several hosts may register; a later call replaces the same type and a non-empty default. Labels are plain text of at most 60 characters. `ResultTypeLabels::label_for(string $post_type): string` returns the mapped label, then the default, then the post type's singular name.
 
 The first registration adds Core's **Result Type** Elementor text dynamic tag (`ElementorResultTypeTag`, name `hexa-result-type`, group Post). Place it in a search-result Loop Item, for example in a Heading used as a badge. Each Elementor loop item already carries WordPress's `type-{post_type}` class, so per-type badge colors need only CSS such as `.type-press-release .result-badge`.
+
+### `SearchIndex`
+
+`SearchIndex` is an optional full-text index for large sites, where scanning posts and postmeta with REGEXP on every keystroke takes seconds. Construct it with the same settings provider given to the engine and call `register()`; set `'index' => true` in those settings. It keeps one row per published post in `{prefix}hexa_search_index` with the configured fields, taxonomy term names, author, custom fields and user reference names behind an InnoDB FULLTEXT key, refreshed on save, delete, term and configured meta changes.
+
+Build it once with `rebuild( $after_id = 0, $per_page = 200 )`, repeating with the returned `next_after_id` until it is null (for example from `wp eval`). Until a full build finishes the engine keeps the normal scan. Words shorter than MySQL's `innodb_ft_min_token_size` (such as "5G") are pattern-matched on the indexed text, narrowed by the query's longer words. With the index, `contains` matching behaves as `prefix`; `exact` term logic always scans.
 
 ## Required Host Protocol
 
@@ -242,3 +259,9 @@ Restore the original host option and remove every test fixture after verificatio
 ## Related
 
 Public directory pages with live search over posts or users use `Hexa\PluginCore\DirectorySearch` (`docs/directory-search.md`), which shares this module's term parser and `SearchMatchSql` matcher.
+
+## Public-only results (3.21.0)
+
+Every prepared search runs `SearchQueryEngine::restrict_to_public()`: published only, no password-protected items, nothing marked noindex in Rank Math or Yoast, and never the front page or the posts page. Signed-in users get the same results as visitors.
+
+The noindex rule is never a `meta_query`: WordPress turns OR/NOT EXISTS meta clauses into unkeyed postmeta joins that multiply per meta row. `restrict_to_public()` only sets `hexa_search_public_only`, and the engine's search SQL adds one `ID NOT IN (SELECT post_id FROM postmeta WHERE ...)` subquery on the indexed `meta_key` (3.21.1). The call is idempotent.

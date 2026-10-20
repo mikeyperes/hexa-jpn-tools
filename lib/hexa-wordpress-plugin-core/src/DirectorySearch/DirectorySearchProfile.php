@@ -121,6 +121,8 @@ final class DirectorySearchProfile {
             'wildcards'     => (bool) ( $config['wildcards'] ?? true ),
             'min_chars'     => max( 1, min( 10, (int) ( $config['min_chars'] ?? 2 ) ) ),
             'per_page'      => max( 1, min( self::MAX_PER_PAGE, (int) ( $config['per_page'] ?? 12 ) ) ),
+            // 'infinite' (default): next results load on scroll, with a crawlable Load more link; 'numbered': page links.
+            'load_mode'     => ProfileValues::choice( $config['load_mode'] ?? 'infinite', [ 'infinite', 'load_more', 'numbered' ], 'infinite' ),
             'filters'       => QueryFilterSet::normalize( (array) ( $config['filters'] ?? [] ), $source ),
             'sorts'         => $sorts,
             'default_sort'  => $default_sort,
@@ -199,6 +201,7 @@ final class DirectorySearchProfile {
             'previous'     => 'Previous',
             'next'         => 'Next',
             'pagination'   => 'Results pages',
+            'load_more'    => 'Load more',
         ], $labels );
     }
 

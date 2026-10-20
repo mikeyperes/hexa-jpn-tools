@@ -19,6 +19,7 @@ use Hexa\PluginCore\DirectorySearch\DirectorySearchRegistry;
 final class HostDirectory
 {
     public const PROFILE = 'jpn_hosts';
+    public const CLAIM_PROFILE = 'jpn_hosts_claim';
     private const EVENTS_PER_CARD = 3;
 
     /** @var array<int,array{total:int,upcoming:int,next_ts:int,last_ts:int}>|null */
@@ -33,11 +34,12 @@ final class HostDirectory
         add_shortcode('jpn_event_host', [$this, 'eventHost']);
         add_shortcode('jpn_host_field', [$this, 'hostField']);
         add_shortcode('jpn_host_url', [$this, 'hostUrl']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueueClaimScript']);
         if (!class_exists(DirectorySearchRegistry::class)) {
             return;
         }
 
-        DirectorySearchRegistry::register(self::PROFILE, [
+        $config = [
             'source' => 'users',
             'roles' => ['host'],
             'fields' => ['display_name', 'nicename', 'url'],
@@ -82,7 +84,35 @@ final class HostDirectory
             'cache_ttl' => 300,
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-hosts-directory',
-        ]);
+        ];
+        DirectorySearchRegistry::register(self::PROFILE, $config);
+
+        // Claim a profile: the same search, with a compact card whose action fills the claim form.
+        DirectorySearchRegistry::register(self::CLAIM_PROFILE, array_merge($config, [
+            'render_item' => [$this, 'renderClaimCard'],
+            'load_mode' => 'load_more',
+            'labels' => array_merge($config['labels'], [
+                'search' => __('Find your organization', 'hexa-jpn-tools'),
+                'placeholder' => __('Organization, synagogue or venue name', 'hexa-jpn-tools'),
+            ]),
+            'class' => 'jpn-hosts-directory jpn-claim-directory',
+        ]));
+    }
+
+    /**
+     * Loads the claim form script on any page that shows the claim directory. Checked from the
+     * page itself, because cached directory results skip the card renderer.
+     */
+    public function enqueueClaimScript(): void
+    {
+        $id = (int) get_queried_object_id();
+        if ($id <= 0 || !is_singular()) {
+            return;
+        }
+        $source = (string) get_post_field('post_content', $id) . (string) get_post_meta($id, '_elementor_data', true);
+        if (str_contains($source, self::CLAIM_PROFILE)) {
+            wp_enqueue_script('hexa-jpn-claim-profile', HEXA_JPN_TOOLS_PLUGIN_URL . 'assets/claim-profile.js', [], HEXA_JPN_TOOLS_VERSION, true);
+        }
     }
 
     /** @return array<string,string> term_id => name, for areas actually used by hosts. */
@@ -205,8 +235,7 @@ final class HostDirectory
                 'address' => mb_substr($address, 0, 90),
                 'website' => $website,
                 'instagram' => (string) ($summary['instagram_handle'] ?? ''),
-                'avatar' => $this->avatarUrl($id),
-                'description' => trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags($user ? (string) $user->description : ''))),
+                                'description' => trim((string) preg_replace('/\s+/u', ' ', wp_strip_all_tags($user ? (string) $user->description : ''))),
                 'contact' => HostContact::preferred($id),
                 'stats' => $stats[$id] ?? ['total' => 0, 'upcoming' => 0, 'next_ts' => 0, 'last_ts' => 0],
                 'events' => $events[$id] ?? [],
@@ -323,11 +352,22 @@ final class HostDirectory
     }
 
     /**
+     * Claim a profile card: the directory card without events or bio, with one action that
+     * hands this host to the claim form on the page.
+     *
+     * @param array<string,mixed> $host
+     */
+    public function renderClaimCard(int $id, array $host): string
+    {
+        return $this->card($id, $host, false, true);
+    }
+
+    /**
      * One host card: the directory result, or with $feature the larger card on an event page.
      *
      * @param array<string,mixed> $host
      */
-    private function card(int $id, array $host, bool $feature): string
+    private function card(int $id, array $host, bool $feature, bool $claim = false): string
     {
         if ($host === []) {
             return '';
@@ -338,9 +378,9 @@ final class HostDirectory
         $stats = $host['stats'];
         $upcoming = (int) $stats['upcoming'];
 
-        $avatar = $feature ? $this->avatarUrl($id, 'medium') : (string) $host['avatar'];
+        $avatar = $this->avatarUrl($id, 'medium');
         $media = $avatar !== ''
-            ? '<img src="' . esc_url($avatar) . '" alt="' . esc_attr($feature ? $name : '') . '" loading="lazy" width="' . ($feature ? 160 : 96) . '" height="' . ($feature ? 160 : 96) . '">'
+            ? '<img' . ($this->avatarIsSquare($id) ? '' : ' class="jpn-host__logo"') . ' src="' . esc_url($avatar) . '" alt="' . esc_attr($feature ? $name : '') . '" loading="lazy" width="' . ($feature ? 160 : 96) . '" height="' . ($feature ? 160 : 96) . '">'
             : '<span class="jpn-host__monogram" aria-hidden="true">' . esc_html($this->initials($name)) . '</span>';
 
         $meta = [];
@@ -353,7 +393,7 @@ final class HostDirectory
         if ($host['website'] !== '') {
             $domain = (string) preg_replace('#^www\.#i', '', (string) wp_parse_url((string) $host['website'], PHP_URL_HOST));
             if ($domain !== '') {
-                $meta[] = '<a class="jpn-host__chip jpn-host__chip--link" href="' . esc_url((string) $host['website']) . '" target="_blank" rel="noopener nofollow">' . esc_html($domain) . ' ↗</a>';
+                $meta[] = '<a class="jpn-host__chip jpn-host__chip--link" href="' . esc_url((string) $host['website']) . '" target="_blank" rel="noopener nofollow">' . esc_html($domain) . '</a>';
             }
         }
         if ($host['instagram'] !== '') {
@@ -361,7 +401,7 @@ final class HostDirectory
         }
 
         $eventsHtml = '';
-        if ($host['events'] !== []) {
+        if (!$claim && $host['events'] !== []) {
             $label = $upcoming > 0 ? __('Upcoming', 'hexa-jpn-tools') : __('Recent events', 'hexa-jpn-tools');
             $eventsHtml = '<div class="jpn-host__events"><p class="jpn-host__events-label">' . esc_html($label) . '</p><ul>';
             foreach ($host['events'] as $event) {
@@ -380,7 +420,7 @@ final class HostDirectory
             $when = __('No events yet', 'hexa-jpn-tools');
         }
 
-        $bio = (string) ($host['description'] ?? '') !== '' ? '<p class="jpn-host__bio">' . esc_html((string) $host['description']) . '</p>' : '';
+        $bio = !$claim && (string) ($host['description'] ?? '') !== '' ? '<p class="jpn-host__bio">' . esc_html((string) $host['description']) . '</p>' : '';
         $contact = is_array($host['contact'] ?? null)
             ? '<a class="jpn-host__contact jpn-host__contact--' . esc_attr((string) $host['contact']['method']) . '" href="' . esc_url((string) $host['contact']['url']) . '"'
                 . ((string) $host['contact']['value'] !== '' ? ' title="' . esc_attr((string) $host['contact']['value']) . '"' : '')
@@ -396,7 +436,7 @@ final class HostDirectory
             . '<p class="jpn-host__when">' . esc_html($when) . '</p>'
             . '</div>';
 
-        return '<article class="jpn-host' . ($feature ? ' jpn-host--feature' : '') . ($upcoming > 0 ? ' has-upcoming' : '') . '">'
+        return '<article class="jpn-host' . ($feature ? ' jpn-host--feature' : '') . ($claim ? ' jpn-host--claim' : '') . ($upcoming > 0 ? ' has-upcoming' : '') . '">'
             . ($feature ? '<p class="jpn-host__kicker">' . esc_html__('Host', 'hexa-jpn-tools') . '</p>' : '')
             . '<a class="jpn-host__media" href="' . esc_url($url) . '" tabindex="-1" aria-hidden="true">' . $media . '</a>'
             . '<div class="jpn-host__main">'
@@ -409,8 +449,9 @@ final class HostDirectory
             . '<div class="jpn-host__side">'
             . ($feature ? '' : $facts)
             . '<div class="jpn-host__actions">'
-            . $contact
-            . '<a class="jpn-host__cta" href="' . esc_url($url) . '">' . esc_html__('View host', 'hexa-jpn-tools') . ' <span aria-hidden="true">→</span></a>'
+            . ($claim
+                ? '<button type="button" class="jpn-host__cta jpn-host__claim" data-jpn-claim="' . esc_attr($name) . '" data-jpn-claim-url="' . esc_url($url) . '">' . esc_html__('Claim this profile', 'hexa-jpn-tools') . '</button>'
+                : $contact . '<a class="jpn-host__cta" href="' . esc_url($url) . '">' . esc_html__('View host', 'hexa-jpn-tools') . '</a>')
             . '</div>'
             . '</div>'
             . '</article>';
@@ -597,6 +638,15 @@ final class HostDirectory
         }
 
         return $url;
+    }
+
+    /** Non-square logos get an inset so the round frame never clips them. */
+    private function avatarIsSquare(int $userId): bool
+    {
+        global $wpdb;
+        $meta = wp_get_attachment_metadata((int) get_user_meta($userId, $wpdb->get_blog_prefix() . 'user_avatar', true));
+
+        return !empty($meta['width']) && (int) $meta['width'] === (int) ($meta['height'] ?? 0);
     }
 
     private function initials(string $name): string

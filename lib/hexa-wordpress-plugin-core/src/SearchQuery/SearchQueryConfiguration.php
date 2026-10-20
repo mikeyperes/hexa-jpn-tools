@@ -33,6 +33,7 @@ final class SearchQueryConfiguration {
             'results_per_page' => 0,
             'orderby'          => 'relevance',
             'time_window'      => [],
+            'index'            => false,
         ];
     }
 
@@ -128,6 +129,7 @@ final class SearchQueryConfiguration {
             'results_per_page' => $results_per_page,
             'orderby'          => self::choice( $settings['orderby'] ?? '', self::ORDERING, $defaults['orderby'] ),
             'time_window'      => $time_window,
+            'index'            => self::boolean( $settings['index'] ?? $defaults['index'] ),
         ];
     }
 

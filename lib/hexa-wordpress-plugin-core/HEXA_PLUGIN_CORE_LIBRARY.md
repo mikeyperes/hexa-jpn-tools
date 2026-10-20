@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.18.3
+Current release: 3.25.0
 ```
 
 Do not rename these.
@@ -142,6 +142,8 @@ Use `DynamicNotice` for the consistent top-of-panel result shown after an AJAX
 settings save or in-place action. Core owns the success, warning, error and
 information structure plus the browser API; host plugins provide only concise
 action-specific text.
+
+Use `TaskRunner` for any admin job that runs as AJAX steps (cleanups, scans, migrations): stat cards, progress meter, status badges, job tables, live log and the `HexaWpCoreTaskRunner` client with one-at-a-time queues, batched loops and Stop. Do not build another per-plugin progress runner. See `docs/task-runner.md`.
 
 Use `CoreUi::collapsible()` for expandable cards. The shared component owns the native `<details>` structure, persistent open/closed state, and visible chevron SVG indicator, so users can tell the card expands.
 
@@ -1561,7 +1563,7 @@ Do not execute feature behavior at include time.
 
 Namespace: `Hexa\PluginCore\DatabaseCleanup`
 
-Use `DatabaseCleanupService`, `DatabaseCleanupAjaxController`, and `DatabaseCleanupRenderer` for WP-Optimize-backed cleanup sessions. Core owns provider activation, task/table iteration, live reporting, and restoring the provider to its pre-run activation state. Hosts provide capability, nonce, AJAX names, labels, and the provider plugin file.
+Deprecated in 3.24.1: site-wide database work belongs to HWS Base Tools (Database Optimization tab). Do not use in new code. Legacy: `DatabaseCleanupService`, `DatabaseCleanupAjaxController`, and `DatabaseCleanupRenderer` run WP-Optimize-backed cleanup sessions. Core owns provider activation, task/table iteration, live reporting, and restoring the provider to its pre-run activation state. Hosts provide capability, nonce, AJAX names, labels, and the provider plugin file.
 
 ## Object Cache
 

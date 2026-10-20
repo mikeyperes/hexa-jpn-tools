@@ -48,3 +48,102 @@
 [data-hexa-search-query-id] .e-search-input-wrapper > svg {
     inset-block-start: calc(var(--hexa-elementor-search-input-height) / 2);
 }
+
+/*
+ * Page-results mode (widget CSS class `hexa-search-page-results`).
+ * Live results sit in page flow under the field instead of a dropdown, stay
+ * open on outside clicks, and stay visible (dimmed) under the loader while the
+ * next results load. Elements with `hexa-search-default` dim while the first
+ * results load and hide while results show. Design stays with the site:
+ * native Search widget controls plus these optional properties.
+ *   --hexa-search-field-max-width   field width cap; results keep full width
+ *   --hexa-search-loading-opacity   dimmed content while loading
+ *   --hexa-search-transition        dim and reveal transition
+ *   --hexa-search-loader-offset     loader distance below the results' top
+ *   --hexa-search-loader-surface-size, --hexa-search-loader-surface,
+ *   --hexa-search-loader-shadow     the loader's backing disc
+ */
+.elementor-widget-search.hexa-search-page-results .e-search-results-container,
+.elementor-widget-search.hexa-search-page-results .e-search-results-container.hidden {
+    position: relative;
+    inset: auto;
+    transform: none;
+    width: 100%;
+    height: auto;
+    z-index: 3;
+    opacity: 1;
+    visibility: visible;
+    background: transparent;
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-results-container > div {
+    max-height: none;
+    overflow: visible;
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-results:not(:empty) {
+    display: flex;
+    flex-direction: var(--e-search-pagination-vertical-position, column);
+    margin-block-start: var(--e-search-input-and-results-gap, 8px);
+    transition: opacity var(--hexa-search-transition, 0.3s ease-out);
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-results:empty {
+    display: none;
+}
+
+.elementor-widget-search.hexa-search-page-results[data-hexa-search-view="loading"] .e-search-results {
+    opacity: var(--hexa-search-loading-opacity, 0.4);
+    pointer-events: none;
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-loader {
+    position: absolute;
+    z-index: 4;
+    inset-block-start: calc(var(--e-search-input-and-results-gap, 8px) + var(--hexa-search-loader-offset, 48px));
+    inset-inline-start: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: var(--hexa-search-loader-surface-size, 40px);
+    height: var(--hexa-search-loader-surface-size, 40px);
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--hexa-search-loader-surface, #fff);
+    box-shadow: var(--hexa-search-loader-shadow, 0 0 0 1px rgba(0, 0, 0, 0.08), 0 10px 24px -14px rgba(0, 0, 0, 0.4));
+    transform: translateX(-50%);
+}
+
+.elementor-widget-search.hexa-search-page-results[data-hexa-search-view="loading"] .e-search-loader {
+    display: flex;
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-loader svg {
+    margin: 0;
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-input {
+    flex: none;
+    width: 100%;
+    max-width: var(--hexa-search-field-max-width, 100%);
+}
+
+.elementor-widget-search.hexa-search-page-results .e-search-input-wrapper > i,
+.elementor-widget-search.hexa-search-page-results .e-search-input-wrapper > svg {
+    inset-inline-end: calc(100% - min(100%, var(--hexa-search-field-max-width, 100%)) + var(--e-search-input-padding-inline-end, 16px));
+}
+
+.hexa-search-default {
+    transition: opacity var(--hexa-search-transition, 0.3s ease-out);
+}
+
+.hexa-search-default[data-hexa-search-default="loading"] {
+    opacity: var(--hexa-search-loading-opacity, 0.4);
+    pointer-events: none;
+}
+
+.hexa-search-default[data-hexa-search-default="hidden"] {
+    display: none !important;
+}

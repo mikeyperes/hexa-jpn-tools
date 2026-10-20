@@ -2,6 +2,9 @@
 
 namespace Hexa\PluginCore\DatabaseCleanup;
 
+/**
+ * @deprecated 3.24.1 Site-wide database cleanup lives in HWS Base Tools. Kept until every site runs a Base Tools release that no longer calls it.
+ */
 final class DatabaseCleanupService {
     private const SESSION_PREFIX = 'hpc_database_cleanup_';
 
