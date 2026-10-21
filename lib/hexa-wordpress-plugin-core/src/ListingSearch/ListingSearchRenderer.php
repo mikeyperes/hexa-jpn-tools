@@ -21,8 +21,6 @@ use Hexa\PluginCore\QueryFilter\QuerySql;
  * `--hls-panel-bg`, `--hls-field-height`) restyle it.
  */
 final class ListingSearchRenderer {
-    private static bool $assets_printed = false;
-
     /** @var string[] Profiles rendered on this page, so a host can skip adding a second box. */
     private static array $rendered = [];
 
@@ -106,13 +104,13 @@ final class ListingSearchRenderer {
         return $path . ( '' !== $query ? '?' . $query : '' );
     }
 
+    /**
+     * The box's style and script travel with every box: another plugin may render the page
+     * content once and discard it (a description or excerpt builder), so "print once per
+     * request" could leave the visible box bare. The script runs once per page.
+     */
     private function assets(): string {
-        if ( self::$assets_printed ) {
-            return '';
-        }
-        self::$assets_printed = true;
-
-        return '<style id="hexa-listing-search-css">' . self::css() . '</style><script id="hexa-listing-search-js">' . self::js() . '</script>';
+        return '<style class="hexa-listing-search-css">' . self::css() . '</style><script class="hexa-listing-search-js" data-cfasync="false">' . self::js() . '</script>';
     }
 
     public static function css(): string {
@@ -149,6 +147,7 @@ final class ListingSearchRenderer {
     public static function js(): string {
         return <<<'JS'
 (function(){
+if(window.hexaListingSearch)return;window.hexaListingSearch=1;
 function init(form){
 if(form.getAttribute('data-hls-ready'))return;form.setAttribute('data-hls-ready','1');
 if(!window.fetch||!window.DOMParser||!window.URLSearchParams)return;
@@ -171,6 +170,7 @@ if(text){text.addEventListener('input',function(){window.clearTimeout(timer);var
 form.addEventListener('change',function(e){if(e.target===text)return;window.clearTimeout(timer);go();});
 var clear=form.querySelector('.hls-clear');if(clear){clear.addEventListener('click',function(e){e.preventDefault();if(text)text.value='';Array.prototype.forEach.call(form.querySelectorAll('.hls-filters input,.hls-filters select'),function(el){if(el.type==='checkbox')el.checked=false;else el.value='';});Array.prototype.forEach.call(form.querySelectorAll('details[open]'),function(d){d.open=false;});go();});}
 document.addEventListener('click',function(e){Array.prototype.forEach.call(form.querySelectorAll('details[open]'),function(d){if(!d.contains(e.target))d.open=false;});});
+form.addEventListener('toggle',function(e){var d=e.target;if(!d||d.tagName!=='DETAILS'||!d.open)return;var p=d.querySelector('.hls-filter-panel');if(!p)return;p.style.left='';p.style.right='';if(p.getBoundingClientRect().right>document.documentElement.clientWidth-8){p.style.left='auto';p.style.right='0';}},true);
 form.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=e.target.closest?e.target.closest('details'):null;if(d){d.open=false;var s=d.querySelector('summary');if(s)s.focus();}}});
 }
 function boot(){Array.prototype.forEach.call(document.querySelectorAll('form.hls'),init);}

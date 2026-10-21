@@ -49,7 +49,7 @@ emails, raw host access codes, database credentials, or authentication state.
 
 ## Hexa WP Core
 
-The plugin vendors and registers Hexa WordPress Plugin Core (3.29.2: the host
+The plugin vendors and registers Hexa WordPress Plugin Core (3.29.4: the host
 directory runs on WordPress's own user query). Core owns package
 selection, plugin update behavior, Core package update behavior, runtime
 identity, and shared safety checks. JPN-specific event and host behavior stays
