@@ -125,9 +125,7 @@ require $root . '/src/SearchQuery/SearchTermParser.php';
 require $root . '/src/SearchQuery/SearchMatchSql.php';
 require $root . '/src/SearchQuery/MetaConstraintSql.php';
 require $root . '/src/SearchQuery/SearchQueryEngine.php';
-require $root . '/src/SearchQuery/JetEngineSearchAdapter.php';
 
-use Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter;
 use Hexa\PluginCore\QueryFilter\NaturalTimeWindow;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 use Hexa\PluginCore\SearchQuery\SearchQueryEngine;
@@ -411,48 +409,7 @@ $guarded_engine->prepare_query( new FakeQuery( [ 's' => 'admin search', 'hexa_se
 $test_context['admin'] = false;
 $expect( 0 === $provider_calls, 'Unrelated, nested, and admin queries are rejected before the settings provider performs option or object discovery.' );
 
-$adapter_provider_calls = 0;
-$GLOBALS['wp_query'] = new FakeQuery( [ 's' => 'adapted words', 'hexa_search' => '1' ] );
-$adapter = new JetEngineSearchAdapter(
-    static function () use ( &$adapter_provider_calls, $settings ): array {
-        ++$adapter_provider_calls;
-        return $settings;
-    },
-    'hexa_search'
-);
-$adapter->register();
-$adapter_filter = $test_filters['jet-engine/listing/grid/posts-query-args'][20][0] ?? null;
-$adapted_args = is_callable( $adapter_filter )
-    ? $adapter_filter( [ 'post_type' => 'post', 'posts_per_page' => 6 ], null, [ 'is_archive_template' => '' ] )
-    : [];
-$expect(
-    'adapted words' === ( $adapted_args['s'] ?? '' )
-    && '1' === ( $adapted_args['hexa_search'] ?? '' )
-    && '1' === ( $adapted_args[ SearchQueryEngine::EXPLICIT_QUERY_VAR ] ?? '' )
-    && false === ( $adapted_args['suppress_filters'] ?? null ),
-    'The JetEngine adapter copies the eligible main search and marks one secondary query explicitly.'
-);
-$expect( 1 === $adapter_provider_calls, 'The JetEngine adapter loads host settings only after cheap request and template guards pass.' );
-
-$archive_args = is_callable( $adapter_filter )
-    ? $adapter_filter( [ 'post_type' => 'post' ], null, [ 'is_archive_template' => 'true' ] )
-    : [];
-$expect( [ 'post_type' => 'post' ] === $archive_args && 1 === $adapter_provider_calls, 'JetEngine archive grids already using the main query are not adapted or rediscovered.' );
-
-$GLOBALS['wp_query'] = new FakeQuery( [ 's' => 'unmarked words' ] );
-$unmarked_args = is_callable( $adapter_filter )
-    ? $adapter_filter( [ 'post_type' => 'post' ], null, [ 'is_archive_template' => '' ] )
-    : [];
-$expect( [ 'post_type' => 'post' ] === $unmarked_args, 'Shortcode-only scope leaves unmarked JetEngine search grids untouched.' );
-
 define( 'WP_CLI', true );
-$cli_adapter_calls_before = $adapter_provider_calls;
-$cli_adapter_args = is_callable( $adapter_filter )
-    ? $adapter_filter( [ 'post_type' => 'post' ], null, [ 'is_archive_template' => '' ] )
-    : [];
-$expect( [ 'post_type' => 'post' ] === $cli_adapter_args, 'WP-CLI requests must leave JetEngine query arguments untouched.' );
-$expect( $cli_adapter_calls_before === $adapter_provider_calls, 'WP-CLI requests must reject JetEngine adaptation before the settings provider runs.' );
-
 $cli_provider_calls = 0;
 $cli_engine = new SearchQueryEngine(
     static function () use ( &$cli_provider_calls, $settings ): array {

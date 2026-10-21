@@ -37,7 +37,11 @@ final class FieldGroups {
         if ( '' === $group['key'] ) {
             return;
         }
-        // Developer notes (shortcodes, storage details) only for users outside the client view.
+        // Staff-only groups are not registered for client-view users; developer notes
+        // (shortcodes, storage details) only reach users outside the client view.
+        if ( Audience::hidden( $group ) ) {
+            return;
+        }
         $group = Audience::apply( $group );
         self::$groups[ $group['key'] ] = $group;
 

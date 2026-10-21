@@ -52,4 +52,8 @@ $expect( Audience::client_view( $roles, $customer ) && ! Audience::client_view( 
 $expect( Audience::BELOW_ADMIN === Audience::normalize( [ 'roles' => [] ] )['roles'], 'An empty role list falls back to everyone below administrator.' );
 $expect( true === Audience::normalize( [] )['enabled'], 'The client view is on by default.' );
 
-echo "PASS: client-friendly field view (12 assertions).\n";
+$staff = [ 'key' => 'g', 'client_view' => [ 'roles' => 'below_admin', 'hide' => true ], 'fields' => [] ];
+$expect( Audience::hidden( $staff, $customer ) && ! Audience::hidden( $staff, $admin ), 'A staff-only group is hidden from clients and kept for administrators.' );
+$expect( ! Audience::hidden( $group, $customer ), 'Groups are not hidden unless asked.' );
+
+echo "PASS: client-friendly field view (14 assertions).\n";

@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.25.0
+Current release: 3.29.2
 ```
 
 Do not rename these.
@@ -864,6 +864,17 @@ echo \Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer::render([
 
 Do not duplicate the renderer CSS, SVG, markup, or interaction script inside a host plugin. `hidden_fields` is the bridge to a shortcode-scoped `SearchQuery` engine; names are sanitized, values are escaped, and the renderer accepts at most ten fields.
 
+## Listing Search
+
+`Hexa\PluginCore\ListingSearch` narrows a page's own WordPress listing (archive,
+search, or an Elementor loop with the CSS class `hexa-listing-results`) with a
+search box and filters refreshed in place, on WordPress's own query. Register a
+profile with `ListingSearchRegistry::register()`, render it with
+`ListingSearchRenderer`, and add `ListingSearchModule` to the host bootstrap.
+Filters and counts come from `QueryFilter` (checkboxes with any/all matching,
+number ranges, nested terms, `author` and `post_type` types). See
+`docs/listing-search.md`.
+
 ## Native Search Query Behavior
 
 Namespace:
@@ -879,7 +890,6 @@ SearchQueryConfiguration
 SearchTermParser
 SearchQueryEngine
 MetaConstraintSql
-JetEngineSearchAdapter
 ElementorSearchAdapter
 ElementorPublicTextIndex
 ResultTypeLabels
@@ -901,12 +911,6 @@ $engine = new \Hexa\PluginCore\SearchQuery\SearchQueryEngine(
     'example_search'
 );
 $engine->register();
-
-$jet_engine = new \Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter(
-    $settings_provider,
-    'example_search'
-);
-$jet_engine->register();
 
 $elementor_search = new \Hexa\PluginCore\SearchQuery\ElementorSearchAdapter(
     $settings_provider,
@@ -931,7 +935,7 @@ Supported behavior:
 - public post-type selection, result count from 0 to 100, relevance/newest/oldest/title ordering, and opt-in host-mapped natural time windows such as `24 hours`, `one week`, or `Chabad next 48 hours`
 - `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
 
-Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
 
 To flag what kind of content each result is, call `ResultTypeLabels::register( [ 'post' => 'Press Release' ], 'Site Content' )` and place Core's **Result Type** Elementor dynamic tag in the result Loop Item; style per type through the loop item's `type-{post_type}` class.
 

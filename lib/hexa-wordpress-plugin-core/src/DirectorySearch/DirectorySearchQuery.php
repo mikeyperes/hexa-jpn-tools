@@ -2,21 +2,23 @@
 
 namespace Hexa\PluginCore\DirectorySearch;
 
+use Hexa\PluginCore\ListingSearch\ListingContext;
 use Hexa\PluginCore\QueryFilter\QueryFilterSet;
+use Hexa\PluginCore\QueryFilter\QuerySql;
 use Hexa\PluginCore\SearchQuery\SearchMatchSql;
 use Hexa\PluginCore\SearchQuery\SearchTermParser;
 
 /**
  * Resolves one page of result IDs for a directory search profile.
  *
- * Every identifier comes from Core whitelists and every visitor value is
- * bound through prepare(). Optional sources (meta, taxonomy) use correlated
- * EXISTS subqueries so rows never duplicate and unused sources cost nothing.
+ * Results come from WordPress's own WP_Query (posts) or WP_User_Query
+ * (users): the profile's scope, paging and sort are ordinary query
+ * arguments, and the visitor's search text and filters are attached to that
+ * exact query object as extra conditions (QuerySql). Other plugins therefore
+ * see and can adjust the query as usual. Every identifier comes from Core
+ * whitelists and every visitor value is bound through prepare().
  */
 final class DirectorySearchQuery {
-    private const POST_ALIAS = 'hds_p';
-    private const USER_ALIAS = 'hds_u';
-
     /** @var object|null */
     private $database;
 
@@ -27,25 +29,22 @@ final class DirectorySearchQuery {
 
     /**
      * @param array<string,mixed> $profile Normalized profile.
-     * @param array{q:string,page:int,sort:string,filters:array<string,mixed>} $request Normalized request.
+     * @param array{q:string,page:int,sort:string,filters:array<string,mixed>,context?:string} $request Normalized request.
      * @return array{ids:int[],total:int,page:int,pages:int,per_page:int,truncated:bool,searched:bool}
      */
     public function run( array $profile, array $request ): array {
-        $database = $this->db();
-        $alias    = $this->alias( $profile );
-        $from     = $this->from_sql( $database, $profile );
-        $where    = $this->where_sql( $database, $profile, $request );
-        $per_page = (int) $profile['per_page'];
-        $sort     = $profile['sorts'][ $request['sort'] ] ?? reset( $profile['sorts'] );
-        $truncated = false;
+        $database   = $this->db();
+        $conditions = $this->where_sql( $database, $profile, $request );
+        $per_page   = (int) $profile['per_page'];
+        $sort       = $profile['sorts'][ $request['sort'] ] ?? reset( $profile['sorts'] );
+        $truncated  = false;
 
         if ( 'callback' === $sort['type'] ) {
-            $limit = DirectorySearchProfile::MAX_CALLBACK_CANDIDATES + 1;
-            $candidates = array_map( 'intval', (array) $database->get_col(
-                "SELECT {$alias}.ID {$from} WHERE {$where} ORDER BY " . $this->default_order_sql( $profile ) . " LIMIT {$limit}"
-            ) );
+            $limit      = DirectorySearchProfile::MAX_CALLBACK_CANDIDATES + 1;
+            $first      = $this->fetch( $profile, $request, $conditions, null, $limit, 1 );
+            $candidates = $first['ids'];
             if ( count( $candidates ) > DirectorySearchProfile::MAX_CALLBACK_CANDIDATES ) {
-                $truncated = true;
+                $truncated  = true;
                 $candidates = array_slice( $candidates, 0, DirectorySearchProfile::MAX_CALLBACK_CANDIDATES );
             }
 
@@ -54,28 +53,22 @@ final class DirectorySearchQuery {
             $ordered = array_values( array_unique( array_filter( $ordered, static fn( int $id ): bool => isset( $allowed[ $id ] ) ) ) );
             $ordered = array_merge( $ordered, array_values( array_diff( $candidates, $ordered ) ) );
 
-            // Beyond the 1,000-row reorder window, rows continue in the default SQL order they were drawn from.
-            $total  = $truncated ? (int) $database->get_var( "SELECT COUNT(*) {$from} WHERE {$where}" ) : count( $ordered );
+            // Beyond the 1,000-row reorder window, rows continue in the default order they were drawn from.
+            $total  = $truncated ? $this->fetch( $profile, $request, $conditions, null, 1, 1, true )['total'] : count( $ordered );
             $pages  = max( 1, (int) ceil( $total / $per_page ) );
             $page   = min( $request['page'], $pages );
             $offset = ( $page - 1 ) * $per_page;
             $ids    = array_slice( $ordered, $offset, $per_page );
             if ( $truncated && count( $ids ) < $per_page && $offset + count( $ids ) < $total ) {
-                $skip  = max( $offset, count( $ordered ) );
-                $limit = $per_page - count( $ids );
-                $ids   = array_merge( $ids, array_map( 'intval', (array) $database->get_col(
-                    "SELECT {$alias}.ID {$from} WHERE {$where} ORDER BY " . $this->default_order_sql( $profile ) . " LIMIT {$limit} OFFSET {$skip}"
-                ) ) );
+                $skip = max( $offset, count( $ordered ) );
+                $ids  = array_merge( $ids, $this->fetch( $profile, $request, $conditions, null, $per_page - count( $ids ), 1, false, $skip )['ids'] );
             }
         } else {
-            $total = (int) $database->get_var( "SELECT COUNT(*) {$from} WHERE {$where}" );
-            $pages = max( 1, (int) ceil( $total / $per_page ) );
-            $page  = min( $request['page'], $pages );
-            $offset = ( $page - 1 ) * $per_page;
-            $ids = array_map( 'intval', (array) $database->get_col(
-                "SELECT {$alias}.ID {$from} WHERE {$where} ORDER BY " . $this->field_order_sql( $profile, $sort )
-                . " LIMIT {$per_page} OFFSET {$offset}"
-            ) );
+            $result = $this->fetch( $profile, $request, $conditions, $sort, $per_page, max( 1, $request['page'] ), true );
+            $total  = $result['total'];
+            $pages  = max( 1, (int) ceil( $total / $per_page ) );
+            $page   = min( $request['page'], $pages );
+            $ids    = $page === $request['page'] ? $result['ids'] : $this->fetch( $profile, $request, $conditions, $sort, $per_page, $page )['ids'];
         }
 
         return [
@@ -89,27 +82,70 @@ final class DirectorySearchQuery {
         ];
     }
 
-    /** @param object $database */
-    public function from_sql( $database, array $profile ): string {
-        return 'users' === $profile['source']
-            ? 'FROM ' . $database->users . ' ' . self::USER_ALIAS
-            : 'FROM ' . $database->posts . ' ' . self::POST_ALIAS;
+    /**
+     * The WordPress query arguments for the profile's scope, the page's
+     * context (a category, tag or author the directory sits on) and a sort.
+     *
+     * @param array<string,mixed>|null $sort Field sort, or null for the default order.
+     * @return array<string,mixed>
+     */
+    public function query_args( array $profile, array $request, ?array $sort = null ): array {
+        if ( 'users' === $profile['source'] ) {
+            $columns = [ 'name' => 'display_name', 'registered' => 'registered' ];
+            $field   = null !== $sort ? ( $columns[ $sort['field'] ] ?? 'display_name' ) : 'display_name';
+
+            return [
+                'role__in' => $profile['roles'],
+                'orderby'  => [ $field => null !== $sort ? $sort['order'] : 'ASC', 'ID' => 'ASC' ],
+            ];
+        }
+
+        $columns = [ 'title' => 'title', 'date' => 'date', 'modified' => 'modified' ];
+        $args    = [
+            'post_type'           => $profile['post_types'],
+            'post_status'         => 'publish',
+            'has_password'        => false,
+            'ignore_sticky_posts' => true,
+            'orderby'             => null !== $sort ? [ $columns[ $sort['field'] ] ?? 'date' => $sort['order'], 'ID' => 'ASC' ] : [ 'date' => 'DESC', 'ID' => 'DESC' ],
+        ];
+
+        $context = '' !== (string) ( $request['context'] ?? '' ) ? ListingContext::from_token( (string) $request['context'] ) : null;
+        if ( null !== $context ) {
+            $args = array_merge( $args, $context['args'], [ 'post_type' => $profile['post_types'] ] );
+        }
+
+        return $args;
     }
 
     /**
-     * Complete WHERE clause (without the keyword). Public for deterministic tests.
+     * SQL selecting every matching ID for a set of filter values: what the
+     * shared filter counts run against.
+     *
+     * @param array<string,mixed> $values Parsed filter values.
+     */
+    public function ids_sql( array $profile, array $request, array $values ): string {
+        $database   = $this->db();
+        $conditions = $this->where_sql( $database, $profile, array_merge( $request, [ 'filters' => $values ] ) );
+
+        return 'users' === $profile['source']
+            ? QuerySql::user_ids_sql( $this->query_args( $profile, $request ), $conditions )
+            : QuerySql::post_ids_sql( $this->query_args( $profile, $request ), $conditions );
+    }
+
+    /**
+     * The visitor's search and filter conditions on the posts or users table
+     * (without a leading AND). Public for deterministic tests.
      *
      * @param object $database
      */
     public function where_sql( $database, array $profile, array $request ): string {
-        $clauses = [ $this->scope_sql( $database, $profile ) ];
-
-        $search = $this->search_sql( $database, $profile, (string) $request['q'] );
+        $clauses = [];
+        $search  = $this->search_sql( $database, $profile, (string) $request['q'] );
         if ( '' !== $search ) {
             $clauses[] = $search;
         }
 
-        $filters = QueryFilterSet::where( $database, $profile['filters'], $request['filters'], QueryFilterSet::scope( 'directory', $profile ), $this->alias( $profile ) );
+        $filters = QueryFilterSet::where( $database, $profile['filters'], $request['filters'], QueryFilterSet::scope( 'directory', $profile ), $this->table( $database, $profile ) );
 
         return implode( ' AND ', array_filter( array_merge( $clauses, $filters ) ) );
     }
@@ -147,21 +183,53 @@ final class DirectorySearchQuery {
         return '(' . implode( $glue, $term_clauses ) . ')';
     }
 
+    /**
+     * Runs one WordPress query for IDs.
+     *
+     * @param array<string,mixed>|null $sort
+     * @return array{ids:int[],total:int}
+     */
+    private function fetch( array $profile, array $request, string $conditions, ?array $sort, int $number, int $page, bool $count = false, int $offset = -1 ): array {
+        $args = $this->query_args( $profile, $request, $sort );
+
+        if ( 'users' === $profile['source'] ) {
+            $query = new \WP_User_Query();
+            QuerySql::attach( $query, $conditions );
+            $query->prepare_query( array_merge( $args, [ 'fields' => 'ID', 'number' => $number, 'count_total' => $count ] + ( $offset >= 0 ? [ 'offset' => $offset ] : [ 'paged' => $page ] ) ) );
+            $query->query();
+
+            return [ 'ids' => array_map( 'intval', (array) $query->get_results() ), 'total' => (int) $query->get_total() ];
+        }
+
+        $query = new \WP_Query();
+        QuerySql::attach( $query, $conditions );
+        $ids = $query->query( array_merge( $args, [
+            'fields'                 => 'ids',
+            'posts_per_page'         => $number,
+            'no_found_rows'          => ! $count,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+        ] + ( $offset >= 0 ? [ 'offset' => $offset ] : [ 'paged' => $page ] ) ) );
+
+        return [ 'ids' => array_map( 'intval', (array) $ids ), 'total' => (int) $query->found_posts ];
+    }
+
     /** @param object $database @return string[] */
     private function term_conditions( $database, array $profile, string $term, string $matching ): array {
-        $wildcards = (bool) $profile['wildcards'];
+        $wildcards  = (bool) $profile['wildcards'];
+        $table      = $this->table( $database, $profile );
         $conditions = [];
 
         if ( 'users' === $profile['source'] ) {
             foreach ( $profile['fields'] as $field ) {
                 $column = DirectorySearchProfile::USER_FIELDS[ $field ] ?? '';
                 if ( '' !== $column ) {
-                    $conditions[] = SearchMatchSql::condition( $database, self::USER_ALIAS . '.' . $column, $term, $matching, $wildcards );
+                    $conditions[] = SearchMatchSql::condition( $database, $table . '.' . $column, $term, $matching, $wildcards );
                 }
             }
             if ( [] !== $profile['meta_keys'] ) {
                 $conditions[] = 'EXISTS (SELECT 1 FROM ' . $database->usermeta . ' hds_um'
-                    . ' WHERE hds_um.user_id = ' . self::USER_ALIAS . '.ID'
+                    . ' WHERE hds_um.user_id = ' . $table . '.ID'
                     . ' AND hds_um.meta_key IN (' . $this->placeholders( $database, $profile['meta_keys'] ) . ')'
                     . ' AND ' . SearchMatchSql::condition( $database, 'hds_um.meta_value', $term, $matching, $wildcards ) . ')';
             }
@@ -172,12 +240,12 @@ final class DirectorySearchQuery {
         foreach ( $profile['fields'] as $field ) {
             $column = DirectorySearchProfile::POST_FIELDS[ $field ] ?? '';
             if ( '' !== $column ) {
-                $conditions[] = SearchMatchSql::condition( $database, self::POST_ALIAS . '.' . $column, $term, $matching, $wildcards );
+                $conditions[] = SearchMatchSql::condition( $database, $table . '.' . $column, $term, $matching, $wildcards );
             }
         }
         if ( [] !== $profile['meta_keys'] ) {
             $conditions[] = 'EXISTS (SELECT 1 FROM ' . $database->postmeta . ' hds_pm'
-                . ' WHERE hds_pm.post_id = ' . self::POST_ALIAS . '.ID'
+                . ' WHERE hds_pm.post_id = ' . $table . '.ID'
                 . ' AND hds_pm.meta_key IN (' . $this->placeholders( $database, $profile['meta_keys'] ) . ')'
                 . ' AND ' . SearchMatchSql::condition( $database, 'hds_pm.meta_value', $term, $matching, $wildcards ) . ')';
         }
@@ -185,7 +253,7 @@ final class DirectorySearchQuery {
             $conditions[] = 'EXISTS (SELECT 1 FROM ' . $database->term_relationships . ' hds_tr'
                 . ' INNER JOIN ' . $database->term_taxonomy . ' hds_tt ON hds_tt.term_taxonomy_id = hds_tr.term_taxonomy_id'
                 . ' INNER JOIN ' . $database->terms . ' hds_t ON hds_t.term_id = hds_tt.term_id'
-                . ' WHERE hds_tr.object_id = ' . self::POST_ALIAS . '.ID'
+                . ' WHERE hds_tr.object_id = ' . $table . '.ID'
                 . ' AND hds_tt.taxonomy IN (' . $this->placeholders( $database, $profile['taxonomies'] ) . ')'
                 . ' AND ' . SearchMatchSql::condition( $database, 'hds_t.name', $term, $matching, $wildcards ) . ')';
         }
@@ -193,45 +261,9 @@ final class DirectorySearchQuery {
         return $conditions;
     }
 
-    /** @param object $database */
-    private function scope_sql( $database, array $profile ): string {
-        if ( 'users' === $profile['source'] ) {
-            $prefix = method_exists( $database, 'get_blog_prefix' ) ? (string) $database->get_blog_prefix() : (string) ( $database->prefix ?? 'wp_' );
-            $roles = [];
-            foreach ( $profile['roles'] as $role ) {
-                $roles[] = $database->prepare( 'hds_cap.meta_value LIKE %s', '%' . $database->esc_like( '"' . $role . '"' ) . '%' );
-            }
-
-            return 'EXISTS (SELECT 1 FROM ' . $database->usermeta . ' hds_cap'
-                . ' WHERE hds_cap.user_id = ' . self::USER_ALIAS . '.ID'
-                . ' AND ' . $database->prepare( 'hds_cap.meta_key = %s', $prefix . 'capabilities' )
-                . ' AND (' . implode( ' OR ', $roles ) . '))';
-        }
-
-        return self::POST_ALIAS . '.post_type IN (' . $this->placeholders( $database, $profile['post_types'] ) . ')'
-            . ' AND ' . self::POST_ALIAS . ".post_status = 'publish'"
-            . ' AND ' . self::POST_ALIAS . ".post_password = ''";
-    }
-
-    private function field_order_sql( array $profile, array $sort ): string {
-        $columns = 'users' === $profile['source'] ? DirectorySearchProfile::USER_SORT_FIELDS : DirectorySearchProfile::POST_SORT_FIELDS;
-        $column = $columns[ $sort['field'] ] ?? '';
-        if ( '' === $column ) {
-            return $this->default_order_sql( $profile );
-        }
-        $alias = $this->alias( $profile );
-
-        return $alias . '.' . $column . ' ' . ( 'DESC' === $sort['order'] ? 'DESC' : 'ASC' ) . ', ' . $alias . '.ID ASC';
-    }
-
-    private function default_order_sql( array $profile ): string {
-        return 'users' === $profile['source']
-            ? self::USER_ALIAS . '.display_name ASC, ' . self::USER_ALIAS . '.ID ASC'
-            : self::POST_ALIAS . '.post_date DESC, ' . self::POST_ALIAS . '.ID DESC';
-    }
-
-    private function alias( array $profile ): string {
-        return 'users' === $profile['source'] ? self::USER_ALIAS : self::POST_ALIAS;
+    /** The posts or users table WordPress queries, unaliased. @param object $database */
+    private function table( $database, array $profile ): string {
+        return 'users' === $profile['source'] ? (string) $database->users : (string) $database->posts;
     }
 
     /** @param object $database @param string[] $values */

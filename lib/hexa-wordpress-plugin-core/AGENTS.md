@@ -64,6 +64,7 @@ src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SchemaTools/        Hexa\PluginCore\SchemaTools
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
+src/ListingSearch/      Hexa\PluginCore\ListingSearch
 src/Calendar/           Hexa\PluginCore\Calendar
 src/Map/                Hexa\PluginCore\Map
 src/QueryFilter/        Hexa\PluginCore\QueryFilter
@@ -130,7 +131,7 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put reusable native WordPress search-result matching, bounded term parsing, query configuration, and exact-query SQL scoping in `src/SearchQuery`.
 - Put schema document normalization, graph rendering, deduplication, and output injection in `src/SchemaTools`; hosts retain schema object construction.
 - Put reusable taxonomy definitions, registration, and reference UI in `src/Taxonomies`; hosts retain taxonomy terms and editorial meaning.
-- Keep all three search domains separate: `SearchDisplay` renders native GET forms, `SearchQuery` changes an explicitly eligible native results query, `SmartSearch` provides AJAX typeahead/content selection, and `DirectorySearch` provides public filterable listing pages. Shared term matching lives in `SearchQuery\SearchMatchSql`.
+- Keep all three search domains separate: `SearchDisplay` renders native GET forms, `SearchQuery` changes an explicitly eligible native results query, `SmartSearch` provides AJAX typeahead/content selection, `DirectorySearch` provides public filterable directories with their own cards, and `ListingSearch` narrows a page's existing WordPress listing in place. Shared filters, counts and query attachment live in `QueryFilter`. Shared term matching lives in `SearchQuery\SearchMatchSql`.
 - Put safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting in `src/SystemEnvironment`.
 - Put host plugin GitHub/update configuration and updater abstractions in `src/PluginUpdates`.
 - Put exact WordPress query eligibility predicates and narrowly scoped invariant repair in `src/QuerySafety`; host query callbacks must reject ineligible queries before loading settings or attaching SQL filters.

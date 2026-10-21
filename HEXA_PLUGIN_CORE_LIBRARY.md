@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.15.0
+Current release: 3.29.2
 ```
 
 Do not rename these.
@@ -143,6 +143,8 @@ settings save or in-place action. Core owns the success, warning, error and
 information structure plus the browser API; host plugins provide only concise
 action-specific text.
 
+Use `TaskRunner` for any admin job that runs as AJAX steps (cleanups, scans, migrations): stat cards, progress meter, status badges, job tables, live log and the `HexaWpCoreTaskRunner` client with one-at-a-time queues, batched loops and Stop. Do not build another per-plugin progress runner. See `docs/task-runner.md`.
+
 Use `CoreUi::collapsible()` for expandable cards. The shared component owns the native `<details>` structure, persistent open/closed state, and visible chevron SVG indicator, so users can tell the card expands.
 
 Use `CoreUi::toggle()` for checkbox-style toggles. Core clips the hidden checkbox input to a 1px focusable control so the input never creates horizontal page overflow.
@@ -216,7 +218,9 @@ Hexa\PluginCore\WpAdminUiCleanup
 
 Use `CleanupRegistry` to define admin cleanup options once, render toggle rows, save settings through AJAX, and apply behavior on the target admin screens.
 
-Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()` and `CleanupPresets::fifu_meta_box()` instead of redefining those boxes; pass overrides such as `section` or `label` as the argument.
+Mode `meta_box_remove` takes `meta_boxes` (IDs) and optional `post_types`, and removes them with `remove_meta_box()` on `add_meta_boxes` at the latest priority. Any option may set `auto_enabled` (a callable) and `auto_reason`; while the callable returns true the option is on and its toggle is locked. Reuse `CleanupPresets::comments_meta_box()`, `fifu_meta_box()`, `rankmath_lock_modified_date()` and `litespeed_ui()` instead of redefining them; pass overrides such as `section`, `label` or `audience` as the argument. `audience` => `non_admins` applies an option only to users without `audience_capability` (default `manage_options`). `columns` with `column_hooks` removes list-table columns; `admin_bar_nodes` removes admin-bar items.
+
+`Hexa\PluginCore\Taxonomies\TermChoiceLimits` takes rules (`taxonomy`, `max`, `capability`, `post_types`) and limits users without the capability: radio buttons for a hierarchical taxonomy with `max` 1, a stopped tag picker otherwise, and the limit re-applied on save.
 
 Required rules:
 
@@ -860,6 +864,17 @@ echo \Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer::render([
 
 Do not duplicate the renderer CSS, SVG, markup, or interaction script inside a host plugin. `hidden_fields` is the bridge to a shortcode-scoped `SearchQuery` engine; names are sanitized, values are escaped, and the renderer accepts at most ten fields.
 
+## Listing Search
+
+`Hexa\PluginCore\ListingSearch` narrows a page's own WordPress listing (archive,
+search, or an Elementor loop with the CSS class `hexa-listing-results`) with a
+search box and filters refreshed in place, on WordPress's own query. Register a
+profile with `ListingSearchRegistry::register()`, render it with
+`ListingSearchRenderer`, and add `ListingSearchModule` to the host bootstrap.
+Filters and counts come from `QueryFilter` (checkboxes with any/all matching,
+number ranges, nested terms, `author` and `post_type` types). See
+`docs/listing-search.md`.
+
 ## Native Search Query Behavior
 
 Namespace:
@@ -875,9 +890,10 @@ SearchQueryConfiguration
 SearchTermParser
 SearchQueryEngine
 MetaConstraintSql
-JetEngineSearchAdapter
 ElementorSearchAdapter
 ElementorPublicTextIndex
+ResultTypeLabels
+ElementorResultTypeTag
 ```
 
 Use this namespace to alter one explicitly eligible native WordPress search-results query. The host owns option storage, capability/nonce checks, available public post types and taxonomies, and the request marker. Core owns normalization, bounded parsing, selected-source SQL, and query scoping.
@@ -895,12 +911,6 @@ $engine = new \Hexa\PluginCore\SearchQuery\SearchQueryEngine(
     'example_search'
 );
 $engine->register();
-
-$jet_engine = new \Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter(
-    $settings_provider,
-    'example_search'
-);
-$jet_engine->register();
 
 $elementor_search = new \Hexa\PluginCore\SearchQuery\ElementorSearchAdapter(
     $settings_provider,
@@ -925,7 +935,9 @@ Supported behavior:
 - public post-type selection, result count from 0 to 100, relevance/newest/oldest/title ordering, and opt-in host-mapped natural time windows such as `24 hours`, `one week`, or `Chabad next 48 hours`
 - `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
 
-Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+
+To flag what kind of content each result is, call `ResultTypeLabels::register( [ 'post' => 'Press Release' ], 'Site Content' )` and place Core's **Result Type** Elementor dynamic tag in the result Loop Item; style per type through the loop item's `type-{post_type}` class.
 
 Do not copy this into host `pre_get_posts` callbacks. Do not use it for suggestions: `SmartSearch` remains the separate AJAX typeahead/content-picker system. Full protocol: `docs/search-query.md`.
 
@@ -1555,7 +1567,7 @@ Do not execute feature behavior at include time.
 
 Namespace: `Hexa\PluginCore\DatabaseCleanup`
 
-Use `DatabaseCleanupService`, `DatabaseCleanupAjaxController`, and `DatabaseCleanupRenderer` for WP-Optimize-backed cleanup sessions. Core owns provider activation, task/table iteration, live reporting, and restoring the provider to its pre-run activation state. Hosts provide capability, nonce, AJAX names, labels, and the provider plugin file.
+Deprecated in 3.24.1: site-wide database work belongs to HWS Base Tools (Database Optimization tab). Do not use in new code. Legacy: `DatabaseCleanupService`, `DatabaseCleanupAjaxController`, and `DatabaseCleanupRenderer` run WP-Optimize-backed cleanup sessions. Core owns provider activation, task/table iteration, live reporting, and restoring the provider to its pre-run activation state. Hosts provide capability, nonce, AJAX names, labels, and the provider plugin file.
 
 ## Object Cache
 

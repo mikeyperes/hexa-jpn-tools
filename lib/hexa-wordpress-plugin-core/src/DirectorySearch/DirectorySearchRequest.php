@@ -15,6 +15,8 @@ final class DirectorySearchRequest {
     public const PARAM_PAGE = 'dpage';
     public const PARAM_SORT = 'dsort';
     public const PARAM_FILTER = 'dfilter';
+    /** The archive the directory sits on (a ListingContext token), carried to live requests. */
+    public const PARAM_CONTEXT = 'dctx';
 
     public const MAX_QUERY_LENGTH = 200;
     public const MAX_PAGE = 1000;
@@ -22,7 +24,7 @@ final class DirectorySearchRequest {
     /**
      * @param array<string,mixed> $input   Unslashed parameters (wp_unslash( $_GET ) or REST query params).
      * @param array<string,mixed> $profile Normalized profile.
-     * @return array{q:string,page:int,sort:string,filters:array<string,string|array{from:string,to:string}>}
+     * @return array{q:string,page:int,sort:string,filters:array<string,mixed>,context:string}
      */
     public static function from_input( array $input, array $profile ): array {
         $query = self::scalar( $input[ self::PARAM_QUERY ] ?? '' );
@@ -45,6 +47,7 @@ final class DirectorySearchRequest {
             'page'    => $page,
             'sort'    => $sort,
             'filters' => QueryFilterSet::parse( $profile['filters'], $input[ self::PARAM_FILTER ] ?? [], QueryFilterSet::scope( 'directory', $profile ) ),
+            'context' => ! empty( $profile['context'] ) ? substr( (string) preg_replace( '/[^a-z0-9_:\-]/', '', strtolower( self::scalar( $input[ self::PARAM_CONTEXT ] ?? '' ) ) ), 0, 80 ) : '',
         ];
     }
 

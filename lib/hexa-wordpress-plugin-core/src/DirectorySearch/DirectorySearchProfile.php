@@ -124,6 +124,8 @@ final class DirectorySearchProfile {
             // 'infinite' (default): next results load on scroll, with a crawlable Load more link; 'numbered': page links.
             'load_mode'     => ProfileValues::choice( $config['load_mode'] ?? 'infinite', [ 'infinite', 'load_more', 'numbered' ], 'infinite' ),
             'filters'       => QueryFilterSet::normalize( (array) ( $config['filters'] ?? [] ), $source ),
+            // Placed on a category, tag, author or post type archive, a posts directory lists only that archive's items.
+            'context'       => 'posts' === $source && (bool) ( $config['context'] ?? true ),
             'sorts'         => $sorts,
             'default_sort'  => $default_sort,
             'render_item'   => $config['render_item'],

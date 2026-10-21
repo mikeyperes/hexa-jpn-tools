@@ -9,7 +9,7 @@ namespace Hexa\PluginCore\QueryFilter;
  */
 final class CallbackFilterType extends QueryFilterType {
     public function controls(): array {
-        return [ QueryFilterSet::CONTROL_SELECT, QueryFilterSet::CONTROL_TOGGLE, QueryFilterSet::CONTROL_DATE_RANGE ];
+        return [ QueryFilterSet::CONTROL_SELECT, QueryFilterSet::CONTROL_TOGGLE, QueryFilterSet::CONTROL_DATE_RANGE, QueryFilterSet::CONTROL_CHECKBOXES ];
     }
 
     public function normalize( array $definition, string $source ): ?array {

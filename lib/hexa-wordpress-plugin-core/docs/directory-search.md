@@ -160,3 +160,16 @@ php tests/query-filters.php
 php tests/search-query-engine.php
 php tests/package-integrity.php
 ```
+
+## Core 3.29
+
+- Results come from `WP_Query` (posts) or `WP_User_Query` (users); the visitor's
+  text and filters are attached to that exact query (`QuerySql`), so other
+  plugins see and adjust it as usual. Scope, paging and field sorts are plain
+  query arguments.
+- Filters accept `checkboxes` (several choices, `match` any/all) and
+  `number_range`, and show the number of results behind each option; the REST
+  payload carries the refreshed controls as `filters`.
+- A posts directory placed on a category, tag, author or post type page lists
+  only that page's items (`context`, default true); the page's context travels
+  to live requests as `dctx`.

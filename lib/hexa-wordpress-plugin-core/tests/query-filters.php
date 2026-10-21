@@ -84,7 +84,7 @@ function acf_get_field( string $name ): ?array {
 }
 
 require __DIR__ . '/support/fields.php';
-foreach ( [ 'PublicComponents/ProfileValues', 'QueryFilter/QueryFilterType', 'QueryFilter/MetaFilterType', 'QueryFilter/TaxonomyFilterType', 'QueryFilter/DateRangeFilterType', 'QueryFilter/CallbackFilterType', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet' ] as $class ) {
+foreach ( [ 'PublicComponents/ProfileValues', 'QueryFilter/QueryFilterType', 'QueryFilter/MetaFilterType', 'QueryFilter/TaxonomyFilterType', 'QueryFilter/DateRangeFilterType', 'QueryFilter/CallbackFilterType', 'QueryFilter/AuthorFilterType', 'QueryFilter/PostTypeFilterType', 'QueryFilter/QuerySql', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet' ] as $class ) {
     require $root . '/src/' . $class . '.php';
 }
 
@@ -215,7 +215,7 @@ $expect( 250 === count( QueryFilterSet::options( $callables['many'], $scope ) ) 
 
 final class ChecklistFilterType extends QueryFilterType {
     public function controls(): array {
-        return [ 'checkboxes' ];
+        return [ 'stars' ];
     }
 
     public function where( $database, array $filter, $value, array $context ): string {

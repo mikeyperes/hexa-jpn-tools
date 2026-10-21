@@ -13,6 +13,7 @@ namespace Hexa\PluginCore\Fields;
  *     'client_view' => [ 'enabled' => true, 'roles' => 'below_admin' ]          // default
  *     'client_view' => [ 'enabled' => true, 'roles' => [ 'author', 'editor' ] ]  // only these roles
  *     'client_view' => [ 'enabled' => false ]                                    // everyone sees developer notes
+ *     'client_view' => [ 'roles' => 'below_admin', 'hide' => true ]              // the whole group is staff-only
  *
  * Everyone else sees the developer view: friendly instructions followed by the
  * developer notes. Filter: hexa_core_fields_client_view( $client, $setting, $user ).
@@ -20,7 +21,7 @@ namespace Hexa\PluginCore\Fields;
 final class Audience {
 	public const BELOW_ADMIN = 'below_admin';
 
-	/** @return array{enabled:bool,roles:string|list<string>} */
+	/** @return array{enabled:bool,roles:string|list<string>,hide:bool} */
 	public static function normalize( mixed $setting ): array {
 		if ( is_bool( $setting ) ) {
 			$setting = [ 'enabled' => $setting ];
@@ -31,7 +32,7 @@ final class Audience {
 			$roles = array_values( array_unique( array_filter( array_map( static fn( mixed $role ): string => is_scalar( $role ) ? sanitize_key( (string) $role ) : '', (array) $roles ) ) ) );
 			$roles = [] === $roles ? self::BELOW_ADMIN : $roles;
 		}
-		return [ 'enabled' => ! array_key_exists( 'enabled', $setting ) || (bool) $setting['enabled'], 'roles' => $roles ];
+		return [ 'enabled' => ! array_key_exists( 'enabled', $setting ) || (bool) $setting['enabled'], 'roles' => $roles, 'hide' => ! empty( $setting['hide'] ) ];
 	}
 
 	public static function client_view( mixed $setting, mixed $user = null ): bool {
@@ -50,6 +51,12 @@ final class Audience {
 			}
 		}
 		return function_exists( 'apply_filters' ) ? (bool) apply_filters( 'hexa_core_fields_client_view', $client, $setting, $user ) : $client;
+	}
+
+	/** True when the group is staff-only and the user gets the client view: the group is not registered for them. */
+	public static function hidden( array $group, mixed $user = null ): bool {
+		$setting = self::normalize( $group['client_view'] ?? [] );
+		return $setting['hide'] && self::client_view( $setting, $user );
 	}
 
 	/** @param array<string,mixed> $group @return array<string,mixed> */

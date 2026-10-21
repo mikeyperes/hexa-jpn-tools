@@ -80,14 +80,6 @@ only Core's exact-query SQL uses the residual keyword.
 
 `MetaConstraintSql::compile(object $database, array $constraints, string $post_id_column = ''): string` compiles the same bounded tree into prepared correlated predicates. This avoids the row multiplication produced by `WP_Meta_Query` joins when an exact search component needs host-owned date or state rules. Hosts declare only keys, values, types, comparisons, and relations; Core owns aliases, casts, preparation, limits, and fail-closed validation.
 
-### `JetEngineSearchAdapter`
-
-`new JetEngineSearchAdapter(callable $settings_provider, string $marker_key = 'hexa_search')`
-
-`JetEngineSearchAdapter::register(): void` bridges a JetEngine posts listing grid to the same engine when a search-results template creates a secondary `WP_Query` instead of rendering the native main query. It copies only the current main search text and host marker, then applies Core's private explicit-query marker. The engine still owns post-type, source, count, ordering, and SQL behavior.
-
-The adapter rejects admin, WP-CLI, AJAX, REST, cron, XML-RPC, feed, empty, suppressed, disabled, non-search, and non-main request contexts before loading host settings. It skips JetEngine grids configured as archive templates because those already consume the native main query. A host can reject a specific grid with `hexa_plugin_core_search_query_jet_engine_should_handle` or the `hexa_search_query_disabled` query argument.
-
 ### `ElementorSearchAdapter`
 
 `new ElementorSearchAdapter(callable $settings_provider, string $query_id, ?callable $query_configurator = null, int $max_results_per_page = 50)`
@@ -148,7 +140,6 @@ Example:
 use Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 use Hexa\PluginCore\SearchQuery\SearchQueryEngine;
-use Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter;
 use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
 use Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex;
 
@@ -168,8 +159,6 @@ $engine = new SearchQueryEngine(
 );
 $engine->register();
 
-$jet_engine = new JetEngineSearchAdapter( $settings_provider, $marker );
-$jet_engine->register();
 
 $elementor_search = new ElementorSearchAdapter(
     $settings_provider,

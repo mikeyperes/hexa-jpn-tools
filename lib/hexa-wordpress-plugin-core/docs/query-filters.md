@@ -38,6 +38,27 @@ URL arguments. Components own only their parameter name and CSS class prefix.
 
 Common keys: `type`, `control`, `label`, `all_label` (selects), `from_label`
 and `to_label` (date ranges), `min` and `max` (Y-m-d date limits), `options`.
+
+Several choices and counts (Core 3.29):
+
+- `control` `checkboxes` (taxonomy, meta, author, post type, callback) takes
+  several options, matched with `match` `any` (default) or `all`; values
+  travel as `param[key][]`.
+- `control` `number_range` (meta) matches numbers between `[min]` and `[max]`.
+- `QueryFilterSet::counts()` returns option => number of results for every
+  select and checkbox filter whose type can count (taxonomy, meta, author,
+  post type). A single-choice or `any` filter is counted without its own
+  selection; an `all` filter within it. Pass the result to `controls()`.
+- `hide_empty` drops options with no results, `limit` keeps the busiest,
+  `show_counts` false turns counting off.
+- Hierarchical taxonomies list options as a tree (`depths()`); `child_of`
+  limits them to one term's descendants; a parent's count includes its
+  children's results once.
+- Types `author` (keyword options `authors`, values are author slugs; hosts
+  add co-authors with `hexa_plugin_core_query_filter_author_condition`) and
+  `post_type` (keyword options `types`).
+- `QuerySql` attaches conditions to one exact `WP_Query`/`WP_User_Query` and
+  returns the ID SQL WordPress would run for a set of arguments, for counts.
 At most 12 filters per profile; incomplete or unknown definitions are dropped.
 
 ## Built-In Types

@@ -59,6 +59,7 @@ The package version is stored in the root `VERSION` file. Root `bootstrap.php` s
 | `src/SchemaTools/` | `Hexa\PluginCore\SchemaTools` | Schema graph helpers, normalized JSON-LD documents, deduplication, and output injection. |
 | `src/SearchDisplay/` | `Hexa\PluginCore\SearchDisplay` | Reusable public WordPress search-form templates, markup, styling, and accessible interactions. |
 | `src/SearchQuery/` | `Hexa\PluginCore\SearchQuery` | Bounded term parsing, normalized native-search settings, selected source SQL, exact-query hook scoping, and guarded search-template adapters. |
+| `src/ListingSearch/` | `Hexa\PluginCore\ListingSearch` | Search box and filters that narrow a page's own WordPress listing (archive, search, Elementor loop) in place, with counts. |
 | `src/DirectorySearch/` | `Hexa\PluginCore\DirectorySearch` | Declarative public directory search profiles over posts or users, bounded SQL, public REST endpoint, and the server-rendered live-search shortcode. |
 | `src/Calendar/` | `Hexa\PluginCore\Calendar` | Lightweight public month-grid calendar profiles, bounded month query, linked items, REST month fragments, shortcode, inline assets, and month-cache invalidation. |
 | `src/Map/` | `Hexa\PluginCore\Map` | Brandable public location maps: host profiles over posts or users, keyless background geocoding with stored coordinates, MapLibre map with clusters, group filter, item cards, shortcode, inline assets, and payload caching. |

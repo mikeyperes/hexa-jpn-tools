@@ -75,7 +75,7 @@ function get_permalink( int $id ): string {
 foreach ( [
     'PublicComponents/ProfileValues', 'PublicComponents/ProfileStore', 'PublicComponents/PublicComponent', 'PublicComponents/ItemLink', 'PublicComponents/ItemLightbox',
     'QueryFilter/QueryFilterType', 'QueryFilter/MetaFilterType', 'QueryFilter/TaxonomyFilterType', 'QueryFilter/DateRangeFilterType',
-    'QueryFilter/CallbackFilterType', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet',
+    'QueryFilter/CallbackFilterType', 'QueryFilter/AuthorFilterType', 'QueryFilter/PostTypeFilterType', 'QueryFilter/QuerySql', 'QueryFilter/QueryFilterTypes', 'QueryFilter/QueryFilterSet',
     'Calendar/CalendarGrid', 'Calendar/CalendarSort', 'Calendar/CalendarProfile', 'Calendar/CalendarRegistry', 'Calendar/CalendarRequest', 'Calendar/CalendarQuery', 'Calendar/CalendarRenderer',
 ] as $class ) {
     require $root . '/src/' . $class . '.php';

@@ -79,4 +79,71 @@ final class CleanupPresets {
             $overrides
         );
     }
+
+    /**
+     * Admin notices for clients: before notices print, removes every notice callback
+     * from plugins outside ClientFacingPlugins (SEO, builders, security, donation
+     * banners). WordPress's own notices and our plugins' customer notices stay.
+     */
+    public static function client_notices( array $overrides = [] ): array {
+        return array_merge(
+            [
+                "label"       => "Plugin Notices for Non-Administrators",
+                "description" => "Users below administrator only see notices from WordPress and the client-facing plugins (Hexa, HWS, ACF, avatars). Other plugins' notices, such as Rank Math's or donation banners, never reach them.",
+                "mode"        => "callback",
+                "on_label"    => "Removed",
+                "audience"    => "non_admins",
+                "callback"    => [ self::class, "apply_client_notices" ],
+                "section"     => "wordpress",
+            ],
+            $overrides
+        );
+    }
+
+    public static function apply_client_notices(): void {
+        add_action( "in_admin_header", static function (): void {
+            foreach ( [ "admin_notices", "all_admin_notices", "user_admin_notices", "network_admin_notices" ] as $hook ) {
+                ClientFacingPlugins::strip( $hook );
+            }
+        }, PHP_INT_MAX );
+    }
+
+    /**
+     * The profile page for clients: staff-only sections removed at the source.
+     * Plugin sections outside ClientFacingPlugins (Rank Math SEO, Elementor AI) are
+     * unhooked, including their contact fields and footer scripts on Profile, Application Passwords are turned off through WordPress's own filter,
+     * the color picker through its own hook, and the remaining Personal Options rows,
+     * which WordPress prints without a hook, are hidden by WordPress's row classes.
+     */
+    public static function client_profile( array $overrides = [] ): array {
+        return array_merge(
+            [
+                "label"       => "Profile Page for Non-Administrators",
+                "description" => "Users below administrator see only their own details on Profile: no Personal Options, Application Passwords, or sections from staff plugins such as Rank Math SEO or Elementor AI.",
+                "mode"        => "css_hide",
+                "on_label"    => "Removed",
+                "audience"    => "non_admins",
+                "admin_pages" => [ "profile.php", "user-edit.php" ],
+                "selectors"   => [
+                    "#your-profile h2:has(+ .form-table .user-infinite-scrolling-wrap)",
+                    "#your-profile .form-table:has(.user-infinite-scrolling-wrap)",
+                ],
+                "callback"    => [ self::class, "apply_client_profile" ],
+                "section"     => "wordpress",
+            ],
+            $overrides
+        );
+    }
+
+    public static function apply_client_profile(): void {
+        add_filter( "wp_is_application_passwords_available_for_user", "__return_false", PHP_INT_MAX );
+        foreach ( [ "load-profile.php", "load-user-edit.php" ] as $screen ) {
+            add_action( $screen, static function (): void {
+                remove_action( "admin_color_scheme_picker", "admin_color_scheme_picker" );
+                foreach ( [ "personal_options", "profile_personal_options", "show_user_profile", "edit_user_profile", "user_contactmethods", "admin_footer" ] as $hook ) {
+                    ClientFacingPlugins::strip( $hook );
+                }
+            }, PHP_INT_MAX );
+        }
+    }
 }

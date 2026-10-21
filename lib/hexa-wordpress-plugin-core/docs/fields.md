@@ -98,3 +98,7 @@ FieldGroups::add( [
 ```
 
 Users in the client view see `instructions` only. Everyone else sees `instructions` followed by `developer_instructions`. Sub-fields and flexible-content layouts follow the same rule. `'enabled' => false` shows developer notes to everyone. Groups registered through `AcfFieldGroupRegistry` get a per-group Client-friendly view switch (everyone below administrator, or chosen roles) on the host plugin's ACF structures screen; a saved choice overrides the code default. Filter: `hexa_core_fields_client_view( $client, $setting, $user )`.
+
+### Staff-only groups (3.28.0)
+
+`'client_view' => [ 'roles' => 'below_admin', 'hide' => true ]` keeps a whole group away from client-view users: it is not registered for them at all, so it neither renders nor saves. Registry cards offer this as "Hide the whole group from them".

@@ -49,7 +49,8 @@ emails, raw host access codes, database credentials, or authentication state.
 
 ## Hexa WP Core
 
-The plugin vendors and registers Hexa WordPress Plugin Core. Core owns package
+The plugin vendors and registers Hexa WordPress Plugin Core (3.29.2: the host
+directory runs on WordPress's own user query). Core owns package
 selection, plugin update behavior, Core package update behavior, runtime
 identity, and shared safety checks. JPN-specific event and host behavior stays
 under `Hexa\JpnTools`.
@@ -62,7 +63,7 @@ pagination, the public REST endpoint
 (`/wp-json/hexa-plugin-core/v1/directory/jpn_hosts`), and live interaction.
 `Hexa\JpnTools\Hosts\HostDirectory` owns the host profile: users with role
 `host`, prefix and `*` wildcard matching over name, slug, website, address,
-and Instagram, an area filter, an upcoming-events toggle, Upcoming first / Most
+and Instagram, an area filter (each area shows how many hosts it holds), an upcoming-events toggle, Upcoming first / Most
 events / Recently active / A–Z sorts, event statistics from one aggregate
 query, and the one-per-row card.
 

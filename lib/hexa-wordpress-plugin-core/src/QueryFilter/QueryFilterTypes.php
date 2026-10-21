@@ -5,8 +5,8 @@ namespace Hexa\PluginCore\QueryFilter;
 use Hexa\PluginCore\PublicComponents\ProfileValues;
 
 /**
- * Registry of filter types. Built-ins: `meta`, `taxonomy`, `date_range`, and
- * `callback`. Hosts add a type with register() at any point before profiles
+ * Registry of filter types. Built-ins: `meta`, `taxonomy`, `date_range`,
+ * `callback`, `author`, and `post_type`. Hosts add a type with register() at any point before profiles
  * are first rendered (profiles normalize lazily), or on the
  * `hexa_plugin_core_query_filter_types` action, which fires once at the first
  * type lookup. Built-ins cannot be replaced, so one plugin cannot change
@@ -67,6 +67,8 @@ final class QueryFilterTypes {
             'taxonomy'   => new TaxonomyFilterType(),
             'date_range' => new DateRangeFilterType(),
             'callback'   => new CallbackFilterType(),
+            'author'     => new AuthorFilterType(),
+            'post_type'  => new PostTypeFilterType(),
         ];
     }
 }

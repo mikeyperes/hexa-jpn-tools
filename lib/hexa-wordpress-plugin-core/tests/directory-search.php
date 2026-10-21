@@ -52,6 +52,9 @@ require $root . '/src/PublicComponents/PublicComponent.php';
 require $root . '/src/QueryFilter/QueryFilterType.php';
 require $root . '/src/QueryFilter/MetaFilterType.php';
 require $root . '/src/QueryFilter/TaxonomyFilterType.php';
+require $root . '/src/QueryFilter/AuthorFilterType.php';
+require $root . '/src/QueryFilter/PostTypeFilterType.php';
+require $root . '/src/QueryFilter/QuerySql.php';
 require $root . '/src/QueryFilter/DateRangeFilterType.php';
 require $root . '/src/QueryFilter/CallbackFilterType.php';
 require $root . '/src/QueryFilter/QueryFilterTypes.php';
@@ -127,6 +130,22 @@ $expect( 'syn* b' === $request['q'], 'Visitor text is stripped of control charac
 $expect( DirectorySearchRequest::MAX_PAGE === $request['page'], 'Pages are bounded.' );
 $expect( 'events' === $request['sort'], 'Unknown sorts fall back to the profile default.' );
 $expect( [ 'upcoming' => '1' ] === $request['filters'], 'Select filters accept only declared options; toggles normalize to 1.' );
+$expect( '' === $request['context'], 'A users directory never takes an archive context.' );
+
+// Several choices, any or all.
+$multi = DirectorySearchProfile::normalize( 'multi', [ 'post_types' => [ 'event' ], 'filters' => [
+    'area' => [ 'type' => 'taxonomy', 'taxonomy' => 'area', 'control' => 'checkboxes', 'options' => [ 'miami' => 'Miami', 'boca' => 'Boca', 'tampa' => 'Tampa' ] ],
+    'tags' => [ 'type' => 'taxonomy', 'taxonomy' => 'tags', 'control' => 'checkboxes', 'match' => 'all', 'options' => [ 'a' => 'A', 'b' => 'B' ] ],
+    'cost' => [ 'type' => 'meta', 'meta_key' => 'cost', 'control' => 'number_range' ],
+], 'render_item' => $render ] );
+$multi_request = DirectorySearchRequest::from_input( [ 'dctx' => 'term:category:7', 'dfilter' => [ 'area' => [ 'miami', 'nope', 'boca', 'miami' ], 'tags' => [ 'a', 'b' ], 'cost' => [ 'min' => '50', 'max' => '10' ] ] ], $multi );
+$expect( [ 'miami', 'boca' ] === $multi_request['filters']['area'], 'Checkbox filters keep declared, unique options in order.' );
+$expect( [ 'min' => '10', 'max' => '50' ] === $multi_request['filters']['cost'], 'Number ranges are validated and put in order.' );
+$expect( 'term:category:7' === $multi_request['context'], 'A posts directory carries its archive context to live requests.' );
+$multi_where = ( new DirectorySearchQuery( $db ) )->where_sql( $db, $multi, $multi_request );
+$expect( str_contains( $multi_where, "wp_posts_f1_0_t.slug = 'miami'" ) && str_contains( $multi_where, ") OR EXISTS" ), "'Any' matching joins the ticked options with OR." );
+$expect( str_contains( $multi_where, "wp_posts_f2_0_t.slug = 'a'" ) && str_contains( $multi_where, "wp_posts_f2_1_t.slug = 'b'" ) && str_contains( $multi_where, ") AND EXISTS" ), "'All' matching requires every ticked option." );
+$expect( str_contains( $multi_where, 'CAST(wp_posts_f3.meta_value AS DECIMAL(30,6)) >= 10' ) && str_contains( $multi_where, '<= 50' ), 'Number ranges compare custom fields as numbers.' );
 
 // Shared matcher and wildcard parsing.
 $expect( [ 'syn*', 'b' ] === SearchTermParser::parse( 'syn* **  b', 'all', true ), 'Wildcards survive parsing when requested and lone stars are dropped.' );
@@ -139,9 +158,9 @@ $expect( "c REGEXP '(^|[^[:alnum:]_])s[^[:space:]]*gogue([^[:alnum:]_]|$)'" === 
 // Users SQL.
 $query = new DirectorySearchQuery( $db );
 $where = $query->where_sql( $db, $hosts, [ 'q' => 'Chabad syn*', 'page' => 1, 'sort' => 'events', 'filters' => [] ] );
-$expect( str_contains( $where, "hds_cap.meta_key = 'wp_capabilities'" ), 'Users are scoped through the blog capabilities key.' );
-$expect( str_contains( $where, "LIKE '%\"host\"%'" ), 'Users are scoped to the declared role.' );
-$expect( str_contains( $where, "hds_u.display_name REGEXP '(^|[^[:alnum:]_])Chabad'" ), 'Prefix matching applies to display names.' );
+$user_args = $query->query_args( $hosts, [ 'q' => '', 'page' => 1, 'sort' => 'events', 'filters' => [] ] );
+$expect( [ 'host' ] === $user_args['role__in'], 'Users are scoped to the declared role through WP_User_Query.' );
+$expect( str_contains( $where, "wp_users.display_name REGEXP '(^|[^[:alnum:]_])Chabad'" ), 'Prefix matching applies to display names on the users table WordPress queries.' );
 $expect( str_contains( $where, "hds_um.meta_key IN ('description', 'website')" ), 'Declared user meta keys are searched through EXISTS.' );
 $expect( ! str_contains( $where, 'user_email' ) && ! str_contains( $where, 'user_login' ), 'Private user columns never appear in directory SQL.' );
 $expect( substr_count( $where, ') AND (' ) >= 1, 'All-word logic joins term clauses with AND.' );
@@ -150,8 +169,8 @@ $short = $query->where_sql( $db, $hosts, [ 'q' => 'C', 'page' => 1, 'sort' => 'e
 $expect( ! str_contains( $short, 'REGEXP' ), 'Text shorter than min_chars applies no search clause.' );
 
 $filtered = $query->where_sql( $db, $hosts, [ 'q' => '', 'page' => 1, 'sort' => 'name', 'filters' => [ 'area' => '18', 'upcoming' => '1' ] ] );
-$expect( str_contains( $filtered, "hds_u_f1.meta_key = 'area'" ) && str_contains( $filtered, "LIKE '%\"18\"%'" ), 'Serialized meta filters match ACF-style stored arrays.' );
-$expect( str_contains( $filtered, 'hds_u_f1.user_id = hds_u.ID' ), 'User meta filters correlate on the users alias through the shared filter set.' );
+$expect( str_contains( $filtered, "wp_users_f1.meta_key = 'area'" ) && str_contains( $filtered, "LIKE '%\"18\"%'" ), 'Serialized meta filters match ACF-style stored arrays.' );
+$expect( str_contains( $filtered, 'wp_users_f1.user_id = wp_users.ID' ), 'User meta filters correlate on the users table through the shared filter set.' );
 $expect( str_contains( $filtered, '1=0' ), 'A callback filter returning no ids excludes everything.' );
 
 // Posts SQL.
@@ -168,9 +187,10 @@ $events = DirectorySearchProfile::normalize(
     ]
 );
 $post_where = $query->where_sql( $db, $events, [ 'q' => 'shabbat dinner', 'page' => 1, 'sort' => 'title', 'filters' => [ 'area' => 'miami' ] ] );
-$expect( str_contains( $post_where, "hds_p.post_type IN ('event')" ) && str_contains( $post_where, "post_status = 'publish'" ) && str_contains( $post_where, "post_password = ''" ), 'Posts are scoped to published, unprotected content of declared types.' );
+$post_args = $query->query_args( $events, [ 'q' => '', 'page' => 1, 'sort' => 'title', 'filters' => [] ] );
+$expect( [ 'event' ] === $post_args['post_type'] && 'publish' === $post_args['post_status'] && false === $post_args['has_password'], 'Posts are scoped to published, unprotected content of declared types through WP_Query.' );
 $expect( str_contains( $post_where, ') OR (' ), 'Any-word logic joins term clauses with OR.' );
-$expect( str_contains( $post_where, "hds_p_f1_t.slug = 'miami'" ), 'Taxonomy filters accept term slugs.' );
+$expect( str_contains( $post_where, "wp_posts_f1_t.slug = 'miami'" ), 'Taxonomy filters accept term slugs.' );
 $expect( str_contains( $post_where, "hds_t.name LIKE '%shabbat%'" ), 'Declared taxonomies are searchable by term name.' );
 
 // Base path normalization (REST `base` and REQUEST_URI).
@@ -186,7 +206,7 @@ $slug_profile = DirectorySearchProfile::normalize( 'tax', [ 'post_types' => [ 'e
     'area' => [ 'type' => 'taxonomy', 'taxonomy' => 'area', 'term_field' => 'term_id', 'options' => [ '25' => 'Miami' ] ],
 ], 'render_item' => $render ] );
 $tax_where = $query->where_sql( $db, $slug_profile, [ 'q' => '', 'page' => 1, 'sort' => 'title', 'filters' => [ 'year' => '2026', 'area' => '25' ] ] );
-$expect( str_contains( $tax_where, "hds_p_f1_t.slug = '2026'" ) && str_contains( $tax_where, 'hds_p_f2_tt.term_id = 25' ), 'Taxonomy filters match slugs by default and term ids only when declared.' );
+$expect( str_contains( $tax_where, "wp_posts_f1_t.slug = '2026'" ) && str_contains( $tax_where, 'wp_posts_f2_tt.term_id = 25' ), 'Taxonomy filters match slugs by default and term ids only when declared.' );
 
 $dated = DirectorySearchProfile::normalize( 'dated', [ 'post_types' => [ 'event' ], 'filters' => [
     'when' => [ 'type' => 'date_range', 'meta_key' => 'start_date_timestamp', 'format' => 'timestamp', 'timezone' => 'America/New_York' ],
@@ -194,7 +214,7 @@ $dated = DirectorySearchProfile::normalize( 'dated', [ 'post_types' => [ 'event'
 $dated_request = DirectorySearchRequest::from_input( [ 'dfilter' => [ 'when' => [ 'from' => '2026-10-01', 'to' => '' ] ] ], $dated );
 $expect( [ 'when' => [ 'from' => '2026-10-01', 'to' => '' ] ] === $dated_request['filters'], 'Directory requests accept date-range filters from the shared filter set.' );
 $expect( [ 'dfilter' => [ 'when' => [ 'from' => '2026-10-01' ] ] ] === DirectorySearchRequest::to_args( $dated_request, $dated ), 'Directory URL arguments drop empty date-range sides.' );
-$expect( str_contains( $query->where_sql( $db, $dated, $dated_request ), 'CAST(hds_p_f1.meta_value AS SIGNED) >= 1790827200' ), 'Directory date-range filters bound New York midnight as a Unix timestamp.' );
+$expect( str_contains( $query->where_sql( $db, $dated, $dated_request ), 'CAST(wp_posts_f1.meta_value AS SIGNED) >= 1790827200' ), 'Directory date-range filters bound New York midnight as a Unix timestamp.' );
 
 $expect( [ 'miami' => 'Miami' ] === DirectorySearchRequest::filter_options( [ 'options' => static fn(): array => [ 'miami' => 'Miami' ] ] ), 'The 3.1.0 filter_options() helper still works (deprecated).' );
 $expect( [ '=', 'serialized' ] === DirectorySearchProfile::META_COMPARES && in_array( 'taxonomy', DirectorySearchProfile::FILTER_TYPES, true ), 'The 3.1.0 filter constants remain as deprecated aliases.' );

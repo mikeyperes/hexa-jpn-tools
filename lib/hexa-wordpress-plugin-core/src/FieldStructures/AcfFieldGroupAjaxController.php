@@ -28,6 +28,7 @@ final class AcfFieldGroupAjaxController {
             $scope = sanitize_key( (string) wp_unslash( $_POST['client_scope'] ?? '' ) );
             $setting = $this->registry->store()->save_client_view( $definition, [
                 'enabled' => ! empty( $_POST['client_enabled'] ),
+                'hide'    => ! empty( $_POST['client_hide'] ),
                 'roles'   => 'roles' === $scope && [] !== $roles ? $roles : \Hexa\PluginCore\Fields\Audience::BELOW_ADMIN,
             ] );
             wp_send_json_success( [ 'field_group_id' => $id, 'client_view' => $setting, 'message' => 'Client view saved. Reload the profile or editor to see it.' ] );
