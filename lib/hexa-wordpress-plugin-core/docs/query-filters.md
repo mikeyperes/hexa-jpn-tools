@@ -10,7 +10,7 @@ Hexa\PluginCore\QueryFilter
 ## Purpose
 
 `QueryFilter` is the one declarative way to let visitors narrow a public
-posts or users query. A component profile (`DirectorySearch`, `Calendar`, or a
+posts or users query. A component profile (`Search`, `Calendar`, or a
 future component) declares `filters`; Core normalizes the definitions, parses
 untrusted visitor values, builds bounded SQL, renders the controls, and builds
 URL arguments. Components own only their parameter name and CSS class prefix.

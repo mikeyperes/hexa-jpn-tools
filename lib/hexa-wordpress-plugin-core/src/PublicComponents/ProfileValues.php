@@ -4,7 +4,7 @@ namespace Hexa\PluginCore\PublicComponents;
 
 /**
  * Shared sanitizers for declarative public-component profiles
- * (DirectorySearch, Calendar, and QueryFilter definitions).
+ * (Search, Calendar, and QueryFilter definitions).
  */
 final class ProfileValues {
     /** Lowercase identifier: profile ids, filter keys, post types, roles, taxonomies. */

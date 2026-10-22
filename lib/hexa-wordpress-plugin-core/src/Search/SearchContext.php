@@ -1,9 +1,9 @@
 <?php
 
-namespace Hexa\PluginCore\ListingSearch;
+namespace Hexa\PluginCore\Search;
 
 /**
- * What a listing is a list of: the category, tag, other taxonomy term,
+ * What a search box searches inside: the category, tag, other taxonomy term,
  * author, post type archive, search page or blog the page shows, as plain
  * WP_Query arguments. Search and filters then narrow inside it, so a search
  * box on a category page searches that category.
@@ -12,11 +12,11 @@ namespace Hexa\PluginCore\ListingSearch;
  * `author:5`, `post_type:event`, `search`, `home`) carries the same context
  * to a later AJAX or REST request. Plugins that widen a context (for example
  * co-authored posts on an author page) adjust the arguments with the
- * `hexa_plugin_core_listing_context_args` filter.
+ * `hexa_plugin_core_search_context_args` filter.
  */
-final class ListingContext {
-    public const ARGS_FILTER = 'hexa_plugin_core_listing_context_args';
-    public const SEARCH_TYPES_FILTER = 'hexa_plugin_core_listing_search_post_types';
+final class SearchContext {
+    public const ARGS_FILTER = 'hexa_plugin_core_search_context_args';
+    public const SEARCH_TYPES_FILTER = 'hexa_plugin_core_search_post_types';
 
     /**
      * @return array{type:string,token:string,args:array<string,mixed>,post_types:string[],taxonomy:string,term_id:int,author_id:int,title:string}|null
@@ -104,6 +104,50 @@ final class ListingContext {
         }
 
         $context['args'] = array_merge( $context['args'], [ 'post_type' => $context['post_types'], 'post_status' => 'publish', 'has_password' => false ] );
+        if ( function_exists( 'apply_filters' ) ) {
+            $context['args'] = (array) apply_filters( self::ARGS_FILTER, $context['args'], $context );
+        }
+
+        return $context;
+    }
+
+    /**
+     * Context for a box on an ordinary page (a homepage section, a landing
+     * page): what the box itself says it searches. `post_type`, `category`,
+     * `tag` and `author` take comma-separated slugs (or IDs for author); the
+     * token carries them so a refresh rebuilds the same scope.
+     *
+     * @param array<string,string> $scope post_type, category, tag, author.
+     * @return array{type:string,token:string,args:array<string,mixed>,post_types:string[],taxonomy:string,term_id:int,author_id:int,title:string}
+     */
+    public static function for_scope( array $scope, array $default_types = [ 'post' ] ): array {
+        $list  = static fn( $value ): array => array_values( array_filter( array_map( static fn( string $item ): string => (string) preg_replace( '/[^a-z0-9_\-]/', '', strtolower( trim( $item ) ) ), explode( ',', (string) $value ) ) ) );
+        $types = array_values( array_filter( $list( $scope['post_type'] ?? '' ), static fn( string $type ): bool => ! function_exists( 'post_type_exists' ) || post_type_exists( $type ) ) );
+        $types = [] !== $types ? $types : $default_types;
+        $args  = [ 'post_type' => $types, 'post_status' => 'publish', 'has_password' => false ];
+        $token = [];
+        if ( [] !== ( $categories = $list( $scope['category'] ?? '' ) ) ) {
+            $args['category_name'] = implode( ',', $categories );
+            $token[] = 'category=' . implode( ',', $categories );
+        }
+        if ( [] !== ( $tags = $list( $scope['tag'] ?? '' ) ) ) {
+            $args['tag'] = implode( ',', $tags );
+            $token[] = 'tag=' . implode( ',', $tags );
+        }
+        if ( [] !== ( $authors = array_map( 'intval', $list( $scope['author'] ?? '' ) ) ) && [] !== array_filter( $authors ) ) {
+            $args['author__in'] = array_values( array_filter( $authors ) );
+            $token[] = 'author=' . implode( ',', $args['author__in'] );
+        }
+        $context = [
+            'type'       => 'page',
+            'token'      => 'page:' . implode( ',', $types ) . ( [] !== $token ? ';' . implode( ';', $token ) : '' ),
+            'args'       => $args,
+            'post_types' => $types,
+            'taxonomy'   => '',
+            'term_id'    => 0,
+            'author_id'  => 0,
+            'title'      => '',
+        ];
         if ( function_exists( 'apply_filters' ) ) {
             $context['args'] = (array) apply_filters( self::ARGS_FILTER, $context['args'], $context );
         }

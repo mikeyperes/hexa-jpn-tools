@@ -11,16 +11,6 @@ This package exists to stop each plugin from re-implementing the same admin tabs
 
 ## Features
 
-### Site search display
-- **Use:** `[hexa_search style="icon-reveal|overlay|pill|underline|command" placeholder="" accent="" radius=""]` (registered by HWS Base Tools).
-- **Code:** `src/SearchDisplay/SearchDisplayRenderer.php`, results tuning in `src/SearchQuery/`, live results in `src/SmartSearch/`.
-- **Extend:** `hexa_plugin_core_search_query_should_handle`, `hexa_plugin_core_smart_search_results`.
-
-### Search results page (Elementor)
-- **Does:** turns an Elementor Pro Search widget into a full search page: live results appear in the page under the field instead of a dropdown, the current results stay in place (faded) under the spinner while the next ones load, and the page's default content (for example a "recent posts" grid) fades while the first results load and hides while results show. Outside clicks no longer close the results.
-- **Use:** register `ElementorSearchAdapter` for the widget's Query ID, then in Elementor add the CSS class `hexa-search-page-results` to the Search widget and `hexa-search-default` to the default content. Design stays in the site: native widget controls plus the optional `--hexa-search-field-max-width`, `--hexa-search-loading-opacity`, `--hexa-search-loader-*` properties.
-- **Code:** `src/SearchQuery/ElementorSearchAdapter.php`, `src/SearchQuery/assets/elementor-search.js|css`
-
 ### Calendar
 - **Does:** a month calendar of posts from a registered profile.
 - **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` in a plugin, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/...`.
@@ -31,16 +21,11 @@ This package exists to stop each plugin from re-implementing the same admin tabs
 - **Use:** `( new SearchIndex( $settings_provider ) )->register()`, `'index' => true` in the search settings, then build once with `rebuild()` pages.
 - **Code:** `src/SearchQuery/SearchIndex.php`
 
-### Listing search
-- **Does:** a search box and filters (type, category, tag, author, any taxonomy or custom field) that narrow the page's own list of posts in place: category, tag, author, search and post type pages, or any Elementor loop marked as the listing. Filters take several choices (match any or all), show how many results each option gives, nest subcategories, and the address keeps every state. Runs on WordPress's own query.
-- **Use:** register a profile with `ListingSearchRegistry::register( 'id', [...] )` and print `( new ListingSearchRenderer() )->render( 'id' )`; HWS Base Tools ships `[hws_listing_search]`. Mark the Elementor loop with the CSS class `hexa-listing-results` (loops showing the page's own list are found automatically).
-- **Code:** `src/ListingSearch/`, filters and counts in `src/QueryFilter/`.
-- **Extend:** `hexa_plugin_core_listing_search_target`, `hexa_plugin_core_listing_context_args`, `hexa_plugin_core_listing_search_post_types`, `hexa_plugin_core_query_filter_author_condition`, new filter types with `QueryFilterTypes::register()`.
-
-### Directory search
-- **Does:** a searchable, filterable directory from a registered profile, on WordPress's own post or user query. Filters take several choices and show counts; placed on an archive it lists only that archive. More results load on scroll with a crawlable Load more link by default (`'load_mode' => 'infinite'`); `'load_mode' => 'load_more'` loads more only when the button is clicked (for a list with content below it, such as a form); `'load_mode' => 'numbered'` gives page links.
-- **Use:** `DirectorySearchRegistry::register( 'id', [...] )`, then `[hexa_directory id="id"]`.
-- **Code:** `src/DirectorySearch/`
+### Search
+- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
+- **Use:** register a profile with `SearchRegistry::register( 'id', [...] )` (add `render_item` for cards, `source` = `users` with `roles` for people), then `[hexa_search id="id"]` or `SearchBox::render( 'id', $options )`; `SearchBox::header( $options )` for the header. HWS Base Tools ships `[hws_search]` and `[hws_search_box]`. Add `SearchModule` to the host bootstrap.
+- **Code:** `src/Search/`, filters and counts in `src/QueryFilter/`, text matching in `src/SearchQuery/`. Markup and styling: HWS Base Tools `docs/hws-search.md`; API: `docs/hexa-search.md`.
+- **Extend:** `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`, `hexa_plugin_core_query_filter_author_condition`, new filter types with `QueryFilterTypes::register()`.
 
 ### Map
 - **Does:** a map of addresses geocoded without an API key.
@@ -106,13 +91,11 @@ hexa-wordpress-plugin-core/
     SiteStructure/      -> Hexa\PluginCore\SiteStructure
     SchemaDetection/    -> Hexa\PluginCore\SchemaDetection
     SchemaTools/        -> Hexa\PluginCore\SchemaTools
-    DirectorySearch/    -> Hexa\PluginCore\DirectorySearch
-    ListingSearch/      -> Hexa\PluginCore\ListingSearch
+    Search/             -> Hexa\PluginCore\Search
     Calendar/           -> Hexa\PluginCore\Calendar
     Map/                -> Hexa\PluginCore\Map
     QueryFilter/        -> Hexa\PluginCore\QueryFilter
     PublicComponents/   -> Hexa\PluginCore\PublicComponents
-    SearchDisplay/      -> Hexa\PluginCore\SearchDisplay
     SearchQuery/        -> Hexa\PluginCore\SearchQuery
     SmartSearch/        -> Hexa\PluginCore\SmartSearch
     SystemEnvironment/  -> Hexa\PluginCore\SystemEnvironment
@@ -152,7 +135,9 @@ Version 2.1.4 keeps Getting Started parent-step and full-checklist runs availabl
 
 Version 3.0.0 establishes the coordinated major release for the expanded Core data-normalization, operations, provisioning, checklist-state, fleet-synchronization, and reusable admin infrastructure shipped in this source tree.
 
-Version 3.29.3 prints the listing search box's style and script with every box, so a page whose content another plugin renders first in the background keeps a working box. Version 3.29 adds `Hexa\PluginCore\ListingSearch` (search and filters inside any WordPress listing, refreshed in place), moves `DirectorySearch` onto `WP_Query`/`WP_User_Query`, gives `QueryFilter` several-choice checkboxes with any/all matching, number ranges, nested term lists, per-option counts and the `author` and `post_type` types, and removes the JetEngine search adapter.
+Version 3.30.4 (loops showing the page's own results are found without a marker class), 3.30.3 (filter controls styled in every look) and 3.30.2 replace the four separate searches (`SearchDisplay`, `SearchQuery\ElementorSearchAdapter`, `DirectorySearch`, `ListingSearch`) with one: `Hexa\PluginCore\Search`. One profile shape covers posts and role-scoped users; one box either narrows the page's own list (archives, the search page, any Elementor loop marked `hexa-listing-results`, with `post_type`/`category`/`tag`/`author` scope for ordinary pages) or renders its own cards with sorts and Load more; one script refreshes every box in place with one loader (the results dim and a spinner shows); `SearchBox::header()` draws the header search box (icon-reveal or field, never a popup). Address parameters are `hs`, `hq`, `hf`, `hp`, `ho`; filters `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`; shortcode `[hexa_search id]`; the directory REST endpoint is removed.
+
+Version 3.29.8 adds `ListingSearchRenderer::preview( $style )`, a still picture of each look for settings screens. Version 3.29.7 draws the ticked-filter count as an outlined number in the text colour, visible on any background. Version 3.29.6 scopes the box styles so theme field styles cannot reshape it (restyle through `--hls-*`). Version 3.29.5 gives the listing search box three looks (`none`, `default-1` compact, `default-2` editorial), every rule at zero specificity so site CSS wins. Version 3.29.4 opens a filter list leftward when it would run off the right edge of the screen. Version 3.29.3 prints the listing search box's style and script with every box, so a page whose content another plugin renders first in the background keeps a working box. Version 3.29 adds `Hexa\PluginCore\ListingSearch` (search and filters inside any WordPress listing, refreshed in place), moves `DirectorySearch` onto `WP_Query`/`WP_User_Query`, gives `QueryFilter` several-choice checkboxes with any/all matching, number ranges, nested term lists, per-option counts and the `author` and `post_type` types, and removes the JetEngine search adapter.
 
 Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
 
@@ -348,10 +333,9 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `SiteStructure`: reusable critical page blueprint management, assigned page storage, WordPress navigation menu creation, custom menu-item creation, add-all-assigned-pages actions, menu structure attachment, and page-to-menu-item tools.
 - `SchemaDetection`: reusable JSON-LD URL scans, source detection, semantic property validation, duplicate schema conflict checks, FAQ validation, and dark admin report rendering.
 - `SchemaTools`: the one schema library for every Hexa plugin: generic node builders (`SchemaNodes`), WordPress data adapters (`SchemaSources`), shared `@id` conventions (`SchemaIds`), one merged graph per page (`SchemaPage`), the Rank Math schema switch (`RankMathSchemaControl`), URL guards, normalization and JSON-LD rendering. Host plugins decide which pages they cover; Core builds and prints.
-- `SearchDisplay`: five reusable front-end WordPress search-form templates with shared markup, CSS, and accessible interactions.
-- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, optional natural time windows from shared QueryFilter rules, selected post types and sources, one-query-only SQL hooks, guarded native Elementor Search bridging, and a safe public Elementor text index.
+- `Search`: the one public search: profiles over posts or role-scoped users, a box that narrows the page's own list or renders its own cards, filters with counts, sorts, Load more, one loader, one script, and the header search box.
+- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, optional natural time windows from shared QueryFilter rules, selected post types and sources, one-query-only SQL hooks, and a safe public Elementor text index.
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
-- `DirectorySearch`: declarative public directory search over posts or users with filters, sorts, card templates, a public REST endpoint, and a server-rendered shortcode that upgrades to live search.
 - `Calendar`: lightweight public month-grid calendar profiles over dated posts (or a host provider) with linked items, shared filters, bounded month navigation, a public REST endpoint, and a server-rendered shortcode.
 - `Map`: brandable public location maps over posts or users with background geocoding, clustered pins, a group filter, item cards, and a shortcode.
 - `QueryFilter`: the shared declarative visitor-filter structure (taxonomy, custom field/ACF, date range, callback, extensible types) plus bounded natural search time-window parsing, with SQL, parsing, controls, and URL arguments.
@@ -425,8 +409,7 @@ $context = new PluginContext(
 
 ## Development
 
-Run the complete PHP suite with `php tests/run.php` and the native Elementor
-client regression with `node tests/elementor-search-client.js`.
+Run the complete PHP suite with `php tests/run.php`.
 
 ## Agent Rule
 
@@ -447,7 +430,7 @@ Before adding implementations in another Codex or Claude chat, read:
 - `docs/site-structure.md`
 - `docs/schema-detection.md`
 - `docs/schema-tools.md`
-- `docs/search-display.md`
+- `docs/hexa-search.md`
 - `docs/search-query.md`
 - `docs/field-structures.md`
 - `docs/faq-sets.md`
@@ -877,27 +860,11 @@ The storage key pattern is:
 hpc_cred_{slug}_{keyName}
 ```
 
-## Front-End Search Display
+## Search
 
-Use `Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer` for public site-search forms. It ships the `icon-reveal`, `overlay`, `pill`, `underline`, and `command` templates. Every template submits a native WordPress GET request using the `s` query parameter.
+Use `Hexa\PluginCore\Search` for every public search: the box above a list of posts (archives, the search page, a homepage section), a people or host directory with its own cards, and the header search box. Register a profile with `SearchRegistry::register()`, add `SearchModule` to `CoreBootstrap`, and place `[hexa_search id="…"]` (or call `SearchBox::render()` / `SearchBox::header()`). Full protocol: `docs/hexa-search.md`.
 
-```php
-echo \Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer::render(
-    [
-        'style'       => 'pill',
-        'accent'      => '#2f6df6',
-        'placeholder' => 'Search stories...',
-    ]
-);
-```
-
-Host plugins own saved settings and shortcode registration. They must call this renderer for both admin previews and front-end output. Do not copy its markup or assets into the host plugin.
-
-`SearchDisplay` is not the content-picker typeahead API. Use `SmartSearch` for AJAX result suggestions inside tools and admin workflows.
-
-## Directory Search
-
-Use `Hexa\PluginCore\DirectorySearch` for public listing pages (directories of posts or users) with live search, filters, sorts, and host card templates. Register a profile with `DirectorySearchRegistry::register()`, add `DirectorySearchModule` to `CoreBootstrap`, and place `[hexa_directory id="…"]`. Full protocol: `docs/directory-search.md`.
+`Search` is not the content-picker typeahead API. Use `SmartSearch` for AJAX result suggestions inside tools and admin workflows.
 
 ## Calendar
 
@@ -909,7 +876,7 @@ Use `Hexa\PluginCore\Map` for a brandable location map. Register a profile with 
 
 ## Query Filters
 
-Declare visitor filters once with `Hexa\PluginCore\QueryFilter` definitions (`taxonomy`, `meta` for custom and ACF fields, `date_range`, `callback`, or a registered custom type). `DirectorySearch` and `Calendar` share the same parsing, SQL, and controls. Full protocol: `docs/query-filters.md`.
+Declare visitor filters once with `Hexa\PluginCore\QueryFilter` definitions (`taxonomy`, `meta` for custom and ACF fields, `date_range`, `callback`, or a registered custom type). `Search` and `Calendar` share the same parsing, SQL, and controls. Full protocol: `docs/query-filters.md`.
 
 ## Smart Search / X-Search
 

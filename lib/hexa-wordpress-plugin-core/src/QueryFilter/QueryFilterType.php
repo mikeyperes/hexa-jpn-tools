@@ -36,7 +36,7 @@ abstract class QueryFilterType {
 
     /**
      * Keyword `options` values this type resolves itself (for example 'terms').
-     * Any other string is treated as a callable, as in DirectorySearch 3.1.0.
+     * Any other string is treated as a callable, as in the former directory search.
      *
      * @return string[]
      */

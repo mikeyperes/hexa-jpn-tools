@@ -5,7 +5,7 @@ namespace Hexa\PluginCore\SearchQuery;
 /**
  * Builds one bounded SQL match condition for a parsed search term.
  *
- * Shared by the native results engine and DirectorySearch so every search
+ * Shared by the native results engine and the one search (Search) so every search
  * surface matches words the same way. Column names must be trusted
  * identifiers chosen by Core; the term is always bound through prepare().
  */

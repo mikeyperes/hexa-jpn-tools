@@ -6,26 +6,32 @@ namespace Hexa\JpnTools\Search;
 
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex;
-use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
+use Hexa\PluginCore\QueryFilter\QuerySql;
+use Hexa\PluginCore\Search\SearchRegistry;
+use Hexa\PluginCore\SearchQuery\MetaConstraintSql;
 
-/** JPN profiles for Elementor Pro's native live Search widget. */
+/**
+ * JPN site search on Hexa Core's one search: `[hexa_search id="jpn_site"]`
+ * above the Elementor loops it narrows. A loop with the Query ID
+ * `jpn_search_upcoming` lists upcoming events (soonest first); one with
+ * `jpn_search_all` lists every public type. Give the loops the CSS class
+ * `hexa-listing-results`; on the search results page the loop showing the
+ * page's own results is found by itself.
+ */
 final class SiteSearch
 {
+    public const PROFILE = 'jpn_site';
     public const UPCOMING_QUERY_ID = 'jpn_search_upcoming';
     public const ALL_QUERY_ID = 'jpn_search_all';
-
-    /** @var ElementorSearchAdapter[] */
-    private array $adapters = [];
 
     private ?ElementorPublicTextIndex $publicTextIndex = null;
 
     public function register(): void
     {
-        if (!class_exists(ElementorSearchAdapter::class)) {
+        if (!class_exists(SearchRegistry::class)) {
             return;
         }
 
-        $publicPostTypes = $this->publicPostTypes();
         if (class_exists(ElementorPublicTextIndex::class)) {
             // Resolve public post types when indexing runs, after JPN's event
             // and service types have been registered on init.
@@ -33,34 +39,42 @@ final class SiteSearch
             $this->publicTextIndex->register();
         }
 
-        $this->adapters = [
-            new ElementorSearchAdapter(
-                [$this, 'upcomingSettings'],
-                self::UPCOMING_QUERY_ID,
-                [$this, 'configureUpcomingQuery'],
-                24
-            ),
-            new ElementorSearchAdapter(
-                [$this, 'allSettings'],
-                self::ALL_QUERY_ID,
-                null,
-                24
-            ),
-        ];
-
-        foreach ($this->adapters as $adapter) {
-            $adapter->register();
-        }
+        // Registered at first use, after JPN's event and service types exist.
+        add_action(SearchRegistry::REGISTER_ACTION, [$this, 'registerProfile']);
+        add_action('elementor/query/' . self::UPCOMING_QUERY_ID, [$this, 'configureUpcomingLoop']);
+        add_action('elementor/query/' . self::ALL_QUERY_ID, [$this, 'configureAllLoop']);
 
         if (defined('WP_CLI') && WP_CLI && $this->publicTextIndex !== null) {
             \WP_CLI::add_command('hexa-jpn search-index rebuild', [$this, 'cliRebuildPublicTextIndex']);
         }
     }
 
-    /** @return array<string,mixed> */
-    public function upcomingSettings(): array
+    public function registerProfile(): void
     {
-        return $this->settings(['event']);
+        SearchRegistry::register(self::PROFILE, [
+            'search' => [$this, 'allSettings'],
+            'post_types' => $this->publicPostTypes(),
+            'labels' => [
+                'search' => __('Search JPN Miami', 'hexa-jpn-tools'),
+                'placeholder' => __('Search events, hosts, pages or posts…', 'hexa-jpn-tools'),
+                'empty' => __('Nothing matched that search. Try another host, neighborhood, or keyword.', 'hexa-jpn-tools'),
+            ],
+            'class' => 'jpn-site-search',
+        ]);
+    }
+
+    /** @param object $query Elementor loop WP_Query. */
+    public function configureUpcomingLoop($query): void
+    {
+        global $wpdb;
+        // Correlated meta predicates: a WP_Meta_Query OR of four clauses multiplies joins and stalls.
+        QuerySql::attach($query, MetaConstraintSql::compile($wpdb, $this->configureUpcomingQuery($query)['meta_constraints']));
+    }
+
+    /** @param object $query Elementor loop WP_Query. */
+    public function configureAllLoop($query): void
+    {
+        $query->set('post_type', $this->publicPostTypes());
     }
 
     /** @return array<string,mixed> */

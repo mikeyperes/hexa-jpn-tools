@@ -1,16 +1,15 @@
 <?php
 
-namespace Hexa\PluginCore\ListingSearch;
+namespace Hexa\PluginCore\Search;
 
 use Hexa\PluginCore\PublicComponents\ProfileStore;
 
 /**
- * Holds the listing search profiles registered during a request. Hosts
- * register from their boot code or on the
- * `hexa_plugin_core_listing_search_register` action.
+ * Holds the search profiles registered during a request. Hosts register from
+ * their boot code or on the `hexa_plugin_core_search_register` action.
  */
-final class ListingSearchRegistry {
-    public const REGISTER_ACTION = 'hexa_plugin_core_listing_search_register';
+final class SearchRegistry {
+    public const REGISTER_ACTION = 'hexa_plugin_core_search_register';
 
     private static ?ProfileStore $store = null;
 
@@ -30,6 +29,6 @@ final class ListingSearchRegistry {
     }
 
     private static function store(): ProfileStore {
-        return self::$store ??= new ProfileStore( self::REGISTER_ACTION, [ ListingSearchProfile::class, 'normalize' ] );
+        return self::$store ??= new ProfileStore( self::REGISTER_ACTION, [ SearchProfile::class, 'normalize' ] );
     }
 }

@@ -3,6 +3,19 @@
 declare(strict_types=1);
 
 namespace {
+    /** @var array<string,callable[]> */
+    $GLOBALS['jpn_test_actions'] = [];
+
+    function add_action(string $hook, callable $callback): void
+    {
+        $GLOBALS['jpn_test_actions'][$hook][] = $callback;
+    }
+
+    function __(string $text, string $domain = ''): string
+    {
+        return $text;
+    }
+
     function sanitize_key(string $value): string
     {
         return (string) preg_replace('/[^a-z0-9_\-]/', '', strtolower($value));
@@ -42,24 +55,19 @@ namespace Hexa\PluginCore\SearchQuery {
         }
     }
 
-    final class ElementorSearchAdapter
+}
+
+namespace Hexa\PluginCore\Search {
+    final class SearchRegistry
     {
-        /** @var self[] */
-        public static array $instances = [];
-        public bool $registered = false;
+        public const REGISTER_ACTION = 'hexa_plugin_core_search_register';
+        /** @var array<string,array<string,mixed>> */
+        public static array $profiles = [];
 
-        public function __construct(
-            public $settingsProvider,
-            public string $queryId,
-            public $configurator = null,
-            public int $maximum = 50
-        ) {
-            self::$instances[] = $this;
-        }
-
-        public function register(): void
+        /** @param array<string,mixed> $config */
+        public static function register(string $id, array $config): void
         {
-            $this->registered = true;
+            self::$profiles[$id] = $config;
         }
     }
 }
@@ -70,7 +78,7 @@ namespace {
 
     use Hexa\JpnTools\Search\SiteSearch;
     use Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex;
-    use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
+    use Hexa\PluginCore\Search\SearchRegistry;
 
     final class SearchFixtureQuery
     {
@@ -126,18 +134,16 @@ namespace {
     $search->register();
 
     $expect(ElementorPublicTextIndex::$registrations === 1, 'the public Elementor text index is registered once');
-    $expect(count(ElementorSearchAdapter::$instances) === 2, 'the site registers exactly the upcoming and all-content adapters');
-    $adapters = [];
-    foreach (ElementorSearchAdapter::$instances as $adapter) {
-        $adapters[$adapter->queryId] = $adapter;
-        $expect($adapter->registered, $adapter->queryId . ' is registered');
-        $expect($adapter->maximum === 24, $adapter->queryId . ' retains the bounded result ceiling');
+    $actions = $GLOBALS['jpn_test_actions'];
+    $expect(count($actions[SearchRegistry::REGISTER_ACTION] ?? []) === 1, 'the site search profile registers once, at first use');
+    $expect(isset($actions['elementor/query/' . SiteSearch::UPCOMING_QUERY_ID], $actions['elementor/query/' . SiteSearch::ALL_QUERY_ID]), 'both documented Query IDs are wired');
+    foreach ($actions[SearchRegistry::REGISTER_ACTION] ?? [] as $callback) {
+        $callback();
     }
-    $expect(isset($adapters[SiteSearch::UPCOMING_QUERY_ID], $adapters[SiteSearch::ALL_QUERY_ID]), 'both documented Query IDs are wired');
+    $profile = SearchRegistry::$profiles[SiteSearch::PROFILE] ?? [];
+    $expect(($profile['search'] ?? null) === [$search, 'allSettings'], 'the jpn_site profile matches with the all-content search settings');
 
-    $upcoming = $search->upcomingSettings();
     $all = $search->allSettings();
-    $expect($upcoming['post_types'] === ['event'], 'the upcoming scope is event-only');
     $expect(array_diff(['post', 'page', 'event', 'service'], $all['post_types']) === [], 'all-content covers every public searchable JPN type');
     $expect(!in_array('attachment', $all['post_types'], true) && !in_array('private_note', $all['post_types'], true), 'attachments and excluded content stay out of all-content search');
     $expect(array_diff(['title', 'content', 'excerpt', 'slug'], $all['fields']) === [], 'public titles, body text, excerpts, and slugs are searchable');
@@ -145,7 +151,6 @@ namespace {
     $expect($all['user_reference_fields'] === ['event_host'] && $all['authors'] === true, 'event hosts and public authors are searchable');
     $expect($all['taxonomies'] === ['category', 'area'], 'public topics and areas are searchable without post-format noise');
     $expect($all['results_per_page'] === 12 && $all['orderby'] === 'relevance', 'all-content keeps bounded relevance ordering');
-    $expect($upcoming['time_window'] === $all['time_window'], 'both native search profiles share one event time-window mapping');
     $expect($all['time_window'] === [
         'start_meta_key' => 'start_date_timestamp',
         'end_meta_key' => 'end_date_timestamp',

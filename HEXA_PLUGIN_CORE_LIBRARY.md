@@ -36,7 +36,7 @@ Root namespace: Hexa\PluginCore\
 Source root: src/
 Version source: VERSION
 
-Current release: 3.29.4
+Current release: 3.30.4
 ```
 
 Do not rename these.
@@ -77,10 +77,9 @@ src/ShortcodeRegistry/  Hexa\PluginCore\ShortcodeRegistry
 src/SiteStructure/      Hexa\PluginCore\SiteStructure
 src/SchemaDetection/    Hexa\PluginCore\SchemaDetection
 src/SchemaTools/        Hexa\PluginCore\SchemaTools
-src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
+src/Search/             Hexa\PluginCore\Search
 src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
-src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
 src/Calendar/           Hexa\PluginCore\Calendar
 src/Map/                Hexa\PluginCore\Map
 src/QueryFilter/        Hexa\PluginCore\QueryFilter
@@ -835,45 +834,23 @@ $store->store( 'openai', 'api_key', $raw_key );
 $masked = $store->get_masked( 'openai', 'api_key' );
 ```
 
-## Front-End Search Display
+## Search
 
-Namespace:
-
-```text
-Hexa\PluginCore\SearchDisplay
-```
-
-Class:
-
-```text
-SearchDisplayRenderer
-```
-
-Use this renderer for public site-search forms. It owns five selectable templates: `icon-reveal`, `overlay`, `pill`, `underline`, and `command`. Every template submits a native WordPress GET request with `name="s"`; it does not load AJAX search results.
-
-The host plugin owns its saved design option and shortcode. The host must call this same renderer for the backend preview and the front-end shortcode so preview markup cannot drift from production markup.
-
-```php
-echo \Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer::render([
-    'style'       => 'overlay',
-    'accent'      => '#2f6df6',
-    'placeholder' => 'Search stories...',
-    'hidden_fields' => [ 'example_search' => '1' ],
-]);
-```
-
-Do not duplicate the renderer CSS, SVG, markup, or interaction script inside a host plugin. `hidden_fields` is the bridge to a shortcode-scoped `SearchQuery` engine; names are sanitized, values are escaped, and the renderer accepts at most ten fields.
-
-## Listing Search
-
-`Hexa\PluginCore\ListingSearch` narrows a page's own WordPress listing (archive,
-search, or an Elementor loop with the CSS class `hexa-listing-results`) with a
-search box and filters refreshed in place, on WordPress's own query. Register a
-profile with `ListingSearchRegistry::register()`, render it with
-`ListingSearchRenderer`, and add `ListingSearchModule` to the host bootstrap.
-Filters and counts come from `QueryFilter` (checkboxes with any/all matching,
-number ranges, nested terms, `author` and `post_type` types). See
-`docs/listing-search.md`.
+`Hexa\PluginCore\Search` is the one public search. A profile
+(`SearchRegistry::register()`) says what is searched (posts of chosen types,
+or users of chosen roles), how words match (the site's `SearchQuery`
+settings or explicit fields, meta keys and taxonomy names), its filters
+(`QueryFilter`) and sorts. Results show in one of two places: the page's own
+list narrows in place (category, tag, author, search and post type pages, or
+any Elementor loop with the CSS class `hexa-listing-results`, such as a
+homepage section scoped by `post_type`, `category`, `tag` and `author`), or,
+with a `render_item` callable, the box renders its own cards with sorts and
+Load more. One script refreshes every box without a page reload, and one
+loading look dims the results under a spinner. `SearchBox::header()` draws
+the header search box (`icon-reveal` or `field`), which submits to the search
+page and never opens a popup. Add `SearchModule` to the host bootstrap and
+place `[hexa_search id="…"]` or call `SearchBox::render()`. Full protocol:
+`docs/hexa-search.md`; markup and styling: HWS Base Tools `docs/hws-search.md`.
 
 ## Native Search Query Behavior
 
@@ -890,7 +867,6 @@ SearchQueryConfiguration
 SearchTermParser
 SearchQueryEngine
 MetaConstraintSql
-ElementorSearchAdapter
 ElementorPublicTextIndex
 ResultTypeLabels
 ElementorResultTypeTag
@@ -912,12 +888,6 @@ $engine = new \Hexa\PluginCore\SearchQuery\SearchQueryEngine(
 );
 $engine->register();
 
-$elementor_search = new \Hexa\PluginCore\SearchQuery\ElementorSearchAdapter(
-    $settings_provider,
-    'example_live_search'
-);
-$elementor_search->register();
-
 $elementor_text = new \Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex(
     get_post_types( [ 'public' => true ], 'names' )
 );
@@ -935,7 +905,7 @@ Supported behavior:
 - public post-type selection, result count from 0 to 100, relevance/newest/oldest/title ordering, and opt-in host-mapped natural time windows such as `24 hours`, `one week`, or `Chabad next 48 hours`
 - `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
 
-Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `ElementorSearchAdapter` binds one exact native Elementor Search widget Query ID, permits only that verified widget's REST/GET query, preserves Elementor's Loop Item renderer and live pagination, forces bounded public results, and adds scoped cancellation, stale-response protection, accessible request states, immediate stale-markup clearing below Elementor's configured minimum length, nested-component Escape handling, and input-height icon anchoring for in-flow results. Its trusted configurator may return a bounded `meta_constraints` tree; Core compiles that tree into prepared, correlated predicates on the same exact query so host date/state eligibility does not require multiplying `WP_Meta_Query` joins. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state and records weak exact-object state consumed by one idempotently registered `posts_search` dispatcher. Duplicate preparation replaces state instead of stacking callbacks, and abandoned queries are not retained. `ElementorPublicTextIndex` stores only normalized text from Elementor's anonymous public renderer, refreshes exact public dependents after reusable-template saves, and exposes a hash-only dry run for bounded backfills. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
 
 To flag what kind of content each result is, call `ResultTypeLabels::register( [ 'post' => 'Press Release' ], 'Site Content' )` and place Core's **Result Type** Elementor dynamic tag in the result Loop Item; style per type through the loop item's `type-{post_type}` class.
 

@@ -57,15 +57,15 @@ under `Hexa\JpnTools`.
 
 ## Host directory
 
-`[hexa_directory id="jpn_hosts"]` renders the searchable host directory through
-Hexa WP Core `DirectorySearch`. Core owns search, filters, sorting mechanics,
-pagination, the public REST endpoint
-(`/wp-json/hexa-plugin-core/v1/directory/jpn_hosts`), and live interaction.
-`Hexa\JpnTools\Hosts\HostDirectory` owns the host profile: users with role
-`host`, prefix and `*` wildcard matching over name, slug, website, address,
-and Instagram, an area filter (each area shows how many hosts it holds), an upcoming-events toggle, Upcoming first / Most
-events / Recently active / A–Z sorts, event statistics from one aggregate
-query, and the one-per-row card.
+`[hexa_search id="jpn_hosts"]` renders the searchable host directory through
+Hexa WP Core's one search (`Hexa\PluginCore\Search`). Core owns the box,
+filters, sorting mechanics, infinite loading, the loader and in-place refresh.
+`Hexa\JpnTools\Hosts\HostDirectory` owns the profiles `jpn_hosts` and
+`jpn_hosts_claim` (Claim a Profile): users with role `host`, prefix and `*`
+wildcard matching over name, slug, website, address and Instagram, an area
+filter (each area shows how many hosts it holds), an upcoming-events toggle,
+Upcoming first / Most events / Recently active / A-Z sorts, event statistics
+from one aggregate query, and the one-per-row card.
 
 ## Event calendar
 
@@ -85,28 +85,26 @@ Days are not clickable; each event links to its permalink.
 
 ## Site search
 
-JPN uses Elementor Pro's native Search widget for live, debounced results and
-native Loop Item cards. Set the widget's Query ID to
-`jpn_search_upcoming` for ongoing/upcoming events ordered by start time, or
-`jpn_search_all` for every public searchable post type. Elementor owns the
-live REST request, responsive result grid, loader, empty state, pagination,
-keyboard behavior, and GET fallback. Hexa WP Core's
-`ElementorSearchAdapter` owns exact-widget query provenance, bounded matching,
-public-only result enforcement, request cancellation and stale-response
-protection, accessible request states, and organizer lookup through the
-`event_host` user reference. JPN supplies its New York date cutoff through
-Core's bounded exact-query meta constraints, avoiding row-multiplying
-`WP_Meta_Query` joins, plus event location, area, topic, author, and organizer sources. Core's
-`ElementorPublicTextIndex` also searches visible text from public Elementor
-pages and reusable templates without reading raw builder data or rewriting page
-content. It refreshes after page/template saves.
+The Search page uses Hexa WP Core's one search box,
+`[hexa_search id="jpn_site"]`, above Elementor Loop Grids. Each loop carries
+the class `hexa-listing-results` and a Query ID: `jpn_search_upcoming` for
+ongoing and upcoming events ordered by start time, or `jpn_search_all` for
+every public searchable post type. The search results template's Current
+Query loop is narrowed without the class. Core refreshes every marked loop in
+place with one loader and infinite loading.
 
-Both Query IDs map JPN's canonical event timestamps and date-only precision to
-Core's natural time-window filter. Searches such as `24 hours`, `48 hours`,
-`one week`, and `Chabad next 48 hours` return only events that start in the
-requested window or remain ongoing, including date-only events active on the
-site's local day. Core removes only the recognized time phrase from keyword
-matching and preserves Elementor's normal pagination.
+`Hexa\JpnTools\Search\SiteSearch` registers the `jpn_site` profile: title,
+content, excerpt, slug, public taxonomies, authors, event location fields and
+the organizer through the `event_host` user reference. JPN supplies its New
+York date cutoff for upcoming events as one compiled meta constraint, avoiding
+row-multiplying `WP_Meta_Query` joins. Core's `ElementorPublicTextIndex` also
+searches visible text from public Elementor pages and reusable templates. It
+refreshes after page and template saves.
+
+Searches such as `24 hours`, `48 hours`, `one week` and `Chabad next 48 hours`
+return only events that start in that window or are still running, including
+date-only events active on the local day. Core removes only the recognized time
+phrase from keyword matching.
 
 Rebuild or inspect that public text source in bounded batches:
 

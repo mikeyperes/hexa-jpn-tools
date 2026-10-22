@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.13.3
+Stable tag: 1.16.0
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.16.0 =
+* Host directory, Claim a Profile and the Search page use Hexa WP Core's one search (refreshes lists in place with one loader). The old directory and Elementor search widget code is gone. Bundles HexaWP Core 3.30.4.
 
 = 1.13.3 =
 * Flyer hover preview hint line is brighter and easier to read. Bundles HexaWP Core 3.27.3.

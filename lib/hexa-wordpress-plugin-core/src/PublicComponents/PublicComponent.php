@@ -4,7 +4,7 @@ namespace Hexa\PluginCore\PublicComponents;
 
 /**
  * Request, URL, output, and REST helpers shared by the server-rendered public
- * components (DirectorySearch and Calendar).
+ * components (Search and Calendar).
  */
 final class PublicComponent {
     public const REST_NAMESPACE = 'hexa-plugin-core/v1';

@@ -129,7 +129,7 @@
     }
 }
 
-/* Host directory (Hexa WP Core DirectorySearch profile `jpn_hosts`). */
+/* Host directory (Hexa WP Core search profile `jpn_hosts`, `[hexa_search id="jpn_hosts"]`). */
 .jpn-hosts-directory {
     --hds-accent: #25D366;
     --hds-accent-fg: #0A150D;
@@ -138,39 +138,36 @@
     --hds-field-bg: #101712;
     --hds-radius: 4px;
     --hds-gap: 14px;
+    --hls-accent: #25D366;
+    --hls-border: rgba(255, 255, 255, .16);
+    --hls-radius: 4px;
+    --hls-panel-bg: #101712;
+    --hls-field-height: 42px;
+    --hls-field-width: 520px;
+    --hls-loader-surface: #101712;
     color: #fff;
     font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
 }
 
-.jpn-hosts-directory .hds-form {
+.jpn-hosts-directory .hls {
     background: rgba(255, 255, 255, .03);
     border: 1px solid var(--hds-border);
     padding: 20px;
 }
 
-.jpn-hosts-directory .hds-label {
-    letter-spacing: .3em;
-}
-
-.jpn-hosts-directory .hds-input,
-.jpn-hosts-directory .hds-select {
+.jpn-hosts-directory .hls-input,
+.jpn-hosts-directory .hls-select {
     color: #fff;
     font-size: 15px;
+    background: #101712;
 }
 
-.jpn-hosts-directory .hds-select option {
+.jpn-hosts-directory .hls-select option {
     background: #101712;
     color: #fff;
 }
 
-.jpn-hosts-directory .hds-submit {
-    letter-spacing: .2em;
-    text-transform: uppercase;
-    font-size: 12px;
-    font-weight: 900;
-}
-
-.jpn-hosts-directory .hds-list {
+.jpn-hosts-directory .hls-list {
     gap: 0;
     border-top: 1px solid var(--hds-border);
 }
@@ -572,7 +569,7 @@ a.jpn-host__chip--link:focus-visible {
     gap: 12px;
 }
 
-.jpn-hosts-directory .hds-empty {
+.jpn-hosts-directory .hls-empty {
     border-color: rgba(255, 255, 255, .15);
 }
 

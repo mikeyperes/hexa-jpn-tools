@@ -7,11 +7,11 @@ namespace Hexa\JpnTools\Hosts;
 use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\RecentlyAdded;
 use Hexa\JpnTools\Rest\HostController;
-use Hexa\PluginCore\DirectorySearch\DirectorySearchRegistry;
+use Hexa\PluginCore\Search\SearchRegistry;
 
 /**
  * JPN host directory: registers the `jpn_hosts` profile with Hexa WP Core's
- * DirectorySearch and supplies JPN-specific data and card markup.
+ * the one Hexa Core search and supplies JPN-specific data and card markup.
  *
  * Core owns search, filters, sorting mechanics, pagination, and interaction.
  * This class owns host event statistics, the area vocabulary, and the card.
@@ -35,7 +35,7 @@ final class HostDirectory
         add_shortcode('jpn_host_field', [$this, 'hostField']);
         add_shortcode('jpn_host_url', [$this, 'hostUrl']);
         add_action('wp_enqueue_scripts', [$this, 'enqueueClaimScript']);
-        if (!class_exists(DirectorySearchRegistry::class)) {
+        if (!class_exists(SearchRegistry::class)) {
             return;
         }
 
@@ -85,10 +85,10 @@ final class HostDirectory
             'cache_version' => HEXA_JPN_TOOLS_VERSION,
             'class' => 'jpn-hosts-directory',
         ];
-        DirectorySearchRegistry::register(self::PROFILE, $config);
+        SearchRegistry::register(self::PROFILE, $config);
 
         // Claim a profile: the same search, with a compact card whose action fills the claim form.
-        DirectorySearchRegistry::register(self::CLAIM_PROFILE, array_merge($config, [
+        SearchRegistry::register(self::CLAIM_PROFILE, array_merge($config, [
             'render_item' => [$this, 'renderClaimCard'],
             'load_mode' => 'load_more',
             'labels' => array_merge($config['labels'], [
@@ -341,7 +341,7 @@ final class HostDirectory
     }
 
     /**
-     * One directory result. Core's DirectorySearch calls this with extra arguments (the request),
+     * One directory result. Core's search calls this with extra arguments (the request),
      * so the card variant lives in card(), not in this callback's signature.
      *
      * @param array<string,mixed> $host

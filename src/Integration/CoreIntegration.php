@@ -9,7 +9,7 @@ use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageConfig;
 use Hexa\PluginCore\CoreRuntime\PluginContext;
-use Hexa\PluginCore\DirectorySearch\DirectorySearchModule;
+use Hexa\PluginCore\Search\SearchModule;
 use Hexa\PluginCore\Map\MapModule;
 use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
 use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
@@ -46,8 +46,8 @@ final class CoreIntegration
             ->add_module(new GitHubPluginUpdater(self::updaterConfig()))
             ->add_module(new UpdaterAjaxController(self::updaterConfig()));
 
-        if (class_exists(DirectorySearchModule::class)) {
-            self::$bootstrap->add_module(new DirectorySearchModule());
+        if (class_exists(SearchModule::class)) {
+            self::$bootstrap->add_module(new SearchModule());
         }
 
         if (class_exists(CalendarModule::class)) {

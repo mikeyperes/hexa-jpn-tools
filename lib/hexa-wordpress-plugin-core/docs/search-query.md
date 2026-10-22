@@ -13,7 +13,7 @@ Hexa\PluginCore\SearchQuery
 
 It does not render a search box and it does not return AJAX suggestions:
 
-- `SearchDisplay` renders public GET forms that submit `s` to WordPress.
+- `Search` (`docs/hexa-search.md`) renders every public search box, including the header box that submits `s` to WordPress.
 - `SearchQuery` changes one eligible native WordPress results query.
 - `SmartSearch` powers AJAX typeahead and content pickers.
 
@@ -80,27 +80,6 @@ only Core's exact-query SQL uses the residual keyword.
 
 `MetaConstraintSql::compile(object $database, array $constraints, string $post_id_column = ''): string` compiles the same bounded tree into prepared correlated predicates. This avoids the row multiplication produced by `WP_Meta_Query` joins when an exact search component needs host-owned date or state rules. Hosts declare only keys, values, types, comparisons, and relations; Core owns aliases, casts, preparation, limits, and fail-closed validation.
 
-### `ElementorSearchAdapter`
-
-`new ElementorSearchAdapter(callable $settings_provider, string $query_id, ?callable $query_configurator = null, int $max_results_per_page = 50)`
-
-`ElementorSearchAdapter::register(): void` binds one exact Elementor Pro Search widget Query ID to the same bounded engine. Elementor continues to own its native live REST endpoint, Loop Item template, responsive results grid, loader, empty markup, pagination, keyboard behavior, and GET fallback. The adapter validates the widget type and its stored `search_query_query_id`, then weakly binds matching SQL only to that exact `WP_Query`, including its trusted Elementor REST query. It forces published, non-password results and clamps each page to 50 or the lower host limit.
-
-Core also marks only the registered widgets and loads a small native-search companion. It aborts a superseded request as soon as the visitor types again and rejects stale responses. When the current input becomes shorter than the widget's native minimum character setting, Core clears the old native result markup and collapsed combobox state; Elementor resumes ownership at the threshold. For marked widgets inside another keyboard component, the companion handles Escape before the parent can steal it, returns focus to the input, and closes the result list. When Elementor reopens an existing visible result list, the companion listens to the native `search:results-displayed` lifecycle hook and synchronizes the registered input's `aria-expanded` state; hidden, empty, and unregistered lists remain untouched. A document click outside a registered widget also synchronizes its collapsed input state with Elementor's native outside-click closure, without changing inside clicks or unregistered widgets. It also keeps native input icons anchored to the measured input height when a host deliberately places results in normal document flow. Loading, result-count, and empty updates use a visually hidden live region so they do not become result-grid items; request errors replace stale results with one visible full-width status. Elementor's native spinner and branded empty state stay visible. Core does not replace Elementor's renderer or endpoint.
-
-#### Page-results mode
-
-Add the CSS class `hexa-search-page-results` to a registered Search widget (Advanced → CSS Classes) to use it as a search page instead of a dropdown. The companion then:
-
-- shows live results in normal page flow under the field, spaced by the widget's native "distance from search field" control, and keeps them open on outside clicks and on another widget's `hideOtherResults`;
-- keeps the current results visible at `--hexa-search-loading-opacity` (default `0.4`) while the next request loads, with Elementor's native loader centered over them on a small disc (`--hexa-search-loader-offset`, `--hexa-search-loader-surface-size`, `--hexa-search-loader-surface`, `--hexa-search-loader-shadow`);
-- writes `data-hexa-search-view="idle|loading|results|error"` on the widget and `data-hexa-search-default="visible|loading|hidden"` on every element with the class `hexa-search-default`: default content dims while the first results load and hides while results or the native no-match message show, then returns when the field is cleared;
-- caps only the field with `--hexa-search-field-max-width` while results keep the widget's full width, and keeps the clear icon inside the capped field.
-
-The view settles on Elementor's native `search:results-updated` hook after it renders. All colors, type, borders, card design, and loader color or size stay with the site's native widget controls and Loop Item; Core ships only the layout and state mechanics.
-
-The optional configurator receives the exact query, normalized settings, and verified widget. Use native `WP_Query` arguments there for domain constraints such as an upcoming date window. Post types remain intersected with the normalized allowlist after the callback.
-
 ### `ElementorPublicTextIndex`
 
 `new ElementorPublicTextIndex(array $post_types = [], ?callable $extractor = null, int $max_characters = 100000)`
@@ -137,10 +116,9 @@ The host plugin owns:
 Example:
 
 ```php
-use Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer;
+use Hexa\PluginCore\Search\SearchBox;
 use Hexa\PluginCore\SearchQuery\SearchQueryConfiguration;
 use Hexa\PluginCore\SearchQuery\SearchQueryEngine;
-use Hexa\PluginCore\SearchQuery\ElementorSearchAdapter;
 use Hexa\PluginCore\SearchQuery\ElementorPublicTextIndex;
 
 $marker = 'example_search';
@@ -160,19 +138,13 @@ $engine = new SearchQueryEngine(
 $engine->register();
 
 
-$elementor_search = new ElementorSearchAdapter(
-    $settings_provider,
-    'example_live_search'
-);
-$elementor_search->register();
-
 $elementor_text = new ElementorPublicTextIndex( get_post_types( [ 'public' => true ], 'names' ) );
 $elementor_text->register();
 
-echo SearchDisplayRenderer::render(
+echo SearchBox::header(
     [
-        'style'         => 'pill',
-        'hidden_fields' => [ $marker => '1' ],
+        'style'  => 'icon-reveal',
+        'hidden' => [ $marker => '1' ],
     ]
 );
 ```
@@ -227,9 +199,8 @@ Run the deterministic package tests:
 
 ```bash
 php tests/search-query-engine.php
-php tests/search-display-renderer.php
+php tests/search.php
 php tests/package-integrity.php
-node tests/elementor-search-client.js
 ```
 
 Every host release must additionally use the visible frontend workflow to verify:
@@ -247,7 +218,7 @@ Restore the original host option and remove every test fixture after verificatio
 
 ## Related
 
-Public directory pages with live search over posts or users use `Hexa\PluginCore\DirectorySearch` (`docs/directory-search.md`), which shares this module's term parser and `SearchMatchSql` matcher.
+Every public search box (lists, directories with their own cards, the header box) uses `Hexa\PluginCore\Search` (`docs/hexa-search.md`), which shares this module's term parser, settings and `SearchMatchSql` matcher.
 
 ## Public-only results (3.21.0)
 

@@ -59,12 +59,10 @@ src/QuerySafety/        Hexa\PluginCore\QuerySafety
 src/SnippetRegistry/    Hexa\PluginCore\SnippetRegistry
 src/ShortcodeRegistry/  Hexa\PluginCore\ShortcodeRegistry
 src/SiteStructure/      Hexa\PluginCore\SiteStructure
-src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
+src/Search/             Hexa\PluginCore\Search
 src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SchemaTools/        Hexa\PluginCore\SchemaTools
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
-src/DirectorySearch/    Hexa\PluginCore\DirectorySearch
-src/ListingSearch/      Hexa\PluginCore\ListingSearch
 src/Calendar/           Hexa\PluginCore\Calendar
 src/Map/                Hexa\PluginCore\Map
 src/QueryFilter/        Hexa\PluginCore\QueryFilter
@@ -119,7 +117,7 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put reusable snippet definitions, option toggles, test rules, related snippets, related shortcodes, basic README rendering, and AJAX handlers in `src/SnippetRegistry`.
 - Put reusable API-key/secret storage, masking, and credential setup UI in `src/CredentialVault`.
 - Put reusable smart search/X-Search endpoint and typeahead UI in `src/SmartSearch`.
-- Put public directory search profiles (posts or role-scoped users), their SQL, REST endpoint, and live-search shortcode in `src/DirectorySearch`; hosts own only profile values and card markup.
+- Put every public search in `src/Search`: profiles over posts or role-scoped users, the box that narrows the page's own list or renders its own cards, sorts, Load more, the one loader and script, and the header search box; hosts own only profile values, card markup and shortcode wrappers. Never add a second search box, script or loader.
 - Put public month-grid calendar profiles, their bounded query, REST endpoint, shortcode, and inline assets in `src/Calendar`; hosts own only profile values, item links, and optional item markup.
 - Put public location-map profiles, address geocoding and coordinate storage, the map shortcode, and its inline assets in `src/Map`; hosts own only profile values and item card data, and brand colors live in `--hmap-*` CSS tokens set by the page builder.
 - Put every visitor filter (taxonomy, custom field/ACF, date range, host callback, and host-registered types) in `src/QueryFilter`; public components declare `filters` and never build their own filter SQL, parsing, or controls.
@@ -127,11 +125,10 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put reusable critical page blueprints, assigned page storage, navigation menu creation, menu structure attachment, and page-to-menu-item tools in `src/SiteStructure`.
 - Put activity log abstractions, storage modes, and the shared dark renderer in `src/ActivityLog`.
 - Put shortcode registries, definitions, display renderers, examples, live output, and testing tools in `src/ShortcodeRegistry`.
-- Put reusable front-end WordPress search-form templates and their shared interaction assets in `src/SearchDisplay`.
 - Put reusable native WordPress search-result matching, bounded term parsing, query configuration, and exact-query SQL scoping in `src/SearchQuery`.
 - Put schema document normalization, graph rendering, deduplication, and output injection in `src/SchemaTools`; hosts retain schema object construction.
 - Put reusable taxonomy definitions, registration, and reference UI in `src/Taxonomies`; hosts retain taxonomy terms and editorial meaning.
-- Keep all three search domains separate: `SearchDisplay` renders native GET forms, `SearchQuery` changes an explicitly eligible native results query, `SmartSearch` provides AJAX typeahead/content selection, `DirectorySearch` provides public filterable directories with their own cards, and `ListingSearch` narrows a page's existing WordPress listing in place. Shared filters, counts and query attachment live in `QueryFilter`. Shared term matching lives in `SearchQuery\SearchMatchSql`.
+- Keep the search domains separate: `Search` is the one public search (boxes, results, header box), `SearchQuery` changes an explicitly eligible native results query and owns text matching, and `SmartSearch` provides AJAX typeahead/content selection in tools. Shared filters, counts and query attachment live in `QueryFilter`. Shared term matching lives in `SearchQuery\SearchMatchSql`.
 - Put safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting in `src/SystemEnvironment`.
 - Put host plugin GitHub/update configuration and updater abstractions in `src/PluginUpdates`.
 - Put exact WordPress query eligibility predicates and narrowly scoped invariant repair in `src/QuerySafety`; host query callbacks must reject ineligible queries before loading settings or attaching SQL filters.
