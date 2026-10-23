@@ -147,6 +147,12 @@ final class SiteSearch
         ];
     }
 
+    /** Text search over events only, for the events quick filters. @return array<string,mixed> */
+    public function eventSettings(): array
+    {
+        return $this->settings(['event']);
+    }
+
     /** @param string[] $postTypes @return array<string,mixed> */
     private function settings(array $postTypes): array
     {

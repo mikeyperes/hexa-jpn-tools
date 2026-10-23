@@ -13,6 +13,7 @@ keys, shortcodes, options, or stored content.
 - Timeline pieces: `[jpn_event_date_stack]`, `[jpn_event_place]`, `[jpn_event_facts]`, `[jpn_event_actions]`, `[jpn_event_badges]`, `[jpn_event_time_range]`, `[jpn_event_venue]`, `[jpn_event_host]`, `[jpn_event_field]`, `[jpn_event_recent]`, `[jpn_event_photos]`.
 - Event flyer (`[jpn_event_flyer]`): Core ImageZoom thumbnail; on hover a 0.4 s countdown ring, then a preview with an explainer line and the event details beside the flyer (title, when, where, host, short description, clickable RSVP and event page links), in JPN green; it stays open while the pointer is on it and closes when the pointer leaves or on a click outside; click or tap opens the full-screen viewer.
 - Hosts: host directory, host profile fields (`[jpn_host_field]`, `[jpn_host_url]`), profile claiming and the host map.
+- Events quick filters (`[jpn_event_filters]`): above the Elementor loop with Query ID `jpn_home_upcoming_events`, visitors search, switch on "Hide kids events" and tick one or more locations; the loop narrows in place without a page reload and "View more" keeps the filters. Location counts cover upcoming events only and empty locations are hidden. Built on Hexa WP Core's one search; `style="none"` drops the JPN look. Markup: [docs/event-filters.md](docs/event-filters.md).
 - Event calendar, site search, latest events video, upcoming event banner and the WhatsApp feed (`[jpn_whatsapp_feed]`).
 - Code.Hexa REST contract (`hexa-jpn/v1`) for authenticated event and settings sync.
 
