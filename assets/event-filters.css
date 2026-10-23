@@ -77,8 +77,6 @@
     color: var(--jef-text);
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: .16em;
-    text-transform: uppercase;
     transition: border-color .25s var(--jef-ease), background-color .25s var(--jef-ease), box-shadow .25s var(--jef-ease), color .25s var(--jef-ease);
 }
 
@@ -99,6 +97,17 @@
 .jpn-event-filters.hls.hls .hls-toggle:has(input:checked) {
     border-color: var(--hls-accent);
     background: rgba(37, 211, 102, .1);
+}
+
+/* Labels: sentence case, set on the text itself so theme label styles cannot resize it */
+.jpn-event-filters.hls.hls.hls .hls-toggle span,
+.jpn-event-filters.hls.hls.hls .hls-filter-label,
+.jpn-event-filters.hls.hls.hls .hls-clear {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    text-transform: none;
+    line-height: 1.2;
 }
 
 /* Dropdown indicator on the location pill */
@@ -252,10 +261,6 @@
     padding: 0 6px;
     opacity: 1;
     color: var(--jef-muted);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: .14em;
-    text-transform: uppercase;
     text-decoration: none;
     transition: color .25s var(--jef-ease);
 }

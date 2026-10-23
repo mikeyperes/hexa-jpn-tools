@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.17.0
+Stable tag: 1.17.1
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.17.1 =
+* Events quick filters hide kids events by default ("Show kids events" brings them back); labels in sentence case. Bundles HexaWP Core 3.30.4.
 
 = 1.17.0 =
 * Events quick filters (`[jpn_event_filters]`): search, a "Hide kids events" switch and a multi-select location list above the upcoming events loop, refreshed in place without a page reload, in the JPN look. Bundles HexaWP Core 3.30.4.

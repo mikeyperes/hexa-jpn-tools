@@ -8,7 +8,7 @@ box narrows, so it needs no extra CSS class.
 ## Filters
 
 - Text: event title, content, venue and host (the site search settings, events only).
-- `hf[kids]=1`: hides events whose `kids_event` field is `1`.
+- Kids events (`kids_event` field `1`) are left out by default; `hf[kids]=1` ("Show kids events") brings them back.
 - `hf[location][]=<area slug>`: one or more locations (taxonomy `area`), matched with "any".
 
 Counts and the "N upcoming events" line cover the same upcoming events the
@@ -22,7 +22,7 @@ the filters, and the loop's own "View more" loads the next page with them.
   <div class="hls-bar">
     <label class="hls-field hls-field--text"><input class="hls-input" type="search" name="hq"></label>
     <div class="hls-filters">
-      <label class="hls-toggle hls-field--kids"><input type="checkbox" name="hf[kids]" value="1"><span>Hide kids events</span></label>
+      <label class="hls-toggle hls-field--kids"><input type="checkbox" name="hf[kids]" value="1"><span>Show kids events</span></label>
       <details class="hls-filter hls-field--location">
         <summary class="hls-filter-toggle"><span class="hls-filter-label">Locations</span></summary>
         <div class="hls-filter-panel" role="group" aria-label="Locations">

@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Hexa\JpnTools\Search;
 
 use Hexa\JpnTools\Events\EventRelations;
-use Hexa\PluginCore\QueryFilter\QueryFilterTypes;
+use Hexa\PluginCore\QueryFilter\QuerySql;
+use Hexa\PluginCore\Search\Search;
 use Hexa\PluginCore\Search\SearchBox;
 use Hexa\PluginCore\Search\SearchContext;
 use Hexa\PluginCore\Search\SearchModule;
@@ -15,16 +16,16 @@ use Hexa\PluginCore\Search\SearchRegistry;
  * Quick filters for the upcoming events list, on Hexa Core's one search:
  * `[jpn_event_filters]` above the Elementor loop with the Query ID
  * `jpn_home_upcoming_events` narrows that loop in place without a page
- * reload. Visitors search, hide kids events, and pick one or more locations.
- * Location counts cover the same upcoming events the loop lists, and
- * locations with none are hidden. `style="none"` drops the JPN look.
+ * reload. Kids events are hidden until a visitor switches on "Show kids
+ * events"; visitors also search and pick one or more locations. Location
+ * counts cover the same upcoming events the loop lists, and locations with
+ * none are hidden. `style="none"` drops the JPN look.
  */
 final class EventFilters
 {
     public const PROFILE = 'jpn_events';
     public const SHORTCODE = 'jpn_event_filters';
     public const LOOP_QUERY_ID = 'jpn_home_upcoming_events';
-    public const EXCLUDE_TYPE = 'jpn_exclude_meta';
 
     /** Marks the queries behind the filter counts so they cover upcoming events only. */
     private const UPCOMING_ARG = 'jpn_upcoming_events';
@@ -41,16 +42,11 @@ final class EventFilters
             return;
         }
 
-        add_action(QueryFilterTypes::REGISTER_ACTION, [$this, 'registerFilterType']);
         add_action(SearchRegistry::REGISTER_ACTION, [$this, 'registerProfile']);
         add_filter(SearchModule::TARGET_FILTER, [$this, 'markLoop'], 10, 2);
+        add_action('elementor/query/' . self::LOOP_QUERY_ID, [$this, 'hideKidsByDefault'], 20);
         add_action('pre_get_posts', [$this, 'limitToUpcoming'], 20);
         add_shortcode(self::SHORTCODE, [$this, 'render']);
-    }
-
-    public function registerFilterType(): void
-    {
-        QueryFilterTypes::register(self::EXCLUDE_TYPE, new ExcludeMetaFilterType());
     }
 
     public function registerProfile(): void
@@ -60,11 +56,12 @@ final class EventFilters
             'post_types' => ['event'],
             'context' => false,
             'filters' => [
+                // Lifts the default exclusion below; it adds no condition of its own.
                 'kids' => [
-                    'type' => self::EXCLUDE_TYPE,
-                    'meta_key' => 'kids_event',
+                    'type' => 'callback',
                     'control' => 'toggle',
-                    'label' => __('Hide kids events', 'hexa-jpn-tools'),
+                    'apply' => static fn (): ?array => null,
+                    'label' => __('Show kids events', 'hexa-jpn-tools'),
                 ],
                 'location' => [
                     'type' => 'taxonomy',
@@ -103,7 +100,24 @@ final class EventFilters
     {
         if ($query instanceof \WP_Query && $query->get(self::UPCOMING_ARG)) {
             $this->relations->configureUpcomingQuery($query);
+            $this->hideKidsByDefault($query);
         }
+    }
+
+    /** The loop and its counts leave kids events out unless "Show kids events" is on. @param \WP_Query $query */
+    public function hideKidsByDefault($query): void
+    {
+        global $wpdb;
+        $state = Search::state(self::PROFILE);
+        if (!$query instanceof \WP_Query || ($state['values']['kids'] ?? '') === '1') {
+            return;
+        }
+
+        QuerySql::attach($query, $wpdb->prepare(
+            'NOT EXISTS (SELECT 1 FROM ' . $wpdb->postmeta . ' jpn_kids WHERE jpn_kids.post_id = ' . $wpdb->posts . '.ID AND jpn_kids.meta_key = %s AND jpn_kids.meta_value = %s)',
+            'kids_event',
+            '1'
+        ));
     }
 
     /** @param array<string,mixed>|string $attributes */
