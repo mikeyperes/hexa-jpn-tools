@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.17.1
+Stable tag: 1.17.2
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.17.2 =
+* Events quick filters: a "When" filter with Today and Tomorrow (either or both; ongoing events count). Bundles HexaWP Core 3.30.4.
 
 = 1.17.1 =
 * Events quick filters hide kids events by default ("Show kids events" brings them back); labels in sentence case. Bundles HexaWP Core 3.30.4.

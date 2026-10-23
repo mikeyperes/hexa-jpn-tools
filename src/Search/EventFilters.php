@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Hexa\JpnTools\Search;
 
+use Hexa\JpnTools\Events\EventDates;
 use Hexa\JpnTools\Events\EventRelations;
 use Hexa\PluginCore\QueryFilter\QuerySql;
 use Hexa\PluginCore\Search\Search;
@@ -17,7 +18,8 @@ use Hexa\PluginCore\Search\SearchRegistry;
  * `[jpn_event_filters]` above the Elementor loop with the Query ID
  * `jpn_home_upcoming_events` narrows that loop in place without a page
  * reload. Kids events are hidden until a visitor switches on "Show kids
- * events"; visitors also search and pick one or more locations. Location
+ * events"; visitors also search, pick Today and/or Tomorrow, and pick one or
+ * more locations. Location
  * counts cover the same upcoming events the loop lists, and locations with
  * none are hidden. `style="none"` drops the JPN look.
  */
@@ -56,6 +58,14 @@ final class EventFilters
             'post_types' => ['event'],
             'context' => false,
             'filters' => [
+                'when' => [
+                    'type' => 'callback',
+                    'control' => 'checkboxes',
+                    'match' => 'any',
+                    'options' => ['today' => __('Today', 'hexa-jpn-tools'), 'tomorrow' => __('Tomorrow', 'hexa-jpn-tools')],
+                    'apply' => [$this, 'eventsOnDay'],
+                    'label' => __('When', 'hexa-jpn-tools'),
+                ],
                 // Lifts the default exclusion below; it adds no condition of its own.
                 'kids' => [
                     'type' => 'callback',
@@ -102,6 +112,34 @@ final class EventFilters
             $this->relations->configureUpcomingQuery($query);
             $this->hideKidsByDefault($query);
         }
+    }
+
+    /**
+     * Published events taking place on the local day `today` or `tomorrow`:
+     * starting that day, or started earlier and still running.
+     *
+     * @return int[]|null
+     */
+    public function eventsOnDay($value): ?array
+    {
+        global $wpdb;
+        $offset = ['today' => 0, 'tomorrow' => 1][is_string($value) ? $value : ''] ?? null;
+        if ($offset === null) {
+            return null;
+        }
+        $start = (new \DateTimeImmutable('@' . EventDates::startOfToday()))->setTimezone(wp_timezone())->modify('+' . $offset . ' day');
+        $from = $start->getTimestamp();
+        $to = $start->modify('+1 day')->getTimestamp();
+
+        return array_map('intval', (array) $wpdb->get_col($wpdb->prepare(
+            "SELECT p.ID FROM {$wpdb->posts} p"
+            . " INNER JOIN {$wpdb->postmeta} s ON s.post_id = p.ID AND s.meta_key = 'start_date_timestamp'"
+            . " LEFT JOIN {$wpdb->postmeta} e ON e.post_id = p.ID AND e.meta_key = 'end_date_timestamp' AND e.meta_value <> ''"
+            . " WHERE p.post_type = 'event' AND p.post_status = 'publish'"
+            . ' AND CAST(s.meta_value AS SIGNED) < %d AND GREATEST(CAST(s.meta_value AS SIGNED), COALESCE(CAST(e.meta_value AS SIGNED), 0)) >= %d',
+            $to,
+            $from
+        )));
     }
 
     /** The loop and its counts leave kids events out unless "Show kids events" is on. @param \WP_Query $query */
