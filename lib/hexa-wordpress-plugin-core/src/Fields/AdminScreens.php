@@ -29,13 +29,22 @@ final class AdminScreens {
     }
 
     public static function assets(): void {
-        if ( Acf::active() || ! is_admin() ) {
+        if ( Acf::active() || ! is_admin() || ! self::field_screen() ) {
             return;
         }
         wp_enqueue_script( 'jquery' );
         if ( function_exists( 'wp_enqueue_media' ) && ! did_action( 'wp_enqueue_media' ) ) {
             wp_enqueue_media();
         }
+    }
+
+    /**
+     * Admin screens that draw native field boxes: post, user and term editors.
+     * Settings pages load their own assets through Form::enqueue().
+     */
+    public static function field_screen(): bool {
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        return $screen && in_array( (string) $screen->base, [ 'post', 'profile', 'user-edit', 'user', 'term', 'edit-tags' ], true );
     }
 
     public static function meta_boxes( string $post_type, mixed $post = null ): void {

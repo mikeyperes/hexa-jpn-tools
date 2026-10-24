@@ -175,7 +175,7 @@ README;
                     'body_html' => '<p>Every new reusable element needs an example, a visual, and a clear API. This tab is the live component catalog.</p>',
                 ]
             )
-            . '</div><div style="height:14px"></div><pre class="hpc-readme">' . esc_html( $guide ) . '</pre>';
+            . '</div><div style="height:14px"></div>' . \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( $guide, [ 'language' => 'text', 'title' => 'Agent guide', 'max_height' => 520 ] );
     }
 
     private function render_ui_elements_section(): string {
@@ -309,7 +309,7 @@ CODE;
             . CoreUi::card(
                 [
                     'title'     => 'Usage example',
-                    'body_html' => '<pre class="hpc-readme">' . esc_html( $code ) . '</pre>',
+                    'body_html' => \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( $code, [ 'language' => 'php', 'title' => 'PHP' ] ),
                 ]
             );
     }
@@ -402,7 +402,7 @@ CODE;
             . CoreUi::card(
                 [
                     'title'     => 'Usage example',
-                    'body_html' => '<pre class="hpc-readme">' . esc_html( $code ) . '</pre>',
+                    'body_html' => \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( $code, [ 'language' => 'php', 'title' => 'PHP' ] ),
                 ]
             )
             . '</div><div style="height:14px"></div>'

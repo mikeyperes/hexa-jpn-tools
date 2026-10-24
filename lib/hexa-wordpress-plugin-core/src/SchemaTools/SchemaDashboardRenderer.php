@@ -140,7 +140,7 @@ final class SchemaDashboardRenderer {
         $title  = (string) ( $graph['title'] ?? 'Schema graph' );
         $schema = isset( $graph['schema'] ) && is_array( $graph['schema'] ) ? $graph['schema'] : [];
 
-        return '<section class="hpc-card hpc-schema-graph-panel"><h3>' . esc_html( $title ) . '</h3><pre class="hpc-readme">' . esc_html( wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) ) . '</pre></section>';
+        return '<section class="hpc-card hpc-schema-graph-panel"><h3>' . esc_html( $title ) . '</h3>' . \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( (string) wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), [ 'language' => 'json', 'title' => 'JSON-LD' ] ) . '</section>';
     }
 
     private function styles(): string {

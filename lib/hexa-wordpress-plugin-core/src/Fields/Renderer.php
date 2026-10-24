@@ -69,7 +69,11 @@ final class Renderer {
             return;
         }
         $id = 'hexa-f-' . substr( md5( $name ), 0, 12 );
-        echo '<div class="hexa-field hexa-field-' . esc_attr( $type ) . '">';
+        $wrapper = is_array( $field['wrapper'] ?? null ) ? $field['wrapper'] : [];
+        $extra = trim( (string) ( $wrapper['class'] ?? '' ) );
+        echo '<div class="hexa-field hexa-field-' . esc_attr( $type ) . ( '' !== $extra ? ' ' . esc_attr( $extra ) : '' ) . '"'
+            . ( '' !== (string) ( $wrapper['id'] ?? '' ) ? ' id="' . esc_attr( (string) $wrapper['id'] ) . '"' : '' )
+            . ' data-name="' . esc_attr( (string) ( $field['name'] ?? '' ) ) . '">';
         if ( 'true_false' !== $type && '' !== (string) $field['label'] ) {
             echo '<label class="hexa-field-label" for="' . esc_attr( $id ) . '">' . esc_html( (string) $field['label'] ) . ( ! empty( $field['required'] ) ? ' <span class="required">*</span>' : '' ) . '</label>';
         }

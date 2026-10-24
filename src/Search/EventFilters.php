@@ -18,8 +18,8 @@ use Hexa\PluginCore\Search\SearchRegistry;
  * `[jpn_event_filters]` above the Elementor loop with the Query ID
  * `jpn_home_upcoming_events` narrows that loop in place without a page
  * reload. Kids events are hidden until a visitor switches on "Show kids
- * events"; visitors also search, pick Today and/or Tomorrow, and pick one or
- * more locations. Location
+ * events"; visitors also search, pick Today, Tomorrow, This week and/or This
+ * month, and pick one or more locations. Location
  * counts cover the same upcoming events the loop lists, and locations with
  * none are hidden. `style="none"` drops the JPN look.
  */
@@ -62,8 +62,13 @@ final class EventFilters
                     'type' => 'callback',
                     'control' => 'checkboxes',
                     'match' => 'any',
-                    'options' => ['today' => __('Today', 'hexa-jpn-tools'), 'tomorrow' => __('Tomorrow', 'hexa-jpn-tools')],
-                    'apply' => [$this, 'eventsOnDay'],
+                    'options' => [
+                        'today' => __('Today', 'hexa-jpn-tools'),
+                        'tomorrow' => __('Tomorrow', 'hexa-jpn-tools'),
+                        'week' => __('This week', 'hexa-jpn-tools'),
+                        'month' => __('This month', 'hexa-jpn-tools'),
+                    ],
+                    'apply' => [$this, 'eventsInPeriod'],
                     'label' => __('When', 'hexa-jpn-tools'),
                 ],
                 // Lifts the default exclusion below; it adds no condition of its own.
@@ -115,21 +120,27 @@ final class EventFilters
     }
 
     /**
-     * Published events taking place on the local day `today` or `tomorrow`:
-     * starting that day, or started earlier and still running.
+     * Published events taking place in the local period `today`, `tomorrow`,
+     * `week` (today to the end of the week, by the site's first weekday) or
+     * `month` (today to the end of the month): starting in it, or started
+     * earlier and still running.
      *
      * @return int[]|null
      */
-    public function eventsOnDay($value): ?array
+    public function eventsInPeriod($value): ?array
     {
         global $wpdb;
-        $offset = ['today' => 0, 'tomorrow' => 1][is_string($value) ? $value : ''] ?? null;
-        if ($offset === null) {
+        $today = (new \DateTimeImmutable('@' . EventDates::startOfToday()))->setTimezone(wp_timezone());
+        $daysLeftInWeek = 7 - (((int) $today->format('w') - (int) get_option('start_of_week', 0) + 7) % 7);
+        $period = [
+            'today' => [$today, $today->modify('+1 day')],
+            'tomorrow' => [$today->modify('+1 day'), $today->modify('+2 days')],
+            'week' => [$today, $today->modify('+' . $daysLeftInWeek . ' days')],
+            'month' => [$today, $today->modify('first day of next month')],
+        ][is_string($value) ? $value : ''] ?? null;
+        if ($period === null) {
             return null;
         }
-        $start = (new \DateTimeImmutable('@' . EventDates::startOfToday()))->setTimezone(wp_timezone())->modify('+' . $offset . ' day');
-        $from = $start->getTimestamp();
-        $to = $start->modify('+1 day')->getTimestamp();
 
         return array_map('intval', (array) $wpdb->get_col($wpdb->prepare(
             "SELECT p.ID FROM {$wpdb->posts} p"
@@ -137,8 +148,8 @@ final class EventFilters
             . " LEFT JOIN {$wpdb->postmeta} e ON e.post_id = p.ID AND e.meta_key = 'end_date_timestamp' AND e.meta_value <> ''"
             . " WHERE p.post_type = 'event' AND p.post_status = 'publish'"
             . ' AND CAST(s.meta_value AS SIGNED) < %d AND GREATEST(CAST(s.meta_value AS SIGNED), COALESCE(CAST(e.meta_value AS SIGNED), 0)) >= %d',
-            $to,
-            $from
+            $period[1]->getTimestamp(),
+            $period[0]->getTimestamp()
         )));
     }
 

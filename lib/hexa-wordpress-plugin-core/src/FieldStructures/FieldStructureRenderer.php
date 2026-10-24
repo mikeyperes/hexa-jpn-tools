@@ -70,7 +70,7 @@ final class FieldStructureRenderer {
                 <?php echo $this->detail_block( "Fields", (array) $item["fields"] ); ?>
                 <?php echo $this->detail_block( "Dependencies", (array) $item["dependencies"] ); ?>
                 <?php if ( "" !== (string) $item["instructions"] ) : ?><?php echo CoreUi::subcard( [ "title" => "Use instructions", "body_html" => "<p>" . esc_html( (string) $item["instructions"] ) . "</p>" ] ); ?><?php endif; ?>
-                <?php if ( "" !== (string) $item["code_example"] ) : ?><?php echo CoreUi::subcard( [ "title" => "Code example", "body_html" => "<pre class=\"hpc-readme\">" . esc_html( (string) $item["code_example"] ) . "</pre>" ] ); ?><?php endif; ?>
+                <?php if ( "" !== (string) $item["code_example"] ) : ?><?php echo CoreUi::subcard( [ "title" => "Code example", "body_html" => \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( (string) $item["code_example"], [ "language" => "php", "title" => "PHP" ] ) ] ); ?><?php endif; ?>
                 <?php echo CoreUi::subcard( [ "title" => "Test report", "body_html" => "<p>" . esc_html( (string) $item["test_report"] ) . "</p>" ] ); ?>
                 <?php if ( "" !== (string) $item["activity"] ) : ?><?php echo CoreUi::subcard( [ "title" => "Activity", "body_html" => "<p>" . esc_html( (string) $item["activity"] ) . "</p>" ] ); ?><?php endif; ?>
             </div>

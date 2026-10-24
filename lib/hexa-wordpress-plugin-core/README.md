@@ -1,383 +1,313 @@
 # Hexa WordPress Plugin Core
 
-Shared WordPress plugin core for Hexa plugins.
-
-This package exists to stop each plugin from re-implementing the same admin tabs, activity logs, updater wiring, shortcode lists, and setup patterns differently.
-
 > Feature base for HWS Skills. Read before building on this plugin; use or
 > extend these features instead of rebuilding them.
 
-**Purpose:** shared library bundled inside every Hexa plugin (admin tabs, updater, fields, search, public components). It has no admin screen of its own; the bundling plugin exposes its features.
+**Purpose:** the shared library bundled inside every Hexa plugin, so no plugin rebuilds admin tabs, AJAX, logs, fields, updaters, search or cleanup on its own. **Admin:** none of its own; the bundling plugin shows Core in its `update-center` tab and the automatic Hexa Core tab. **Depends on:** WordPress; ACF is optional (Fields work without it).
+
+## Design examples and styling
+
+- Search box, filters and result cards: `docs/hexa-search.md`
+- Calendar: `docs/calendar.md`
+- Map: `docs/map.md`
+- Image zoom viewer: `docs/image-zoom.md`
+- Item links and lightbox: `docs/item-link.md`
+- Relative time: `docs/relative-time.md`
+- Admin cards, buttons, pills, collapsibles: `docs/ui.md`
+- Task runner dashboard: `docs/task-runner.md`
 
 ## Features
 
-### Calendar
-- **Does:** a month calendar of posts from a registered profile.
-- **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` in a plugin, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/...`.
-- **Code:** `src/Calendar/`
+### Plugin bootstrap and context
+- **Does:** loads one Core copy per site (the newest bundled one among all plugins), builds the plugin's context and boots its modules.
+- **Use:** `hexa_plugin_core_register_package( '<slug>', <core root> )`, then `new PluginContext( [ slug, basename, version, path, url, github_repo, admin_page, capability ] )` and `( new CoreBootstrap( $context ) )->add_module( $m )->boot()`. Modules implement `ModuleInterface` (or extend `RegisterMethodModule`). `CorePackageRuntime::report()` shows which Core copy was selected and any integrity issues. See [Setup protocol](#setup-protocol).
+- **Code:** `bootstrap.php`, `src/CoreBootstrap/`, `src/CoreContracts/`, `src/CoreRuntime/`
+
+### Admin tabs and dashboard shell
+- **Does:** the plugin's one admin page: top tabs or a grouped, collapsible sidebar with plugin and Core versions, tabs loaded by AJAX with the tab kept in the URL, plus the automatic Hexa Core tab showing this README.
+- **Use:** `( new HostTabsRenderer() )->render( [ tabs, active, page_url, ajax_action, nonce, root_id, panel_id, layout => 'sidebar', groups, sidebar_identity, render_callback ] )`; `TabRegistry`/`TabDefinition` for the list; `( new CoreTabModule( new CoreTabConfig( [ tabs_filter, render_filter, core_root, readme_path, library_path ] ) ) )->register()`.
+- **Extend:** the host's `<prefix>_dashboard_tabs` and `<prefix>_render_dashboard_tab` filters.
+- **Code:** `src/WpAdminTabs/` (docs: `docs/tabs.md`)
+
+### Admin UI components
+- **Does:** the shared admin look: cards, subcards, detail cards, buttons, pills, tooltips, toggles, collapsible sections that remember their open state in the URL (`hpc_open`), searchable card lists, save notices without reload, loading buttons, the read-only source banner, visual template pickers, image-details panels and scoped CSS editors.
+- **Use:** `CoreUi::render_assets()`, then `CoreUi::card()`, `collapsible()`, `detail_card()`, `pill()`, `toggle()`, `collection_filter()`; `DynamicNotice::render()`, `DynamicButton::render()`, `SourceBanner::render( [ owner, edit_url ] )`, `TemplateSelectionControl::render()`, `MediaGalleryDetailsRenderer::render()`, `ScopedCssOverride::render( [ title, selector, instructions, html_example, css_example ] )`.
+- **Style:** `hpc-*` classes.
+- **Code:** `src/WpAdminComponents/` (docs: `docs/ui.md`)
+
+### Task runner
+- **Does:** live progress for admin jobs that run as AJAX steps: header, panel switcher, stat tiles, progress bar with Stop, status badges, job tables, bulk bar and a live log.
+- **Use:** `TaskRunner::header()`, `segments()`, `stats()`, `progress()`, `log()`, `render_assets()`; in the browser `HexaWpCoreTaskRunner.post()`, `queue()` (one at a time, or `concurrency` for read-only steps) and `loop()` (batches).
+- **Style:** root class `hpc-runner-app`.
+- **Code:** `src/WpAdminComponents/TaskRunner.php` (docs: `docs/task-runner.md`)
+
+### Colour controls and brand colours
+- **Does:** one colour picker (picker, hex, RGB, swatch, copy, import site colour, inherit), a paired primary/secondary picker with Elementor import, and the template colour flow (original, site primary, site secondary, custom); reads the site's brand colours from HWS Base Tools and Elementor.
+- **Use:** `BrandColorProvider::payload( '#fallback' )`; `ColorControl::render( [ key, label, value, default, import_brand ] )`, `DetailedColorPicker::render()`, `TemplateColorControl::render()` with `TemplateColorResolver`; `ColorPalette`, `ElementorPaletteDetector`.
+- **Code:** `src/BrandColors/`, `src/WpAdminComponents/ColorControl.php` (docs: `docs/brand-colors.md`)
+
+### Typography controls
+- **Does:** font family and weight pickers (template, site and Elementor fonts, saved as a source name, not raw CSS), a full typography editor, and "keep the site's font, size, colour or weight" switches.
+- **Use:** `FontFamilyControl::render()` with `FontFamilyProvider` and `FontWeightProvider`; `TypographyControl::render()`; `TypographyPreservationControl::render()` inside a `data-hpc-typography-scope` container, with `TypographyPreservation::defaults()` and `setting_keys()` for saving; `TemplateTypography::options()`.
+- **Extend:** listen for the `hexa-typography-preserve-change` browser event.
+- **Code:** `src/Typography/`, `src/BrandColors/Font*Provider.php`, `src/WpAdminComponents/Typography*Control.php` (docs: `docs/typography-preservation.md`, `docs/font-family-control.md`)
+
+### Brand profiles
+- **Does:** one normalized brand record (domain, name, logo, colours, support email) for public pages a plugin brands.
+- **Use:** `BrandProfile::from_array( $data )`, `->css_variables()`, `->to_array()`.
+- **Code:** `src/BrandProfiles/` (docs: `docs/brand-profiles.md`)
+
+### AJAX registry
+- **Does:** admin AJAX actions with nonce and capability checks, request parsing, error handling and JSON replies done once.
+- **Use:** `( new AjaxActionRegistry( [ capability, nonce_action, nonce_field ] ) )->register( [ 'action' => [ 'callback' => fn( AjaxRequest $r ) => [...] ] ] )`; `AjaxRequest::key()` and friends read input; throw `AjaxFailure` for a clean error.
+- **Code:** `src/WpAdminAjax/` (docs: `docs/wp-admin-ajax.md`)
+
+### Activity log
+- **Does:** a collapsible dark log of what a job did, kept for the page, for a while (transient) or until cleared (option).
+- **Use:** `new ActivityLogConfig( [ id, title, storage => STORAGE_PAGE|STORAGE_TRANSIENT|STORAGE_PERMANENT, storage_key, collapsed ] )`, `( new ActivityLogger( $config ) )->add( new ActivityLogEntry( $message, $context, $actor, $source, null, 'info' ) )`, `( new ActivityLogRenderer( $config ) )->render( $logger->all() )`.
+- **Code:** `src/ActivityLog/` (docs: `docs/activity.md`)
+
+### Shortcode registry
+- **Does:** lists a plugin's shortcodes in admin with description, live output, examples with every parameter and a test run.
+- **Use:** `ShortcodeRegistry::add()` with `ShortcodeDefinition`; `( new ShortcodeDisplayRenderer() )->render( $rows, [ title, description ] )` or `ShortcodeCatalogRenderer`; `ShortcodeTester::prepare()` returns `ShortcodeTestResult`.
+- **Code:** `src/ShortcodeRegistry/` (docs: `docs/shortcodes.md`)
+
+### Shortcode breakdown
+- **Does:** explains one shortcode on a settings screen: the shortcode with a copy button, what it does, any alias tags, every attribute with its default, a plain explanation and its choices, and copyable examples.
+- **Use:** `ShortcodeBreakdown::render( [ tag, title, description, aliases, attributes => [ name => [ default, description, options ] ], examples => [ [ label, shortcode ] ] ] )`.
+- **Style:** root class `hpc-shortcode-breakdown`; code is colour-coded by `CodeDisplay`.
+- **Code:** `src/ShortcodeRegistry/ShortcodeBreakdown.php`
+
+### Code display
+- **Does:** a colour-coded, read-only code block (HTML, CSS, PHP, JavaScript, JSON or shortcodes) with a title bar, language badge and copy button; highlighting runs on the server, every character escaped, no script library.
+- **Use:** `CodeDisplay::render( $code, [ language, title, max_height ] )`; `CodeDisplay::highlight( $code, $language )` for inline markup.
+- **Style:** root class `hpc-code-display`, token classes `hcd-*`.
+- **Where:** every code sample on Core's own tab (Hexa Core tab and field structures) uses it.
+- **Code:** `src/WpAdminComponents/CodeDisplay.php`
+
+### Snippet registry
+- **Does:** switchable code snippets with tests, related snippets and shortcodes, and the shared snippets table.
+- **Use:** `SnippetRegistry::add()`/`add_many()`, `is_enabled()`, `set_enabled()`, `test()`; `SnippetsTableRenderer::render()`; `SnippetAjaxController::register()` for the toggle and test buttons.
+- **Code:** `src/SnippetRegistry/` (docs: `docs/snippet-registry.md`)
+
+### Fields (no ACF needed)
+- **Does:** the one custom-field API: field groups, reading and saving values, repeaters, options pages, edit forms and the client-friendly help view, with ACF's exact function signatures and storage. With ACF active it hands every call to ACF; without it Core stores, formats and edits the same data itself. Safe during plugin startup: before ACF has started (`acf/init`), `Field::get()` returns the stored value instead of starting ACF too early (`Acf::ready()`). Without ACF, the field script and media library load only on post, user and term edit screens (`AdminScreens::field_screen()`).
+- **Use:** `FieldGroups::add( $group )`, `Field::get()`/`update()`/`have_rows()`/`the_row()`/`get_sub_field()`, `OptionsPages::add()`, `Form::render()`/`Form::field()`, `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` while plugins load; field `developer_instructions` and group `client_view` (`Audience`).
+- **Extend:** `hexa_fields/load_field_groups`, `hexa_fields/*` (ACF-named hooks), `hexa_core_fields_client_view`, ACF's location filters.
+- **Code:** `src/Fields/` (docs: `docs/fields.md`); `bin/migrate-to-fields.php` moves a plugin off ACF calls.
+
+### Field factory and field-group screens
+- **Does:** short builders for field arrays, plus the admin cards that list a plugin's field groups, post types and taxonomies with on/off switches, status checks and a live gallery-details panel.
+- **Use:** `AcfFieldFactory::text()`, `textarea()`, `wysiwyg()`, `url()`, `select()`, `toggle()`, `image()`, `gallery()` and the rest; `AcfFieldGroupRegistry::add()` + `register()` with `AcfFieldGroupRenderer`; `AcfSettingsPanel`; `AcfGalleryDetailsModule`; `FieldStructureRenderer::render()`.
+- **Code:** `src/AcfFieldFactory/`, `src/FieldStructures/` (docs: `docs/field-structures.md`)
+
+### Content types
+- **Does:** registers a plugin's post types with editable labels and URL bases, on/off switches, attached field groups, and refreshes WordPress's URL rules when they change.
+- **Use:** `ContentTypeRegistry::add()`/`add_many()` + `register()`; `ContentTypeRenderer::render()` and `ContentTypeAjaxController::register()` for the Content Model screen.
+- **Code:** `src/ContentTypes/` (docs: `docs/content-types.md`)
+
+### Taxonomies
+- **Does:** registers a plugin's taxonomies with a reference screen, and limits how many terms non-privileged users may pick (radio buttons when the limit is one, checked again on save).
+- **Use:** `TaxonomyRegistry::add()` + `register()`, `TaxonomyRenderer::render()`; `( new TermChoiceLimits( $rules ) )->register()`.
+- **Code:** `src/Taxonomies/` (docs: `docs/taxonomies.md`)
+
+### Front-end form fields and image uploads
+- **Does:** one field schema for public forms, safe rich-text values with a plain-text copy, and image uploads checked for type and size and stored in the Media Library.
+- **Use:** `FieldSchema::normalize()`, `RichTextValue::sanitize()`/`plain_text()`; `ImageUploadPolicy::validate()`/`accept_attribute()`, `WordPressImageUploader::store()`.
+- **Code:** `src/FrontendForms/`, `src/MediaUploads/` (docs: `docs/frontend-forms.md`, `docs/media-uploads.md`)
+
+### Data normalization
+- **Does:** reads field and meta values safely and turns them into clean text, URLs, emails, dates, numbers, rows, images and galleries for a plugin's own data mapping.
+- **Use:** `FieldReader::read()`/`first()`, `ValueNormalizer::text()`/`url()`/`email()`/`date()`/`rows()`, `MediaNormalizer::image()`/`gallery()`/`schema_image()`.
+- **Code:** `src/DataNormalization/` (docs: `docs/data-normalization.md`)
+
+### Website type and main entity
+- **Does:** the site's type (person, company, publication and so on) and its main entity (a user or post), with the matching profile card, field inventory and admin picker.
+- **Use:** `PrimaryEntityModule` (or `PrimaryEntityManager::settings()`/`resolve()`/`save()`), `PrimaryEntityRenderer::render()`, `CanonicalEntityResolver::resolve()`/`field()`, `EntityProfileCardRenderer::render()`, `EntityFieldInventoryRenderer::render()`.
+- **Code:** `src/EntitySources/` (docs: `docs/entity-sources.md`)
+
+### Credential vault
+- **Does:** stores API keys and secrets encrypted, shows them masked.
+- **Use:** `$store = new CredentialStore(); $store->store( 'service', 'api_key', $raw ); $store->get(); $store->get_masked(); $store->exists()`; option name `hpc_cred_{slug}_{keyName}`; `CredentialFieldRenderer::render_example()`.
+- **Code:** `src/CredentialVault/` (docs: `docs/credentials.md`)
+
+### Cron tasks
+- **Does:** WP-Cron intervals, scheduling, unscheduling and a health readout per hook.
+- **Use:** `WpCronTask::add_interval_schedule()`, `schedule_interval()`, `schedule_existing()`, `unschedule_hook()`, `status()`, `events_for_hook()`.
+- **Code:** `src/WpCronTasks/` (docs: `docs/wp-cron-tasks.md`)
+
+### Plugin checks and inventory
+- **Does:** required and optional plugin lists with green/red status and install, activate, deactivate and delete buttons, the full site plugin inventory, and which Hexa plugin recommends which plugin.
+- **Use:** `PluginCheckService` with `PluginCheckDefinition::from_array()`, `PluginChecksRenderer::render()` + `PluginChecksAjaxController::register()`; `PluginInventoryRenderer` + `PluginInventoryAjaxController`; `PluginRecommendationRegistry::register_hexa_plugin()`.
+- **Extend:** `hexa_plugin_core_recommended_plugin_definitions`, `hexa_plugin_core_recommendation_providers`.
+- **Code:** `src/PluginChecks/` (docs: `docs/plugin-checks.md`)
+
+### Plugin installs and the plugin bridge
+- **Does:** installs and activates plugins from WordPress.org or a GitHub zip into the right folder; once any Hexa plugin is on a site, an administrator Application Password can install or update allowed plugins over REST (the PHP 7.4 build on older PHP).
+- **Use:** `PluginProvisioner::install_github_plugin()`, `install_wordpress_org_plugin()`, `plugin_status_by_folder()`; `PluginBridge::register()` (REST `hexa-plugin-core/v1/plugins/github`).
+- **Extend:** `hexa_plugin_core/plugin_bridge_owners`.
+- **Code:** `src/PluginProvisioning/` (docs: `docs/plugin-provisioning.md`)
+
+### Plugin updater
+- **Does:** updates the plugin from GitHub inside WordPress's updater, and the Git Report panel: repo, branch, GitHub against installed version, update button, version downloads and a live log; keeps the plugin's active state across updates.
+- **Use:** `$config = UpdaterConfig::from_plugin_file( __FILE__, [...] )`, `( new GitHubPluginUpdater( $config ) )->register()`, `( new UpdaterAjaxController( $config ) )->register()`, `( new UpdaterPanelRenderer( $config ) )->render()`; `bin/build-php74-release.sh` makes the PHP 7.4 release zip.
+- **Code:** `src/PluginUpdates/` (docs: `docs/updater.md`)
+
+### Core package panel and fleet sync
+- **Does:** shows the bundled Core against Core on GitHub with an update button, and copies the newest verified Core into every Hexa plugin on the site after plugin installs, updates and activations. After copying it loads the home page once and puts every copy back when the site no longer loads (server error or WordPress's critical-error page).
+- **Use:** `$core = CorePackageConfig::from_core_root( <core root>, [ github_repo, github_branch, nonce_action, ajax_action_prefix ] )`, `( new CorePackageAjaxController( $core ) )->register()`, `( new CorePackagePanelRenderer( $core ) )->render()`; `CorePackageFleetSyncModule` runs the sync.
+- **Extend:** `hexa_plugin_core_package_synchronized`, `hexa_plugin_core_package_sync_failed`.
+- **Code:** `src/CorePackageUpdates/` (docs: `docs/core-package-runtime.md`)
+
+### Integration tests
+- **Does:** Core's and each plugin's release checks with pass/fail, expected against actual output and timing, on an admin page and as JSON.
+- **Use:** `IntegrationTestRuntime::register_host()`, then add `TestDefinition`s on `hexa_plugin_core_register_integration_tests`; report at the `hexa-integration-tests` admin page (`TestEndpointController::url()`).
+- **Code:** `src/IntegrationTests/` (docs: `docs/integration-tests.md`)
+
+### Getting Started checklist
+- **Does:** an ordered setup checklist with templates, nested steps, run-one or run-all, spinner/tick/cross states, saved status, reports and a technical log.
+- **Use:** `new GettingStartedChecklistConfig( [ root_id, nonce_action, run_action, steps, templates, show_search ] )`, `( new GettingStartedChecklistAjaxController( $config ) )->register()`, `( new GettingStartedChecklistRenderer( $config ) )->render()`. Callbacks get one payload array and return `true`/`false`/a string/`WP_Error`/`[ success, message, logs, data ]`. `DestructiveSampleRunner` for a typed-confirmation sample.
+- **Code:** `src/GettingStartedChecklist/` (docs: `docs/getting-started-checklist.md`)
+
+### System checks
+- **Does:** grouped pass/fail/warn/info checklists from a flat list, for launch readiness, plugin health and environment checks.
+- **Use:** `( new SystemChecksRenderer() )->render( $items )`.
+- **Code:** `src/SystemChecks/` (docs: `docs/system-checks.md`)
+
+### System environment
+- **Does:** safe reads of PHP constants and settings, shell calls that respect disabled functions, CPU and memory detection and byte formatting.
+- **Use:** `SystemEnvironment::get_constant()`, `get_ini()`, `safe_shell_exec()`, `get_cpu_info()`, `get_memory_info()`, `parse_size()`.
+- **Code:** `src/SystemEnvironment/` (docs: `docs/system-environment.md`)
+
+### WP config file
+- **Does:** reads and writes `wp-config.php` constants and `ini_set()` values safely, with a backup to roll back to.
+- **Use:** `WpConfigFile::modify_constants()`, `defined_constants()`, `constant_status()`, `get_php_ini_value()`, `toggle_php_ini_value()`.
+- **Code:** `src/WpConfigFile/` (docs: `docs/wp-config-file.md`)
+
+### Log files
+- **Does:** an error-log viewer: tail of each log, sorted by severity, search and highlight, delete.
+- **Use:** `( new ErrorLogPanelRenderer() )->render( [ new ErrorLogSource( 'debug', 'debug.log', WP_CONTENT_DIR . '/debug.log', true, 'delete-debug-log' ) ] )`; `ErrorLogReader`, `ErrorLogClassifier`.
+- **Code:** `src/LogFiles/` (docs: `docs/logs.md`)
+
+### WordPress operations
+- **Does:** updates WordPress, plugins and themes now, sets future auto-updates, closes or deletes comments and repairs permalinks, each with before/after results.
+- **Use:** `UpdateOperations::update_all()` (or `update_core()`, `update_plugins()`, `update_themes()`), `AutoUpdatePolicy::apply()`, `DiscussionOperations::close_comments_and_pings()`/`delete_comments()`, `PermalinkOperations::repair()`; each has `status()`.
+- **Code:** `src/WordPressOperations/` (docs: `docs/wordpress-operations.md`)
+
+### Admin cleanup and client view
+- **Does:** switches that hide admin clutter (notices, meta boxes, columns, admin-bar items, footer text), for everyone or only non-administrators, some turning on by themselves with a reason; presets for comments, FIFU, Rank Math and LiteSpeed; and keeping other plugins' notices and profile sections away from clients.
+- **Use:** `( new CleanupRegistry( ... ) )->register()` with `CleanupOptionDefinition` (modes such as `meta_box_remove`, `audience => non_admins`, `auto_enabled`), `CleanupRenderer::render()` + `CleanupAjaxController::register()`; `CleanupPresets::comments_meta_box()`, `fifu_meta_box()`, `rankmath_lock_modified_date()`, `litespeed_ui()`, `client_notices()`, `client_profile()`; `ClientFacingPlugins::strip( $hook )`; `CleanupChecklistAdapter` turns options into checklist steps.
+- **Extend:** `hexa_core_client_facing_plugins`.
+- **Code:** `src/WpAdminUiCleanup/`
+
+### Content cleanup
+- **Does:** finds old or stray content, backup files, and posts with their media to delete: delete all matching, or all but the latest X, in AJAX batches with logs.
+- **Use:** `ContentCleanupConfig` + `ContentCleanupAjaxController` + `ContentCleanupRenderer`; `BackupCleanup*` for backup files; `ArticleMediaCleanup*` for posts and their media. Scans run when the user presses Scan unless `auto_scan => true`.
+- **Code:** `src/ContentCleanup/` (docs: `docs/content-cleanup.md`)
+
+### Database cleanup (deprecated)
+- **Does:** WP-Optimize-backed cleanup tasks and table optimization with live progress. HWS Base Tools now owns database cleanup; this module is removed once no site calls it.
+- **Use:** `DatabaseCleanupService`, `DatabaseCleanupAjaxController`, `DatabaseCleanupRenderer`; do not add new callers.
+- **Code:** `src/DatabaseCleanup/` (docs: `docs/database-cleanup.md`)
+
+### Object cache
+- **Does:** reads and turns on LiteSpeed's Redis object cache, verified.
+- **Use:** `LiteSpeedRedisService::status()`, `enable()`.
+- **Code:** `src/ObjectCache/` (docs: `docs/object-cache.md`)
+
+### LiteSpeed Cache settings
+- **Does:** checks, applies and verifies a plugin-supplied set of LiteSpeed Cache settings in one write through LiteSpeed's own settings API, showing the live and stored value of each. Core supplies no recommended values.
+- **Use:** a `Profile` of `SettingDefinition`s, then `LiteSpeedCacheService::audit()`, `apply()`, `verify()` with `LiteSpeedConfAdapter` (or `CallbackConfigurationAdapter` in tests).
+- **Code:** `src/LiteSpeedCache/` (docs: `docs/litespeed-cache.md`)
+
+### Users profile bridge
+- **Does:** a REST route to read and edit one user's profile, fields and avatar (never role, login or password), so signed connections can manage author profiles.
+- **Use:** `UserProfileBridge::register()`; `GET/POST hexa-plugin-core/v1/users/{id}/profile` for users with `list_users` and `edit_user`.
+- **Code:** `src/Users/`
+
+### Site structure
+- **Does:** the plugin's list of key pages, which page fills each, creating pages from templates, and building WordPress menus from them.
+- **Use:** `PageStructureManager` with the host's page blueprint, `SiteStructureRenderer::render( [ show_pages, show_menus ] )`, `SiteStructureAjaxController::register()`; `PageStructureMenuService`, `PageStructureTemplateService`.
+- **Code:** `src/SiteStructure/` (docs: `docs/site-structure.md`)
+
+### Schema tools
+- **Does:** the one schema library: node builders, WordPress data sources, shared `@id`s and one merged `hexa-schema` JSON-LD block per page from every plugin, plus the Rank Math schema switch and a schema dashboard.
+- **Use:** `SchemaNodes::organization()`, `person()`, `article()`, `web_page()` and the rest with `SchemaSources` and `SchemaIds`; `SchemaPage::register( $source, $callback )` to add nodes; `RankMathSchemaControl::register()`; `SchemaGraph::standalone_nodes()`, `validation_issues()`; `SchemaDashboardRenderer::render()`.
+- **Extend:** `hexa_plugin_core_schema_graph`.
+- **Code:** `src/SchemaTools/` (docs: `docs/schema-tools.md`, `docs/schema-standalone-nodes.md`)
+
+### Schema detection
+- **Does:** scans public URLs for JSON-LD, names its source, checks properties, duplicate types and FAQ markup, and shows a dark report.
+- **Use:** `SchemaPageScanner` to scan, `( new SchemaScanRenderer() )->renderReport( [ $scan ], [ 'title' => '...' ] )`.
+- **Code:** `src/SchemaDetection/` (docs: `docs/schema-detection.md`)
+
+### FAQ sets
+- **Does:** FAQ sets with a primary set, safe answer links, FAQPage schema and list or accordion output.
+- **Use:** `$m = new FaqSetManager(); $set = $m->resolveSet( $sets, 'primary', $slug ); echo $m->renderFaqs( $set, [ 'style' => 'accordion', 'inject_schema' => true ] )`; `FaqSourceResolver`.
+- **Code:** `src/FaqSets/` (docs: `docs/faq-sets.md`)
+
+### Search
+- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
+- **Use:** register a profile with `SearchRegistry::register( 'id', [...] )` (add `render_item` for cards, `source` = `users` with `roles` for people), then `[hexa_search id="id"]` or `SearchBox::render( 'id', $options )`; `SearchBox::header( $options )` for the header. HWS Base Tools ships `[hws_search]` and `[hws_search_box]`. Add `SearchModule` to the host bootstrap.
+- **Extend:** `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`, `hexa_plugin_core_search_register`.
+- **Code:** `src/Search/`. Markup and styling: HWS Base Tools `docs/hws-search.md`; API: `docs/hexa-search.md`.
+
+### Search matching
+- **Does:** the text matching behind every search: all/any/exact terms, whole/prefix/contains words, chosen post types and fields, public items only (no drafts, passwords or noindex pages), natural time windows ("this week"), result-type labels with an Elementor dynamic tag, and a separate index of public Elementor text.
+- **Use:** `SearchQueryEngine` with `SearchQueryConfiguration` (`searchable_post_types()`, `searchable_taxonomies()`), `SearchQueryEngine::restrict_to_public()`, `SearchMatchSql`, `ResultTypeLabels`, `ElementorPublicTextIndex`.
+- **Extend:** `hexa_plugin_core_search_query_should_handle`.
+- **Code:** `src/SearchQuery/` (docs: `docs/search-query.md`)
 
 ### Full-text search index
 - **Does:** fast live search on large sites: one MySQL FULLTEXT row per published post with the configured search sources; the search engine uses it instead of scanning posts and postmeta.
 - **Use:** `( new SearchIndex( $settings_provider ) )->register()`, `'index' => true` in the search settings, then build once with `rebuild()` pages.
 - **Code:** `src/SearchQuery/SearchIndex.php`
 
-### Search
-- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
-- **Use:** register a profile with `SearchRegistry::register( 'id', [...] )` (add `render_item` for cards, `source` = `users` with `roles` for people), then `[hexa_search id="id"]` or `SearchBox::render( 'id', $options )`; `SearchBox::header( $options )` for the header. HWS Base Tools ships `[hws_search]` and `[hws_search_box]`. Add `SearchModule` to the host bootstrap.
-- **Code:** `src/Search/`, filters and counts in `src/QueryFilter/`, text matching in `src/SearchQuery/`. Markup and styling: HWS Base Tools `docs/hws-search.md`; API: `docs/hexa-search.md`.
-- **Extend:** `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`, `hexa_plugin_core_query_filter_author_condition`, new filter types with `QueryFilterTypes::register()`.
+### Query filters
+- **Does:** visitor filters declared once (taxonomy, custom field, date range, author, post type, callback or a custom type) with several-choice checkboxes, any/all matching, number ranges, nested terms, counts, URL arguments and SQL, shared by Search, Calendar and Map.
+- **Use:** filter definitions in a profile's `filters`; `QueryFilterSet`, `QuerySql`; new types with `QueryFilterTypes::register()` on `hexa_plugin_core_query_filter_types`; `NaturalTimeWindow` for "next 2 weeks".
+- **Extend:** `hexa_plugin_core_query_filter_author_condition`.
+- **Code:** `src/QueryFilter/` (docs: `docs/query-filters.md`)
+
+### Query safety
+- **Does:** keeps Hexa query changes off the static front page, admin, AJAX, REST, cron and unmarked secondary loops, and repairs a front-page query another plugin changed.
+- **Use:** `QueryEligibility::allows_main_filtered_frontend_query( $query )` or `allows_main_or_explicit_filtered_frontend_query()` before touching a query; `StaticFrontPageQueryGuard` registers automatically.
+- **Extend:** `hexa_plugin_core_should_protect_static_front_page_query`, `hexa_plugin_core_static_front_page_query_repaired`.
+- **Code:** `src/QuerySafety/` (docs: `docs/query-safety.md`)
+
+### Smart search (typeahead)
+- **Does:** a typeahead box for picking content inside admin tools (the WordPress twin of Laravel's `<x-hexa-smart-search>`); not the public search.
+- **Use:** `( new SmartSearchRenderer() )->render( [ id, label, source => 'posts', post_type ] )`; AJAX action `hexa_plugin_core_smart_search`.
+- **Extend:** `hexa_plugin_core_smart_search_results`.
+- **Code:** `src/SmartSearch/`
+
+### Calendar
+- **Does:** a month calendar of posts from a registered profile; each item links to its page, a new tab or a lightbox.
+- **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` (post types, start/end fields, link, filters, sort), add `CalendarModule`, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/{profile}`.
+- **Extend:** `hexa_plugin_core_calendar_register`.
+- **Code:** `src/Calendar/` (docs: `docs/calendar.md`)
 
 ### Map
-- **Does:** a map of addresses geocoded without an API key.
-- **Use:** `MapRegistry::register( 'id', [...] )`, then `[hexa_map id="id"]`.
-- **Code:** `src/Map/`
+- **Does:** a brandable map of posts or users by address, geocoded in the background without an API key, with clustered pins, group and date filters, item cards and a details sidebar.
+- **Use:** `MapRegistry::register( 'id', [...] )`, add `MapModule`, then `[hexa_map id="id"]`; details at REST `hexa-plugin-core/v1/map/{profile}/details/{item}`.
+- **Style:** `--hmap-*` CSS variables, including the base map.
+- **Extend:** `hexa_plugin_core_map_register`.
+- **Code:** `src/Map/` (docs: `docs/map.md`)
 
-### Shared building blocks
-- Content types (`src/ContentTypes/`), ACF field factory (`src/AcfFieldFactory/`), front-end form fields (`src/FrontendForms/`), FAQ sets (`src/FaqSets/`), typography and brand colours (`src/Typography/`, `src/BrandColors/`).
-- **Extend:** `hexa_fields/load_field_groups`, `hexa_plugin_core_recommended_plugin_definitions`, `hexa_plugin_core/plugin_bridge_owners`.
+### Public components
+- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox, cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
+- **Use:** `ImageZoom::html( $attachment_id, $options )`; `ItemLink::attributes()` with `link_behavior` = `page`/`new_tab`/`lightbox` (REST `hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`); `RelativeTime::html( $timestamp )`; `ProfileStore`, `ProfileValues`, `PublicComponent`.
+- **Code:** `src/PublicComponents/` (docs: `docs/image-zoom.md`, `docs/item-link.md`, `docs/relative-time.md`)
 
-## Package Identity
+## Setup protocol
 
-These names are fixed. Do not rename them in plugin implementations.
+Every plugin that uses Core follows the same sequence; plugin-specific values live only in its `PluginContext`, never in Core.
 
-| Item | Value |
-| --- | --- |
-| Repository folder | `hexa-wordpress-plugin-core` |
-| Composer package | `hexa/plugin-core` |
-| Root namespace | `Hexa\PluginCore\` |
-| Autoload path | `src/` |
-| Version source | `VERSION` |
-
-## Required Folder Map
-
-Every sub-namespace has its own folder under `src/`.
-
-```text
-hexa-wordpress-plugin-core/
-  VERSION
-  PACKAGE_HASH
-  bootstrap.php
-  src/
-    AcfFieldFactory/    -> Hexa\PluginCore\AcfFieldFactory
-    ActivityLog/        -> Hexa\PluginCore\ActivityLog
-    BrandColors/        -> Hexa\PluginCore\BrandColors
-    BrandProfiles/      -> Hexa\PluginCore\BrandProfiles
-    CoreBootstrap/      -> Hexa\PluginCore\CoreBootstrap
-    CoreContracts/      -> Hexa\PluginCore\CoreContracts
-    CorePackageUpdates/ -> Hexa\PluginCore\CorePackageUpdates
-    CoreRuntime/        -> Hexa\PluginCore\CoreRuntime
-    ContentCleanup/     -> Hexa\PluginCore\ContentCleanup
-    ContentTypes/       -> Hexa\PluginCore\ContentTypes
-    CredentialVault/    -> Hexa\PluginCore\CredentialVault
-    DatabaseCleanup/    -> Hexa\PluginCore\DatabaseCleanup
-    DataNormalization/  -> Hexa\PluginCore\DataNormalization
-    EntitySources/      -> Hexa\PluginCore\EntitySources
-    FieldStructures/    -> Hexa\PluginCore\FieldStructures
-    FrontendForms/      -> Hexa\PluginCore\FrontendForms
-    FaqSets/            -> Hexa\PluginCore\FaqSets
-    GettingStartedChecklist/
-                        -> Hexa\PluginCore\GettingStartedChecklist
-    IntegrationTests/   -> Hexa\PluginCore\IntegrationTests
-    LogFiles/           -> Hexa\PluginCore\LogFiles
-    LiteSpeedCache/     -> Hexa\PluginCore\LiteSpeedCache
-    MediaUploads/       -> Hexa\PluginCore\MediaUploads
-    ObjectCache/        -> Hexa\PluginCore\ObjectCache
-    PluginChecks/       -> Hexa\PluginCore\PluginChecks
-    PluginProvisioning/ -> Hexa\PluginCore\PluginProvisioning
-    PluginUpdates/      -> Hexa\PluginCore\PluginUpdates
-    QuerySafety/        -> Hexa\PluginCore\QuerySafety
-    SnippetRegistry/    -> Hexa\PluginCore\SnippetRegistry
-    ShortcodeRegistry/  -> Hexa\PluginCore\ShortcodeRegistry
-    SiteStructure/      -> Hexa\PluginCore\SiteStructure
-    SchemaDetection/    -> Hexa\PluginCore\SchemaDetection
-    SchemaTools/        -> Hexa\PluginCore\SchemaTools
-    Search/             -> Hexa\PluginCore\Search
-    Calendar/           -> Hexa\PluginCore\Calendar
-    Map/                -> Hexa\PluginCore\Map
-    QueryFilter/        -> Hexa\PluginCore\QueryFilter
-    PublicComponents/   -> Hexa\PluginCore\PublicComponents
-    SearchQuery/        -> Hexa\PluginCore\SearchQuery
-    SmartSearch/        -> Hexa\PluginCore\SmartSearch
-    SystemEnvironment/  -> Hexa\PluginCore\SystemEnvironment
-    Taxonomies/         -> Hexa\PluginCore\Taxonomies
-    WpAdminUiCleanup/   -> Hexa\PluginCore\WpAdminUiCleanup
-    WpAdminComponents/  -> Hexa\PluginCore\WpAdminComponents
-    WpAdminAjax/        -> Hexa\PluginCore\WpAdminAjax
-    WpAdminTabs/        -> Hexa\PluginCore\WpAdminTabs
-    WpConfigFile/       -> Hexa\PluginCore\WpConfigFile
-    WpCronTasks/        -> Hexa\PluginCore\WpCronTasks
-    WordPressOperations/-> Hexa\PluginCore\WordPressOperations
-```
-
-## Stable 1.0 Release
-
-Version 1.0.0 establishes the shared Core contracts as the stable major baseline for Hexa WordPress plugins. It consolidates reusable content-type and ACF registration, optional canonical entity sources, schema document handling, admin UI, AJAX, updater, search, cleanup, and frontend display infrastructure behind the `Hexa\PluginCore` namespace.
-
-Version 1.1.2 renders canonical-entity social links as labeled rows with complete clickable URLs and makes disabled Core-managed ACF groups suppress active database copies that share the same group key.
-
-Version 1.1.3 separates the complete WordPress/ACF entity field inventory into a reusable renderer so host plugins can place it in their field-management area without duplicating it inside the primary-entity selector.
-
-Version 1.1.4 adds an opt-in unconfigured website-type state, an intentional empty primary-entity presentation, and reliable hidden-state styling for empty Smart Search selections.
-
-Version 1.1.5 adds fault-tolerant schema URL normalization and reports invalid schema URLs without breaking page output or scans.
-
-Version 1.1.6 adds reusable standalone schema-node normalization so host plugins can keep every top-level JSON-LD entity independently detectable while preserving typed author, publisher, copyright-holder, and image summaries.
-
-Version 1.1.7 adds `MediaGalleryDetailsRenderer`, a host-neutral collapsed image-details panel with selectable attachments, full and generated-size URLs, new-tab links, and shared dynamic clipboard buttons.
-
-Version 1.1.8 makes media URL copying fall back to the synchronous browser copy path when an exposed Clipboard API rejects the write.
-
-Version 1.1.9 adds a reusable ACF gallery-details module with live native-gallery synchronization, context-aware AJAX removal, larger previews, and separate image-data and URL clipboard actions.
-
-Version 1.2.0 adds an automatically registered static-front-page query invariant plus reusable main-or-explicit query eligibility predicates. Hexa query callbacks can reject the exact configured front-page main query, suppressed filters, background requests, and unmarked secondary loops before loading settings or attaching SQL filters, while Core repairs later post-type or page-ID mutations as defense in depth. The native search engine now uses one idempotent weak-state SQL dispatcher so duplicate preparation cannot stack closures or retain abandoned query objects.
-
-Version 2.1.4 keeps Getting Started parent-step and full-checklist runs available when only child tasks are awaiting input. Runnable subtasks execute in their registered order while each input-dependent child validates itself, so an early dependency-provisioning task can install required packages before later actions run. Template selection continues to distinguish selected from loaded states and expose loading, success, and failure feedback. `TemplateSelectionControl` retains its no-design toggle, responsive column constraints, accessible visual grid, scaled preview viewports, selected-state behavior, host save hooks, and AJAX-tab reinitialization.
-
-Version 3.0.0 establishes the coordinated major release for the expanded Core data-normalization, operations, provisioning, checklist-state, fleet-synchronization, and reusable admin infrastructure shipped in this source tree.
-
-Version 3.30.4 (loops showing the page's own results are found without a marker class), 3.30.3 (filter controls styled in every look) and 3.30.2 replace the four separate searches (`SearchDisplay`, `SearchQuery\ElementorSearchAdapter`, `DirectorySearch`, `ListingSearch`) with one: `Hexa\PluginCore\Search`. One profile shape covers posts and role-scoped users; one box either narrows the page's own list (archives, the search page, any Elementor loop marked `hexa-listing-results`, with `post_type`/`category`/`tag`/`author` scope for ordinary pages) or renders its own cards with sorts and Load more; one script refreshes every box in place with one loader (the results dim and a spinner shows); `SearchBox::header()` draws the header search box (icon-reveal or field, never a popup). Address parameters are `hs`, `hq`, `hf`, `hp`, `ho`; filters `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`; shortcode `[hexa_search id]`; the directory REST endpoint is removed.
-
-Version 3.29.8 adds `ListingSearchRenderer::preview( $style )`, a still picture of each look for settings screens. Version 3.29.7 draws the ticked-filter count as an outlined number in the text colour, visible on any background. Version 3.29.6 scopes the box styles so theme field styles cannot reshape it (restyle through `--hls-*`). Version 3.29.5 gives the listing search box three looks (`none`, `default-1` compact, `default-2` editorial), every rule at zero specificity so site CSS wins. Version 3.29.4 opens a filter list leftward when it would run off the right edge of the screen. Version 3.29.3 prints the listing search box's style and script with every box, so a page whose content another plugin renders first in the background keeps a working box. Version 3.29 adds `Hexa\PluginCore\ListingSearch` (search and filters inside any WordPress listing, refreshed in place), moves `DirectorySearch` onto `WP_Query`/`WP_User_Query`, gives `QueryFilter` several-choice checkboxes with any/all matching, number ranges, nested term lists, per-option counts and the `author` and `post_type` types, and removes the JetEngine search adapter.
-
-Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
-
-Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
-
-Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
-
-Version 3.21.0 makes site search public-only for everyone: `SearchQueryEngine::restrict_to_public()` limits every prepared search (the regular search page and the Elementor Search widget) to published, non-password items, drops anything marked noindex (Rank Math `rank_math_robots`, Yoast `_yoast_wpseo_meta-robots-noindex`) and never returns the site's front or posts page. Before, the regular search page used WordPress's default, which shows private posts to signed-in editors.
-
-Version 3.28.1 also removes staff plugins' Profile contact fields and footer scripts for clients (Rank Math's Twitter, Facebook and extra-link fields and its "Rank Math SEO" heading).
-
-Version 3.28.0 keeps staff business away from clients (users below administrator) at the source. `WpAdminUiCleanup\ClientFacingPlugins` names the plugins that may speak to clients (`hexa-*`, `hws-*`, ACF, WP User Avatars; filter `hexa_core_client_facing_plugins`) and `strip( $hook )` removes every other plugin's callbacks from a hook before it runs. `CleanupPresets::client_notices()` strips the admin-notice hooks, so Rank Math notices and donation banners never reach clients. `CleanupPresets::client_profile()` strips staff plugins' Profile sections (Rank Math SEO, Elementor AI), turns Application Passwords off through `wp_is_application_passwords_available_for_user`, removes the color picker through its own hook and hides the remaining hook-less Personal Options rows by WordPress's row classes. `Fields\Audience` adds `'hide' => true` to `client_view`: a staff-only group is not registered for client-view users; the registry card offers "Hide the whole group from them".
-
-Version 3.27.0 adds a client-friendly field view (`Fields\Audience`). Any field can carry `developer_instructions` (shortcodes, meta keys, compatibility notes) beside its friendly `instructions`. A group's `client_view` (`['enabled' => true, 'roles' => 'below_admin']` by default, or a role list) decides who sees only the friendly help; everyone else sees both. `AcfFieldGroupRegistry` cards add a Client-friendly view switch with "Everyone below administrator" or chosen roles, saved per group. Filter: `hexa_core_fields_client_view`.
-
-Version 3.27.1 smooths the ImageZoom hover preview: it fades and settles in over about half a second once the image is decoded, with rounder corners (16px) and a softer hint line that follows them.
-
-Version 3.27.2 keeps the hover preview open while the pointer is on it: it closes only when the pointer leaves the preview (or the thumbnail without entering it) or on a click outside. Clicking the preview image opens the full-screen viewer and the detail links are real links (outside links open in a new tab).
-
-Version 3.27.3 makes the hover preview hint line easier to read: brighter text at 12.5px and a soft glow on its accent dot.
-
-Version 3.26.0 gives `ImageZoom` optional `delay` (ms, up to 5000) with a countdown ring on the thumbnail, a one-line `hint` above the preview (a default explainer when a delay is set; empty string hides it) and a `detail` side panel (title, label/value facts, short text, link lines). Without options the markup is unchanged.
-
-Version 3.25.0 gives `TaskRunner` a full dashboard look: `header()`, `segments()` (remembered panel switcher), KPI tiles with tones, toolbars with search and filter chips, a bulk-selection bar, soft badges, expandable lists, a slim progress bar with Stop and a light Activity log. `queue()` accepts `concurrency` for read-only steps. Root class: `hpc-runner-app`.
-
-Version 3.24.1 adds `WpAdminComponents\TaskRunner`, the shared live-progress pieces for admin jobs that run as AJAX steps: stat cards, progress meter, status badges, job tables, a live log and the `HexaWpCoreTaskRunner` client (`post`, one-at-a-time `queue`, batched `loop`, stop between steps). Docs: `docs/task-runner.md`. `DatabaseCleanup` (the WP-Optimize wrapper) is deprecated: HWS Base Tools now owns database cleanup itself, and the module will be removed once every site runs a Base Tools release that no longer calls it.
-
-Version 3.22.0 makes Core the one schema library: `SchemaNodes` builders, `SchemaSources` WordPress adapters, `SchemaIds`, the shared per-page graph `SchemaPage` (one `hexa-schema` block merged from every plugin) and `RankMathSchemaControl`. Plugins decide where they output; Core builds, merges and prints.
-
-Version 3.21.1 fixes a search hang from 3.21.0: the noindex rule was a `meta_query` that WordPress compiles into unkeyed postmeta joins, and Elementor searches applied it twice, so one query multiplied every post by its meta rows and ran for minutes. `restrict_to_public()` now only marks the query (`hexa_search_public_only`), and the search SQL excludes noindex with one indexed postmeta subquery (`SearchQueryEngine::noindex_exclusion_sql()`). Calling it twice changes nothing.
-
-Version 3.20.0 adds the Elementor search results page mode (`hexa-search-page-results` and `hexa-search-default` CSS classes): results in the page, the spinner over the current results while loading, default content hidden while results show.
-
-Version 3.19.1 makes short words such as "5G" or the "1" in "GLP-1" fast with the search index: they are matched on the indexed text, narrowed by the query's longer words.
-
-Version 3.19.0 adds `SearchQuery\SearchIndex`, an optional MySQL full-text index the search engine uses with `'index' => true`, so live search on sites with tens of thousands of posts answers in milliseconds instead of seconds.
-
-Version 3.18.3 keeps theme and page-builder image rules (such as `height: auto`) from shrinking the ImageZoom thumbnail inside its box.
-
-Version 3.18.2 adds the ImageZoom `fit => contain` option (the whole image over a blurred fill of itself, nothing cropped) and keeps an explicit `sizes` list from being overridden by lazy `auto` sizing, so tall thumbnails stay sharp.
-
-Version 3.18.1 keeps page-builder lightboxes (Elementor) from opening on top of the ImageZoom viewer.
-
-Version 3.18.0 adds `PublicComponents\ImageZoom`, a reusable flyer/poster viewer: `ImageZoom::html( $attachment_id )` prints the thumbnail; hovering shows the original image large in a centered preview that fades out when the pointer leaves, and a click or tap opens a full-screen viewer with pinch, wheel and double-tap zoom, finger panning, and swipe-down, Escape or backdrop to close. Docs: `docs/image-zoom.md`.
-
-Version 3.17.0 adds `SearchQuery\ResultTypeLabels`, host-declared labels that flag each search result's kind (for example Press Release, External PR or Site Content), the matching **Result Type** Elementor dynamic tag for search-result Loop Items, and `SearchQueryConfiguration::searchable_post_types()` / `searchable_taxonomies()` for full-site search scopes.
-
-Version 3.16.0 lets any cleanup option apply only to non-administrators (`audience` => `non_admins`, with `audience_capability`), removes list-table columns (`columns` + `column_hooks`) and admin-bar nodes (`admin_bar_nodes`), adds the `rankmath_lock_modified_date()` and `litespeed_ui()` presets, and adds `Taxonomies\TermChoiceLimits`, which limits how many terms users without a capability may pick (radio buttons when the limit is one), enforced again on save.
-
-Version 3.15.0 adds the `meta_box_remove` cleanup mode, which removes editor meta boxes through WordPress's `remove_meta_box()` after every plugin has added its boxes (optionally per post type), an `auto_enabled` condition that turns an option on by itself with a shown reason, and `CleanupPresets` with the shared Comments box (on automatically while comments are closed) and FIFU box options, so host plugins stop re-implementing them.
-
-Version 3.14.4 synchronizes the registered native Elementor Search input's collapsed state when an outside click closes its result list, while preserving inside clicks and unregistered widgets. It includes the 3.14.3 native reopen lifecycle bridge.
-
-Version 3.14.3 synchronizes the native Elementor Search input's expanded state when Elementor reopens a visible result list after Escape. The lifecycle bridge applies only to registered widgets and preserves native rendering, keyboard behavior, and the existing natural search and map features.
-
-Version 3.14.2 moves the map's zoom controls beside the open selection panel on desktop so the panel never covers them.
-
-Version 3.14.0 redesigns the map selection panel as a sectioned overlay that slides in over the map (a bottom sheet on narrow screens) instead of resizing it, glides the camera so the selected pin stays clear, and organizes entries as compact rows with date badges, meta lines, tags and thumbnails, a featured card for a single entry, a loading skeleton, and a "Show more" footer that appends pages in one scrolling list.
-
-Version 3.14.1 adds bounded natural search time windows to the shared QueryFilter/SearchQuery contract, including duration-only and keyword-plus-window searches while preserving native WordPress and Elementor query handling.
-
-Version 3.13.4 keeps native Elementor Search keyboard and icon behavior intact when results are nested inside another keyboard component or intentionally rendered in normal document flow.
-
-Version 3.13.3 clears a registered Elementor Search widget's old result markup as soon as its current input falls below the widget's native minimum character setting, while preserving native rendering at and above that threshold.
-
-Version 3.13.2 keeps host-owned upcoming-event eligibility in the generic Core search contract through bounded correlated meta constraints, avoiding row-multiplying `WP_Meta_Query` joins while preserving native Elementor listing grids and ordering.
-
-Version 3.13.1 keeps live-search status announcements out of Elementor result grids by hiding non-error status content accessibly, and replaces stale result cards with one full-width visible error state when a request fails.
-
-Version 3.13.0 adds the generic `SearchQuery\\ElementorSearchAdapter` for trusted native Elementor Search widgets, including bounded public matching, exact Query ID provenance, live REST-safe query preparation, cancellation and stale-response protection, accessible request states, and preserved Loop Item listing grids. `ElementorPublicTextIndex` adds a separate bounded index of anonymously rendered public Elementor text, including reusable templates, without searching raw document data or rewriting `post_content`.
-
-Version 3.12.0 adds an opt-in Map selection sidebar with lazy, paginated detail REST responses, rich image/title/fact/action entries, responsive placement, request cancellation, focus management, and related-content cache invalidation.
-
-Version 3.11.0 adds stable per-day multi-criterion calendar sorting with field paths, value callbacks, type-aware comparison, and explicit missing-value placement. Hosts can sort by any item data, including nested `data.*` values, while preserving stable ties.
-
-Version 3.10.0 removes `Hexa\PluginCore\DraftPreview`. Public draft links are an HWS Base Tools feature, not a shared Core module.
-
-Version 3.8.1 closes the item lightbox cleanly on a quick close and reopen: unlocking page scroll, clearing the dialog, and returning focus now happen as the dialog closes instead of in the later close event.
-
-Version 3.8.0 adds one `link_behavior` setting to the `Calendar` and `Map` components: `page` (follow the link, the default), `new_tab`, or `lightbox`, which shows the linked post in an in-page dialog (`ItemLink`, `ItemLightbox`, `GET /wp-json/hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`), so visitors can click through a calendar or a map without leaving the page. Docs: `docs/item-link.md`.
-
-Version 3.7.3 serializes `wp-config.php` INI and constant values with PHP literals, preventing quote-bearing input from escaping the generated assignment while preserving numeric and boolean scalar behavior.
-
-Version 3.7.1 sets the Map asset budget to 6.5 KB gzipped (the 3.7.0 selection code added about 0.8 KB), so the Core suite passes again.
-
-Version 3.7.0 makes choosing a location on a `Map` smooth: each pin has an invisible 22px target and clicks pick the nearest pin, hovering enlarges the pin with a ring and shows the location's name, the chosen pin stays highlighted, clicking another pin swaps the card in place, clicking empty map closes it, and the map glides so the card opens fully in view. Cached map payloads are keyed by a payload version so shape changes never serve stale data.
-
-Version 3.6.2 hardens the Map filter chips against theme button styles (hover, focus and active states no longer inherit a theme's button colors, such as Hello Elementor's pink) and shows chip counts as aligned tabular-number badges.
-
-Version 3.6.1 adds `Hexa\PluginCore\Users\UserProfileBridge`: `GET/POST hexa-plugin-core/v1/users/{id}/profile` reads one user with safe meta and the avatar provider, and writes native profile fields, meta, fields and the avatar for a user with `list_users` and `edit_user`. It never changes role, login, password or session data, and serves a local avatar when no avatar plugin is active. Host plugins switch it on with `UserProfileBridge::register()`, so Application Password and signed HWS Base Tools connections can manage author profiles.
-
-Version 3.6.0 adds a date filter to `Hexa\PluginCore\Map`: profiles that supply `next` (each item's next dated start) get "Any time · 24 hours · 48 hours · 1 week · 2 weeks" chips with live counts, applied in the browser against the visitor's clock and combined with the group filter. Windows are configurable. Docs: `docs/map.md`.
-
-Version 3.5.1 adds `Hexa\PluginCore\PublicComponents\RelativeTime`, a cache-safe "5 min ago / 2 days ago" `<time>` element whose age is recomputed in the browser, for "last updated" lines on public pages. Docs: `docs/relative-time.md`.
-
-Version 3.5.0 adds `Hexa\PluginCore\Map`, a brandable public location map (`[hexa_map id="…"]`). Hosts register a profile of posts or users with a street address field; Core geocodes new and changed addresses in the background with keyless services (US Census, OpenStreetMap Nominatim), stores the coordinates on each item, and renders a lazily loaded MapLibre map on free OpenFreeMap tiles with clustered pins, highlighted pins, a group filter, item cards, and a plain link list. Every color, including the base map, comes from `--hmap-*` CSS tokens. Full protocol: `docs/map.md`.
-
-Version 3.4.16 refreshes WordPress's URL rules once whenever a `ContentTypeRegistry`'s post types, their URL bases or the permalink structure change, including right after the host plugin is activated through REST, WP-CLI or an updater. Before, new post type URLs returned 404 until Settings > Permalinks was re-saved.
-
-Version 3.4.15 makes `PluginBridge` choose the release zip for the running PHP: the `-php74.zip` build below PHP 8.2, the normal zip otherwise, installed into the same plugin folder.
-
-Version 3.4.14 lets Hexa plugins run on PHP 7.4 without giving up modern source. `bin/build-php74-release.sh <plugin-git-dir> <ref> <folder> <out.zip>` rewrites a plugin and its bundled Core to PHP 7.4 syntax with Rector (`bin/rector-php74.php`), lints every file on PHP 7.4 and zips it; attach it to the release as `<folder>-<version>-php74.zip`. The GitHub updater reads the branch source's `Requires PHP`: sites on older PHP get that PHP 7.4 build, or, when a release has none, an offer that states the real requirement so WordPress refuses it instead of installing code the site cannot parse. Sites on current PHP keep the branch source.
-
-Version 3.4.13 makes `PluginBridge` load on PHP 8.1 (its install step returned a PHP 8.2-only `true` type).
-
-Version 3.4.12 adds `PluginBridge`: once any Hexa plugin that bundles Core is on a site, an administrator Application Password can install or update other allowed plugins from their GitHub release zips over REST (`hexa-plugin-core/v1/plugins/github`), without wp-admin.
-
-Version 3.4.11 makes the migration tool emit `hexa_fields_on()` for every ACF hook registration, since a registration inside a function can still run while plugins load, before Core's classes are autoloadable. Runtime code is unchanged from 3.4.10.
-
-Version 3.4.10 fires ACF's `include_fields` registration moment natively (just before `init`, as ACF does), so groups registered with `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` exist without ACF.
-
-Version 3.4.9 resolves the published fields of trashed ACF admin-screen groups by key or name, as `acf_get_field()` does, while never listing or rendering those groups.
-
-Version 3.4.8 passes every native location-rule result through ACF's location filters (`location/match_rule/type=<param>`, `location/match_rule`, `location/rule_match/<param>`, `location/rule_match`), as `acf_match_location_rule()` does, so host visibility filters work without ACF.
-
-Version 3.4.7 adds `hexa_fields_on()` to `bootstrap.php` for field hooks registered while plugins load (before Core's classes can be autoloaded; the migration tool emits it for file-level hooks), and applies the `load_field_groups` filter to native group lists as ACF does.
-
-Version 3.4.6 reads field groups created in the ACF admin screen (`acf-field-group`/`acf-field` posts) when ACF is not active, exactly as ACF does: their fields resolve and format, active ones render on their screens, and code-registered groups with the same key win. A missing value now takes the field's or its type's `default_value`, as `acf_get_value()` does. `Field::all()` follows `get_field_objects()` exactly (stored-value order; a value is listed when its reference resolves to a field of the same name), page-link and post fields resolve only posts `acf_get_posts()` returns, and WYSIWYG output runs ACF's `acf_the_content` filter chain.
-
-Version 3.4.5 adds `Form::field()`, the equivalent of `acf_render_field_wrap()`: one field outside a form, posted under `acf[<key>]` in both modes, and maps it in `bin/migrate-to-fields.php`.
-
-Version 3.4.4 makes native Fields read exactly as ACF reads: a name resolves through its stored field-key reference (a never-saved name returns the raw value or null, as `get_field()` does; only `update()` also matches registered names), and option references use ACF's `_options_<name>` storage name.
-
-Version 3.4.3 derives a missing field-group key from its title and a missing field key from its name, exactly as ACF does, and ships `tests/support/fields.php` so host-plugin unit tests can run Fields against their own ACF stubs.
-
-Version 3.4.2 makes native `Field::objects()`/`all()` list exactly what ACF lists: every top-level field with a stored `_name` reference on the object (verified field-for-field against ACF on hexaprwire.com's real releases and outlet records).
-
-Version 3.4.1 lets host-defined location rules (`Hooks::on( 'location/rule_match/<param>', ... )`) decide where native field groups appear, as ACF does.
-
-Version 3.4.0 adds `Hexa\PluginCore\Fields`, the one custom-field API for every Hexa plugin: field-group registration, `Field::get()`/`update()` and row loops, options pages, forms and ACF lifecycle hooks, all with ACF-identical signatures. With ACF active every call delegates to ACF; without it Core stores, formats and edits the same data natively in ACF's storage layout, so ACF Pro is no longer a requirement. Content types, field-structure registries, the settings panel, entity sources, FAQ sets, the gallery module and query filters now use it. See `docs/fields.md`.
-
-Version 3.3.0 makes content-type field groups work without ACF. `ContentTypes\NativeFieldGroups` registers each enabled group as a native meta box and post meta when ACF is not active, storing values under the same meta keys ACF uses so existing data remains readable and carries over if ACF is activated later. The Content Model screen shows the active field storage.
-
-Version 3.2.2 gives calendar overflow disclosures distinct collapsed and expanded labels, so the control changes from the event count to `Show less` while open and supports host-defined `labels.less` text.
-
-Version 3.2.0 adds `Hexa\PluginCore\Calendar`, a lightweight library-free month-grid calendar (`[hexa_calendar]`, `GET /wp-json/hexa-plugin-core/v1/calendar/{profile}`) whose items link to profile-defined URLs, and `Hexa\PluginCore\QueryFilter`, the one shared visitor-filter structure (taxonomy, custom field/ACF, date range, callback, and host-registered types) now used by both `Calendar` and `DirectorySearch`. Shared public-component helpers move into `Hexa\PluginCore\PublicComponents`; the `DirectorySearch` public API is unchanged (the former filter constants and `DirectorySearchRequest::filter_options()` remain as deprecated aliases) and gains date-range filters.
-
-Version 3.1.0 adds `Hexa\PluginCore\DirectorySearch`, a declarative public directory search over published posts or role-scoped users (all/any/exact terms, whole/prefix/contains matching, `*` wildcards, meta/taxonomy/callback filters, field/callback sorts, card templates, `[hexa_directory]`, and `GET /wp-json/hexa-plugin-core/v1/directory/{profile}`), and moves term matching into the shared `SearchQuery\SearchMatchSql` helper used by the native results engine.
-
-Version 3.0.7 adds the shared dynamic admin-notice component for consistent no-refresh save feedback and makes generic plugin deactivation preserve site or network scope with an explicit network-capability guard.
-
-Version 3.0.6 preserves each plugin's inactive, site-active, or network-active state across native updates, normalizes the installed package into its canonical folder, clears discovery caches before restoration, and verifies the restored activation scope with explicit errors when installation or reactivation fails.
-
-Version 3.0.5 makes external ACF sibling cards visually secondary to their CPT with quieter surfaces, smaller titles, compact switches and chevrons, and softer relationship rails. Imported field rows show label, name, and type with a per-field JSON disclosure sourced from the actual ACF definition, while expanded section and action spacing improves scanability.
-
-Version 3.0.4 puts functional enable switches directly in CPT and ACF card headers, removes redundant status badges and key chips, and renders each CPT's ACF cards as immediate siblings outside the CPT accordion.
-
-Version 3.0.3 organizes content-type management as collapsed CPT parent cards. Each parent contains its own CPT configuration followed by a separate collapsed child section for every attached ACF field group, including group metadata and a compact field inventory.
-
-Version 3.0.2 replaces the content-type dashboard grid with a single-column settings flow that keeps editable labels and URL controls visible and moves technical metadata into a secondary disclosure.
-
-Version 3.0.1 preserves explicit `@id` and `@type` relationship summaries when standalone schema nodes are normalized.
-
-## Schema Tools
-
-Every Hexa plugin builds schema with `SchemaNodes` and `SchemaSources` and adds it to `SchemaPage`, which merges all plugins' nodes into one `hexa-schema` block per page. Each plugin decides which pages it covers. HWS Base Tools owns the Rank Math schema switch (`RankMathSchemaControl`). See `docs/schema-tools.md`.
-
-The schema tools also include reusable schema graph helpers and a generic schema dashboard renderer. Host plugins can build their own schema objects, normalize independently detectable graph nodes with `SchemaGraph::standalone_nodes()`, opt into explicit `@id` and `@type` relationship summaries for linked top-level nodes, expose debug JSON, show ideal-vs-actual graph examples, provide validator links, render collapsed shortcode cards, and pass plugin-specific schema action panels through HexaWP Core instead of duplicating dashboard UI.
-
-Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`, or plugin-specific namespaces inside this package. Consuming plugins may have their own namespaces, but this shared package always stays under `Hexa\PluginCore`.
-
-## First Core Areas
-
-- `AcfFieldFactory`: reusable ACF field array factories for host field-group registrations.
-- `ActivityLog`: shared activity log records, storage modes, and expandable dark log renderer.
-- `BrandColors`: shared HWS Base Tools brand color readers, hex normalization, RGB conversion, and color-control payloads.
-- `BrandProfiles`: normalized domain, identity, logo, color, and support-email values for reusable public experiences.
-- `CoreBootstrap`: consistent setup/init protocol for loading this core in a host plugin.
-- `CoreContracts`: interfaces that host plugins and core modules must follow.
-- `CorePackageUpdates`: compares and updates one vendored Core package, downloads once for an explicit fleet update, and automatically propagates the newest verified bundle across registered host plugins after plugin lifecycle changes.
-- `CoreRuntime`: runtime value objects, plugin context, version metadata, and selected-package integrity diagnostics.
-- `ContentCleanup`: old content detection, backup file detection/deletion, article/media cleanup, all-matching and all-except-latest-X batch deletion, guarded AJAX actions, collapsible service cards, human-readable rule and scan-location detail cards, AJAX table updates, and collapsed Hexa Core Log Type 1 cleanup activity UI.
-- `ContentTypes`: immutable WordPress post-type keys with reusable registration, editable labels and rewrite slugs, guarded AJAX persistence, functional header toggles, collapsed CPT cards, and immediate external ACF sibling cards.
-- `CredentialVault`: encrypted API-key/secret storage, masking, and credential field examples.
-- `DatabaseCleanup` (deprecated, see 3.24.1): guarded provider-backed cleanup sessions, per-task cleanup, per-table optimization, pre/post provider state restoration, and live AJAX progress.
-- `DataNormalization`: compatibility-friendly scalar, ACF/meta field, and WordPress media normalizers for host-owned data mappings.
-- `EntitySources`: optional canonical website/entity selection, derived semantic types, legacy migration, user/post resolution, complete author/profile cards, attached-author extraction, field inspection, and reusable admin UI.
-- `FieldStructures`: reusable ACF group registration and settings panels, a generic live ACF gallery-details module, plus displays and status checks for ACF groups, custom post types, taxonomies, and option-backed feature structures.
-- `FrontendForms`: canonical public field schemas plus WordPress-safe WYSIWYG normalization and plain-text projection.
-- `FaqSets`: shared FAQ set sanitizing, item normalization, primary-set resolution, safe answer links, FAQPage schema, and reusable list or accordion output.
-- `GettingStartedChecklist`: reusable plugin startup/onboarding checklist UI, persistent live status/summary/reset, exact template routing, cumulative item capabilities, mutation-aware batch stopping, individual-only batch skipping, guarded AJAX execution, sequential subtasks, callback normalization, reports, previews, and technical activity logs.
-- `IntegrationTests`: automatic Core and host release checks, plugin-defined test registration, exception-safe pass/fail execution, capability-protected HTML and JSON report URLs, detailed expected/actual output, and per-test timing.
-- `LogFiles`: shared error-log source definitions, tail readers, classifiers, search/highlight UI, and renderers.
-- `LiteSpeedCache`: array-driven host profiles, generic audit/apply/verify and casting, effective/stored provenance, and one-batch writes through the official LiteSpeed Conf API; Core supplies no recommended values.
-- `MediaUploads`: reusable image MIME, extension, and size policy plus guarded WordPress Media Library storage.
-- `ObjectCache`: provider-specific object-cache status and activation adapters, including verified LiteSpeed Redis checks.
-- `PluginChecks`: shared required-plugin definitions, status checks, reusable collapsible plugin inventory tables, presence-based green/red Font Awesome SVG title indicators, Required/Optional badges, AJAX install/activate/deactivate/delete actions, activation-scope-aware deactivation, subtle secondary row controls, update-cache refresh, and activity-log UI.
-- `PluginProvisioning`: shared plugin discovery, site/network activation status checks, WordPress.org installs, GitHub ZIP installs, folder normalization, and activation.
-- `PluginUpdates`: shared GitHub/update configuration objects and host plugin updater.
-- `QuerySafety`: suppressed-filter/request eligibility checks, exact static-front-page detection, and parse-before-mutation invariant capture with final-priority repair.
-- `SnippetRegistry`: shared snippet definitions, option toggles, test rules, related snippets, related shortcodes, basic README rendering, generic AJAX handlers, and the canonical snippets table UI.
-- `ShortcodeRegistry`: shortcode definition registry, dashboard display renderer, examples, live output, and test runner contracts.
-- `SiteStructure`: reusable critical page blueprint management, assigned page storage, WordPress navigation menu creation, custom menu-item creation, add-all-assigned-pages actions, menu structure attachment, and page-to-menu-item tools.
-- `SchemaDetection`: reusable JSON-LD URL scans, source detection, semantic property validation, duplicate schema conflict checks, FAQ validation, and dark admin report rendering.
-- `SchemaTools`: the one schema library for every Hexa plugin: generic node builders (`SchemaNodes`), WordPress data adapters (`SchemaSources`), shared `@id` conventions (`SchemaIds`), one merged graph per page (`SchemaPage`), the Rank Math schema switch (`RankMathSchemaControl`), URL guards, normalization and JSON-LD rendering. Host plugins decide which pages they cover; Core builds and prints.
-- `Search`: the one public search: profiles over posts or role-scoped users, a box that narrows the page's own list or renders its own cards, filters with counts, sorts, Load more, one loader, one script, and the header search box.
-- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, optional natural time windows from shared QueryFilter rules, selected post types and sources, one-query-only SQL hooks, and a safe public Elementor text index.
-- `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
-- `Calendar`: lightweight public month-grid calendar profiles over dated posts (or a host provider) with linked items, shared filters, bounded month navigation, a public REST endpoint, and a server-rendered shortcode.
-- `Map`: brandable public location maps over posts or users with background geocoding, clustered pins, a group filter, item cards, and a shortcode.
-- `QueryFilter`: the shared declarative visitor-filter structure (taxonomy, custom field/ACF, date range, callback, extensible types) plus bounded natural search time-window parsing, with SQL, parsing, controls, and URL arguments.
-- `PublicComponents`: shared profile sanitizers, profile stores, URL/base-path helpers, shortcode-inert output, and public REST caching for public components.
-- `SystemEnvironment`: safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting.
-- `Taxonomies`: reusable taxonomy definitions, callback-backed registration, and shared reference UI for host-owned editorial taxonomies.
-- `WpAdminUiCleanup`: shared admin UI cleanup definitions, AJAX toggles, target-screen CSS/JS, postbox hide/collapse behavior, PHP meta box removal (`meta_box_remove`), conditional auto-enable, shared `CleanupPresets`, and footer filters.
-- `WpAdminComponents`: shared visual primitives such as cards, subcards, buttons, pills, tooltips, collapsible sections, dynamic save notices, three-column visual template selectors, selectable media gallery details, color controls, font-family controls, and scoped CSS override editors and references.
-- `WpAdminAjax`: WordPress admin-AJAX nonce, capability, request parsing, action registration, and handler guards.
-- `WpAdminTabs`: admin tab definitions, registry, host hook integration, and the automatic Hexa core documentation tab.
-- `WpConfigFile`: safe `wp-config.php` constant and `ini_set()` reads/writes with validation and rollback backup handling.
-- `WpCronTasks`: reusable WP-Cron interval registration, scheduling, unscheduling, event inspection, and health status payloads.
-- `WordPressOperations`: native immediate core/plugin/theme updates, future auto-update policy, bounded discussion/comment actions, and permalink hard repair with structured before/after results.
-
-## Host Plugin Integration Rule
-
-A plugin using this package must provide a host context. The host context is the only place plugin-specific values belong.
-
-Examples of host-specific values:
-
-- plugin slug
-- plugin basename
-- plugin version
-- plugin root path
-- plugin root URL
-- GitHub repository
-- admin page slug
-- WordPress capability
-
-Core classes must read those values from `PluginContextInterface`. They must not hard-code a host plugin name.
-
-## Required Setup Protocol
-
-Every plugin that uses this core follows the same sequence:
-
-1. Require the vendored root `bootstrap.php` and register the package candidate.
+1. Require the bundled `bootstrap.php` and register the package.
 2. Wait for the shared resolver to select one package on `plugins_loaded`.
 3. Build a `PluginContext`.
 4. Build a `CoreBootstrap` with that context.
-5. Register modules with the bootstrap and call `boot()` once.
-
-Example:
+5. Add the modules and call `boot()` once.
 
 ```php
 $core_root = __DIR__ . '/lib/hexa-wordpress-plugin-core';
@@ -407,631 +337,20 @@ $context = new PluginContext(
     ->boot();
 ```
 
+## Package identity
+
+These names are fixed. Do not rename them in plugin implementations.
+
+- Repository folder: `hexa-wordpress-plugin-core`
+- Composer package: `hexa/plugin-core`
+- Root namespace: `Hexa\PluginCore\`, one sub-namespace per `src/` folder (`docs/folder-map.md`). Never create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core` or plugin-specific namespaces here.
+- Autoload path: `src/`
+- Version source: `VERSION`; release notes in `CHANGELOG.md`.
+
+Core is a library, not a WordPress plugin. Changed Core code always ships under a new `VERSION`, because sites load the newest bundled copy among all plugins.
+
 ## Development
 
 Run the complete PHP suite with `php tests/run.php`.
 
-## Agent Rule
-
-Before adding implementations in another Codex or Claude chat, read:
-
-- `AGENTS.md`
-- `HEXA_PLUGIN_CORE_LIBRARY.md`
-- `docs/folder-map.md`
-- `docs/setup-protocol.md`
-- `docs/implementation-checklist.md`
-- `docs/integration-tests.md`
-- `docs/new-plugin-master-checklist.md`
-- `docs/content-cleanup.md`
-- `docs/content-types.md`
-- `docs/database-cleanup.md`
-- `docs/entity-sources.md`
-- `docs/object-cache.md`
-- `docs/site-structure.md`
-- `docs/schema-detection.md`
-- `docs/schema-tools.md`
-- `docs/hexa-search.md`
-- `docs/search-query.md`
-- `docs/field-structures.md`
-- `docs/faq-sets.md`
-- `docs/taxonomies.md`
-- `docs/brand-colors.md`
-- `docs/brand-profiles.md`
-- `docs/frontend-forms.md`
-- `docs/media-uploads.md`
-- `docs/snippet-registry.md`
-- the namespace-specific doc for the folder being changed
-
-If a new feature does not fit an existing namespace, document the proposed namespace first before adding code.
-
-## Core Package Versioning
-
-The shared core is a library, not a WordPress plugin. Its current version is stored in the repository root `VERSION` file.
-
-Host plugins that vendor this package should render a separate core-package status panel under the host plugin updater:
-
-```php
-use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageConfig;
-use Hexa\PluginCore\CorePackageUpdates\CorePackagePanelRenderer;
-
-$core_config = CorePackageConfig::from_core_root(
-    __DIR__ . '/lib/hexa-wordpress-plugin-core',
-    [
-        'github_repo'        => 'mikeyperes/hexa-wordpress-plugin-core',
-        'github_branch'      => 'main',
-        'nonce_action'       => 'example_plugin_nonce',
-        'ajax_action_prefix' => 'example_plugin_core_package',
-    ]
-);
-
-( new CorePackageAjaxController( $core_config ) )->register();
-( new CorePackagePanelRenderer( $core_config ) )->render();
-```
-
-This panel compares the vendored `VERSION` in the host plugin with the public GitHub repository `VERSION`. The host plugin updater and the vendored core updater both render as default-open persistent collapse cards. Each card reports the Git repo, Git URL, Git branch, Git version, current version, current-vs-Git comparison, green/red status flag, check-for-updates action, normalized ZIP download, and live update activity log.
-
-## Native Search Query Behavior
-
-Version 0.19.60 adds a guarded JetEngine listing-grid adapter to `Hexa\PluginCore\SearchQuery`. Version 0.19.59 introduced the reusable native WordPress search-results engine, separating all/any/exact term logic from whole/prefix/contains word matching, supporting selected public post types and explicit native or advanced sources, and keeping display options outside the behavior contract.
-
-Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, WP-CLI, AJAX, REST, cron, feed, unmarked nested, disabled, and empty queries are rejected before host settings are loaded. A trusted adapter may explicitly mark a secondary query created by a search-results template; one permanent dispatcher consumes weak state bound to that exact `WP_Query` object without retaining abandoned queries or stacking callbacks. The Elementor adapter requires an exact registered Query ID on a native Search widget and preserves Elementor's live Loop Item grid. Hosts may opt their dated post types into QueryFilter's bounded natural time windows, including duration-only and mixed keyword-plus-duration searches. See `docs/search-query.md` for the host protocol and mandatory performance guards.
-
-## Collection Filters and Sidebar Header
-
-Version 0.19.66 stores multiple open-card keys in one comma-delimited `hpc_open` value so WordPress admin canonicalization cannot discard all but the last key during refresh. The reader remains compatible with repeated legacy parameters.
-
-Version 0.19.65 prevents parser- and AJAX-insertion `toggle` events from overwriting query or local-storage state before a collapsible has completed Core initialization. This keeps explicit closed state authoritative for default-open cards.
-
-Version 0.19.64 makes every titled `CoreUi::collapsible()` section refresh-safe and linkable through the `hpc_open` query parameter. Query state is restored after full-page and AJAX tab loads, explicit query keys and opt-out are supported, and existing local-storage persistence remains available as a fallback.
-
-Version 0.19.63 lets CoreUi::toggle() accept sanitized host input classes and data attributes, allowing AJAX-saving host plugins to use the shared toggle renderer without rebuilding its markup.
-
-Version 0.19.62 gives collection-filter search inputs enough selector specificity and left padding to keep the shared search icon separate from placeholder and entered text under WordPress admin styles.
-
-Version 0.19.57 gives filtered items an explicit Core hide state so host row layouts cannot override `hidden` and leave nonmatches visible. Core collapsible titles also wrap instead of truncating on narrow screens.
-
-Version 0.19.56 lets reusable Getting Started checklists opt into Core collection search. Nested and standalone actions are filterable, parent context is indexed with each child, counts update immediately, and active searches are reapplied after template row replacement.
-
-Version 0.19.55 keeps the complete grouped sidebar in normal document flow. The
-rail no longer uses sticky positioning, so long navigation remains reachable by
-normal page scrolling without pinning part of the sidebar to the viewport.
-
-Version 0.19.52 adds CoreUi::collection_filter() for searchable admin-card collections. Hosts supply the target ID, item selector, optional group selector, labels, and empty-state text. Core owns case-insensitive matching, visible/total counts, group hiding, clear and Escape behavior, and reinitialization after hexa-core-host-tab-loaded.
-
-Version 0.19.53 also initializes collection filters after DOMContentLoaded so first-render panels work before any AJAX navigation.
-
-Version 0.19.54 adds an optional host-selected text selector so shared logs and diagnostics do not create false search matches.
-
-Version 0.19.77 adds reusable public brand profiles, canonical front-end field schemas, WordPress-safe WYSIWYG values, and guarded image upload policies/Media Library storage for branded host plugins.
-
-Version 0.19.76 gives the shared template controls plain-language Original Template, site-value, and custom-value labels. Typography inheritance toggles align consistently on the left, and inherited editors are disabled and visibly muted while the toggle remains operable.
-
-Version 0.19.75 makes `TemplateColorControl` preserve an explicit picker or hex event before synchronizing its nested fallback display. Hosts now persist the newly selected custom color regardless of Core script render order.
-
-Version 0.19.74 adds the generic `TemplateColorResolver`, `TemplateColorControl`, and `TemplateTypography` contracts. Template-based hosts now share one four-mode decorative color flow and one three-mode typography flow, including reset behavior, native palette fallbacks, Elementor-aware custom typography, per-property preservation, and live preview variables.
-
-Version 0.19.73 makes typography color preservation disable the complete Core color editor, including its native picker and import actions, while leaving the preservation toggle available.
-
-Version 0.19.72 adds a shared light highlight and stronger boundary to open `CoreUi::collapsible()` sections so expanded tools remain visually distinct without host CSS.
-
-Version 0.19.71 keeps the typography color-preservation toggle attached to the Core color heading when detailed picker values wrap on narrower screens.
-
-Version 0.19.70 adds `TypographyControl`, a complete host-neutral typography editor that places each preservation toggle beside its Core-owned family, weight, color, or size field. It supports multiple size fields and decorative color controls that remain editable while inherited text color is preserved.
-
-Version 0.19.69 adds `TypographyPreservation` and `TypographyPreservationControl`. Hosts provide a setting prefix and optional target keys; Core owns the four reusable font-family, size, color, and weight preservation settings, toggle markup, target disabling, preview-state classes, and change events.
-
-Version 0.19.68 extends `FontFamilyControl` with an optional Core-owned font-weight selector backed by `FontWeightProvider`. Hosts can persist a default or validated 100-900 weight without duplicating option markup or validation.
-
-Version 0.19.67 adds `FontFamilyProvider` and `FontFamilyControl`. Hosts can offer template, native primary, native secondary, and deduplicated Elementor font choices while saving validated source identifiers instead of arbitrary CSS.
-
-Use `TypographyPreservation::defaults()` and `TypographyPreservation::setting_keys()` for host persistence. Render `TypographyPreservationControl` inside a `data-hpc-typography-scope` container to expose the same four preservation toggles to any template feature. Core emits prefix-scoped state classes and `hexa-typography-preserve-change` events; the host only maps its typography controls and omits preserved CSS declarations.
-
-Version 0.19.61 adds reusable inherited-value support to ColorControl. Hosts can persist an empty override while Core displays the inherited color and keeps picker, editable hex, RGB, swatch, copy, import, and inherit actions synchronized.
-
-The grouped sidebar now places plugin identity and its expand/collapse control in one rail header. The expanded control sits at the top-right; collapsed mode hides identity and centers the control in the compact rail.
-
-## Scoped CSS Override References
-
-Version 0.19.48 updates `Hexa\PluginCore\WpAdminComponents\ScopedCssOverride`. Host plugins provide a scope selector, short instructions, a formatted HTML structure example, and a formatted CSS example. Core renders a copyable `CoreUi::detail_card()` that is closed by default and prevents each host plugin from rebuilding this reference UI.
-
-Pass a setting key, saved value, host input class, and save-status HTML to render the actual CSS editor. Omit the setting key when a read-only reference is needed. Host plugins remain responsible for validation, persistence, and frontend output.
-
-## Plugin Inventory Policy
-
-Version 0.19.46 supports compact inventories without a separate Source column. Core places source beneath the plugin path, uses a fixed seven-column desktop layout without horizontal scrolling, and stacks labeled cells below 900px.
-
-Version 0.19.45 keeps plugin inventory and plugin-check AJAX fragments free of duplicate Core/DynamicButton asset tags, so refreshed row markup contains only fragment content.
-
-Version 0.19.44 makes plugin inventory policy explicit: satisfied required plugins render green, only host-configured entries are forbidden, absent forbidden entries can remain visible as compliant, and installed plugins outside registered policy remain neutral.
-
-## Getting Started Checklist
-
-Version 0.19.56 adds the opt-in `show_search`, `search_label`, `search_placeholder`, and `search_empty_message` checklist configuration. Core owns the search UI and nested filtering behavior; host plugins only enable and label it.
-
-Version 0.19.40 decomposes the checklist and site-structure renderers into bounded asset collaborators and splits page menus and template workspaces behind the unchanged `PageStructureManager` facade. The package-local architecture test locks the public API and keeps every affected class below 700 lines.
-
-Version 0.19.35 adds `show_type_badges` to `GettingStartedChecklistConfig`. Host plugins can hide the non-interactive request-type pill when a checklist is used as a simple action list.
-
-Version 0.19.34 restores Getting Started Checklist rows to a single continuous list for simple actions. Only parent steps with actual subtasks render as expandable sections, so one-action checklist items keep their individual run button without a fake expand/collapse control.
-
-Version 0.19.33 adds human-readable before/action/verified-after report summaries to Getting Started Checklist reports, including clearer wp-config and deleted-file report wording.
-
-Version 0.19.32 adds optional image preview assets to checklist reports and renames wp-config report columns to `Target Value` and `Verified Value` so setup tasks can distinguish requested configuration from read-back proof.
-
-Version 0.19.31 adds updater package hygiene. Core ZIP builders, direct plugin updates, vendored Core package updates, and GitHub plugin provisioning now exclude VCS metadata such as `.git`, `.svn`, `.hg`, and `.bzr`; native plugin updates purge ignored metadata before install and fail with a clear error if locked metadata remains. GitHub access tokens are no longer appended to package URLs and must travel only through request headers.
-
-Version 0.19.30 adds an Activate action for installed-but-inactive forbidden plugin rows, so cleanup inventories can temporarily activate an unwanted plugin before taking other action when needed.
-
-Version 0.19.29 adds `PluginRecommendationRegistry`, a reusable Hexa plugin recommendation registry for site inventory scans, aggregate recommendations, per-provider recommendations, and installed plugins that are not recommended by any registered Hexa plugin.
-
-Version 0.19.28 adds subtle secondary Deactivate and Delete controls to reusable plugin inventory rows. Installed plugins can be deactivated or deleted through guarded AJAX actions while must-use and drop-in plugins remain blocked.
-
-Version 0.19.27 adds `GettingStartedChecklist\DestructiveSampleRunner`, a reusable typed-confirmation sample that creates temporary posts/media, deletes only those temporary records, and returns Core deleted-post/deleted-file reports with permalinks, media URLs, file locations, and sizes.
-Version 0.19.26 adds reusable Getting Started Checklist templates. Host plugins can register named templates such as `default` or `diamond_website`; Core renders the picker, loads the selected template's predefined step structure, sends the active template id through AJAX, and resolves callbacks against the selected template.
-
-Version 0.19.25 adds reusable Getting Started Checklist result reports, typed destructive confirmation inputs, and a WpAdminUiCleanup adapter that turns registered cleanup options into checklist subtasks with their attributes listed directly in the checklist UI.
-
-`Hexa\PluginCore\GettingStartedChecklist` provides the reusable setup checklist that every plugin can use for first-run checks, onboarding, or ordered setup tasks. Host plugins register the typed step list and callbacks; Core owns the UI, AJAX endpoint, sequential runner, collapsible parent steps, nested subtask processing, type badges, spinner/check/X states, and collapsed technical activity log.
-
-```php
-use Hexa\PluginCore\GettingStartedChecklist\GettingStartedChecklistAjaxController;
-use Hexa\PluginCore\GettingStartedChecklist\GettingStartedChecklistConfig;
-use Hexa\PluginCore\GettingStartedChecklist\GettingStartedChecklistRenderer;
-
-$config = new GettingStartedChecklistConfig([
-    'root_id'      => 'my-plugin-getting-started',
-    'nonce_action' => 'my_plugin_getting_started',
-    'run_action'   => 'my_plugin_getting_started_run_item',
-    'steps'        => [
-        [
-            'id'          => 'environment',
-            'label'       => 'Verify Environment',
-            'type'        => 'status_check',
-            'description' => 'Checks WordPress and PHP values.',
-            'subtasks'    => [
-                [
-                    'id'       => 'wordpress',
-                    'label'    => 'WordPress Runtime',
-                    'type'     => 'status_check',
-                    'callback' => 'my_plugin_check_wordpress_runtime',
-                ],
-            ],
-        ],
-    ],
-]);
-
-( new GettingStartedChecklistAjaxController( $config ) )->register();
-( new GettingStartedChecklistRenderer( $config ) )->render();
-```
-
-Callbacks receive a single payload array containing `step`, `subtask`, `context`, `request`, `request_type`, `is_subtask`, and `item_id`. Use `type` values of `callback`, `status_check`, `setup_action`, `feature_toggle`, `config_mutation`, `ajax_request`, or `custom`. Return `true`, `false`, a string, `WP_Error`, or an array with `success`, `message`, `logs`, and optional `data`.
-
-## Content Cleanup
-
-`Hexa\PluginCore\ContentCleanup` provides reusable cleanup structures for wp-admin. Host plugins pass their own action names, allowed post types, backup locations, and deletion limits; Core renders each cleanup service as a separate collapsible card, with fixed reports, filters, result tables, edit links, row flags, destructive buttons, row loaders, and closed-by-default dark activity logs.
-
-Version 0.19.22 keeps cleanup renderers compatible with sites where another plugin has already loaded an older `Hexa\PluginCore\WpAdminComponents\CoreUi` class before the current plugin renders.
-
-Version 0.19.21 keeps cleanup detection criteria backend-only in the operator UI and removes fixed minimum table widths so cleanup reports stay contained inside their collapsible cards.
-
-Version 0.19.20 changes Getting Started Checklist parent rows into visible collapsible sections and keeps the technical activity log collapsed by default so checklist pages do not read like a debug log dump.
-
-Version 0.19.16 changes cleanup services to manual scan by default. Content Cleanup, Backup Cleanup, and Article/Media Cleanup render immediately with a clear "Press Scan" empty state and only start AJAX work when the user clicks a scan button. Host plugins can opt back into load-time scanning with `auto_scan => true`.
-
-Version 0.19.17 makes Article/Media Cleanup batch deletion the primary visible workflow. The two main actions are delete all matching posts or delete matching posts except the latest X, each with its own associated-media toggle. Filters, preview, selected-row deletion, and row deletion remain available in a collapsed Advanced Filters & Preview card.
-
-Version 0.19.15 adds reusable article/media batch deletion for "delete all matching posts" and "delete all matching except the latest X posts." Batch deletion ignores the preview limit, runs through repeated AJAX requests, logs every batch, and can delete associated featured/inline/gallery media when the visible media cleanup toggle is enabled.
-
-Version 0.19.14 adds a subtle Core detail-card variant and uses it for cleanup descriptions, detection rules, and scan-location details so secondary context stays collapsed and visually quiet. Backup scans now show an active loading row and log the file patterns searched, folders inspected, directory entries looked at, matched files, and no-result state.
-
-Version 0.19.13 adds reusable collapsed detail subcards and uses them in cleanup services to show human-readable detection rules, descriptions, and every configured backup scan location with resolved directory status.
-
-Version 0.19.12 keeps Core toggle inputs clipped to a 1px focusable control so hidden checkbox fields cannot create horizontal page overflow.
-
-```php
-use Hexa\PluginCore\ContentCleanup\ContentCleanupAjaxController;
-use Hexa\PluginCore\ContentCleanup\ContentCleanupConfig;
-use Hexa\PluginCore\ContentCleanup\ContentCleanupRenderer;
-
-$config = new ContentCleanupConfig([
-    'root_id'                => 'example-cleanup',
-    'title'                  => 'Cleanup',
-    'nonce_action'           => 'example_cleanup',
-    'scan_action'            => 'example_cleanup_scan',
-    'trash_action'           => 'example_cleanup_trash',
-    'delete_action'          => 'example_cleanup_delete',
-    'post_types'             => [ 'page' => 'Pages' ],
-    'default_published_days' => 365,
-    'show_filters'           => false,
-    'count_label'            => 'Reported',
-    'detection_rules'        => [
-        [
-            'id'                 => 'home_not_front',
-            'label'              => 'Home',
-            'tone'               => 'warning',
-            'terms'              => [ 'home' ],
-            'fields'             => [ 'title', 'slug' ],
-            'exclude_option_ids' => [ 'page_on_front' ],
-        ],
-    ],
-]);
-
-( new ContentCleanupAjaxController( $config ) )->register();
-( new ContentCleanupRenderer( $config ) )->render();
-```
-
-Version 0.19.4 adds:
-
-- `BackupCleanupConfig`, `BackupCleanupScanner`, `BackupCleanupAjaxController`, and `BackupCleanupRenderer` for configured backup-file roots and extension-limited AJAX deletion.
-- `ArticleMediaCleanupConfig`, `ArticleMediaCleanupScanner`, `ArticleMediaCleanupAjaxController`, and `ArticleMediaCleanupRenderer` for filtering posts, previewing matches, selecting rows, deleting individual posts, deleting all matching posts in AJAX batches, deleting all matching except the latest X posts, and optionally deleting detected featured/inline/gallery media attachments.
-
-## Brand Color Controls
-
-`Hexa\PluginCore\BrandColors\BrandColorProvider` reads the HWS Base Tools Brand Assets primary and secondary color options and can read Elementor site-setting color/font tokens. `Hexa\PluginCore\WpAdminComponents\ColorControl` renders one reusable admin color control with picker, editable hex value, RGB value, swatch, copy button, optional HWS primary import, and optional inherited-value persistence. `Hexa\PluginCore\WpAdminComponents\TemplateColorControl` renders the shared Original Template Color, Site Primary Color, Site Secondary Color, and Custom Design Color source flow for template-owned decorative colors. `Hexa\PluginCore\WpAdminComponents\DetailedColorPicker` renders the paired primary/secondary control with optional Elementor import and optional font controls.
-
-Host plugins should pass their own setting key and wire save/import AJAX while reusing this markup instead of recreating color pickers.
-
-```php
-use Hexa\PluginCore\BrandColors\BrandColorProvider;
-use Hexa\PluginCore\WpAdminComponents\ColorControl;
-
-$brand = BrandColorProvider::payload('#2d5277');
-
-echo ColorControl::render([
-    'key' => 'accent_color',
-    'label' => 'Accent color',
-    'value' => $settings['accent_color'] ?? $brand['primary_color'],
-    'default' => $brand['primary_color'],
-    'import_brand' => true,
-]);
-```
-
-Detailed visual example:
-
-```text
-Detailed Color Picker
-+----------------------+----------------------+
-| Primary color        | Secondary color      |
-| Picker Hex RGB Copy  | Picker Hex RGB Copy  |
-| Swatch               | Swatch               |
-+----------------------+----------------------+
-[Import Elementor colors and fonts]
-```
-
-```php
-use Hexa\PluginCore\BrandColors\BrandColorProvider;
-use Hexa\PluginCore\WpAdminComponents\DetailedColorPicker;
-
-$brand = BrandColorProvider::payload('#2d5277');
-
-echo DetailedColorPicker::render([
-    'title' => 'Brand card colors',
-    'description' => 'Use site design tokens or override this card.',
-    'primary' => [
-        'key' => 'primary_color',
-        'value' => $settings['primary_color'] ?? $brand['primary_color'],
-        'hex_input_class' => 'plugin-primary-color',
-    ],
-    'secondary' => [
-        'key' => 'secondary_color',
-        'value' => $settings['secondary_color'] ?? $brand['secondary_color'],
-        'hex_input_class' => 'plugin-secondary-color',
-    ],
-    'show_primary' => true,
-    'show_secondary' => true,
-    'show_elementor_import' => true,
-    'show_fonts' => true,
-    'fonts' => [
-        [
-            'key' => 'primary_font_family',
-            'token' => 'primary_font_family',
-            'label' => 'Primary font family',
-            'value' => $settings['primary_font_family'] ?? '',
-        ],
-        [
-            'key' => 'secondary_font_family',
-            'token' => 'secondary_font_family',
-            'label' => 'Secondary font family',
-            'value' => $settings['secondary_font_family'] ?? '',
-        ],
-    ],
-]);
-```
-
-## SiteStructure Section Rendering
-
-`Hexa\PluginCore\SiteStructure\SiteStructureRenderer` can render page assignments and menu tools together or separately. Use `show_pages => false` for a menu-only tab, and `show_menus => false` when a plugin keeps navigation tools somewhere else. This keeps menu building generic while host plugins provide their own page blueprint and action names.
-
-## Activity Log Component
-
-Use the activity component for updater progress, imports, tests, maintenance tasks, and any admin workflow that benefits from a collapsible dark monitor. Activity logs are collapsed by default; a host must explicitly pass `collapsed => false` when an open log is required.
-
-Storage modes:
-
-| Mode | Storage | Lifetime |
-| --- | --- | --- |
-| `page` | Rendered only | Removed on page refresh |
-| `transient` | WordPress transient | Removed after TTL or clear |
-| `permanent` | WordPress option | Kept until clear |
-
-```php
-use Hexa\PluginCore\ActivityLog\ActivityLogConfig;
-use Hexa\PluginCore\ActivityLog\ActivityLogEntry;
-use Hexa\PluginCore\ActivityLog\ActivityLogger;
-use Hexa\PluginCore\ActivityLog\ActivityLogRenderer;
-
-$config = new ActivityLogConfig(
-    [
-        'id'          => 'example-activity-log',
-        'title'       => 'Example Activity Log',
-        'storage'     => ActivityLogConfig::STORAGE_TRANSIENT,
-        'storage_key' => 'example_activity_log',
-        'collapsed'   => true,
-    ]
-);
-
-$logger = new ActivityLogger( $config );
-$logger->add( new ActivityLogEntry( 'Started import.', [ 'batch' => 12 ], 'admin', 'importer', null, 'info' ) );
-
-( new ActivityLogRenderer( $config ) )->render( $logger->all() );
-```
-
-## Automatic Core Tab
-
-Host dashboards expose a tab-list filter and tab-render filter. The core registers itself through those hooks:
-
-```php
-use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
-use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
-
-( new CoreTabModule(
-    new CoreTabConfig(
-        [
-            'tabs_filter'   => 'example_dashboard_tabs',
-            'render_filter' => 'example_dashboard_render_tab',
-            'core_root'     => __DIR__ . '/lib/hexa-wordpress-plugin-core',
-            'readme_path'   => __DIR__ . '/lib/hexa-wordpress-plugin-core/README.md',
-            'library_path'  => __DIR__ . '/HEXA_PLUGIN_CORE_LIBRARY.md',
-        ]
-    )
-) )->register();
-```
-
-## UI Primitives
-
-Use `Hexa\PluginCore\WpAdminComponents\CoreUi` for reusable admin UI pieces.
-
-```php
-use Hexa\PluginCore\WpAdminComponents\CoreUi;
-
-CoreUi::render_assets();
-
-echo CoreUi::card(
-    [
-        'title'     => 'System Status',
-        'body_html' => '<p>Everything is healthy.</p>',
-        'meta_html' => CoreUi::pill( 'Healthy', 'success' ),
-    ]
-);
-
-echo CoreUi::collapsible(
-    [
-        'title'     => 'Advanced details',
-        'body_html' => '<p>Hidden until expanded.</p>',
-    ]
-);
-```
-
-Titled `CoreUi::collapsible()` sections automatically synchronize their open state to a comma-delimited `hpc_open` query parameter and restore it after refresh or AJAX tab loading. Hosts may provide a stable `query_key`; use `query_state => false` only when URL persistence is inappropriate.
-
-For a formatted, closed-by-default scoped CSS editor or reference:
-
-```php
-use Hexa\PluginCore\WpAdminComponents\ScopedCssOverride;
-
-echo ScopedCssOverride::render(
-    [
-        'title'        => 'Component CSS override',
-        'selector'     => 'body .example-component',
-        'instructions' => [ 'Keep every rule inside this selector.' ],
-        'html_example' => '<div class="example-component">...</div>',
-        'css_example'  => "body .example-component {\n  color: #111827;\n}",
-        'open'         => false,
-    ]
-);
-```
-
-## Credentials / API Keys
-
-Use `Hexa\PluginCore\CredentialVault` for API-key and secret storage.
-
-```php
-$store = new \Hexa\PluginCore\CredentialVault\CredentialStore();
-$store->store( 'openai', 'api_key', $raw_key );
-$key = $store->get( 'openai', 'api_key' );
-$masked = $store->get_masked( 'openai', 'api_key' );
-$exists = $store->exists( 'openai', 'api_key' );
-```
-
-The storage key pattern is:
-
-```text
-hpc_cred_{slug}_{keyName}
-```
-
-## Search
-
-Use `Hexa\PluginCore\Search` for every public search: the box above a list of posts (archives, the search page, a homepage section), a people or host directory with its own cards, and the header search box. Register a profile with `SearchRegistry::register()`, add `SearchModule` to `CoreBootstrap`, and place `[hexa_search id="…"]` (or call `SearchBox::render()` / `SearchBox::header()`). Full protocol: `docs/hexa-search.md`.
-
-`Search` is not the content-picker typeahead API. Use `SmartSearch` for AJAX result suggestions inside tools and admin workflows.
-
-## Calendar
-
-Use `Hexa\PluginCore\Calendar` for a lightweight public month-grid calendar. Register a profile with `CalendarRegistry::register()` (post types, start/end date fields, link, filters), add `CalendarModule` to `CoreBootstrap`, and place `[hexa_calendar id="…"]`. Days are not interactive; each item links to the URL the profile defines. Full protocol: `docs/calendar.md`.
-
-## Map
-
-Use `Hexa\PluginCore\Map` for a brandable location map. Register a profile with `MapRegistry::register()` (posts or users, address field, geocoders, group, card data), add `MapModule` to `CoreBootstrap`, place `[hexa_map id="…"]`, and set the `--hmap-*` color tokens in the page builder. Addresses are geocoded in the background and stored on each item. Full protocol: `docs/map.md`.
-
-## Query Filters
-
-Declare visitor filters once with `Hexa\PluginCore\QueryFilter` definitions (`taxonomy`, `meta` for custom and ACF fields, `date_range`, `callback`, or a registered custom type). `Search` and `Calendar` share the same parsing, SQL, and controls. Full protocol: `docs/query-filters.md`.
-
-## Smart Search / X-Search
-
-Use `Hexa\PluginCore\SmartSearch` for reusable typeahead search. This is the WordPress equivalent of Laravel `<x-hexa-smart-search>`.
-
-```php
-( new \Hexa\PluginCore\SmartSearch\SmartSearchRenderer() )->render(
-    [
-        'id'        => 'plugin-content-search',
-        'label'     => 'Find content',
-        'source'    => 'posts',
-        'post_type' => 'any',
-    ]
-);
-```
-
-The core module registers:
-
-```text
-wp_ajax_hexa_plugin_core_smart_search
-```
-
-## WP Admin AJAX Registry
-
-Use `Hexa\PluginCore\WpAdminAjax\AjaxActionRegistry` for host plugin admin-AJAX actions. Host plugins provide action names and callbacks; core performs capability checks, nonce checks, request normalization, exception handling, and JSON responses.
-
-```php
-use Hexa\PluginCore\WpAdminAjax\AjaxActionRegistry;
-use Hexa\PluginCore\WpAdminAjax\AjaxRequest;
-
-( new AjaxActionRegistry(
-    [
-        'capability'   => 'manage_options',
-        'nonce_action' => 'example_admin',
-        'nonce_field'  => 'nonce',
-    ]
-) )->register(
-    [
-        'example_load_tab' => [
-            'callback' => static function ( AjaxRequest $request ): array {
-                return [ 'tab' => $request->key( 'tab', 'overview' ) ];
-            },
-        ],
-    ]
-);
-```
-
-## Shortcode Display Renderer
-
-Use `Hexa\PluginCore\ShortcodeRegistry\ShortcodeDisplayRenderer` for shortcode admin lists. Every row should show the shortcode, description, real output value, and examples with parameters.
-
-```php
-use Hexa\PluginCore\ShortcodeRegistry\ShortcodeDisplayRenderer;
-
-echo ( new ShortcodeDisplayRenderer() )->render(
-    [
-        [
-            'label'       => 'Publication Name',
-            'shortcode'   => '[smp_publication_field field="legal_name" format="text"]',
-            'description' => 'Outputs the publication legal name.',
-            'source'      => 'publication option: legal_name',
-            'examples'    => [
-                [
-                    'label'      => 'Text value',
-                    'shortcode'  => '[smp_publication_field field="legal_name" format="text"]',
-                    'parameters' => [ 'field' => 'legal_name', 'format' => 'text' ],
-                ],
-            ],
-        ],
-    ],
-    [
-        'title'       => 'Shortcodes',
-        'description' => 'Copy examples or inspect live output.',
-    ]
-);
-```
-
-## Error Log Viewer
-
-Use `Hexa\PluginCore\LogFiles` for reusable error-log monitoring.
-
-```php
-use Hexa\PluginCore\LogFiles\ErrorLogPanelRenderer;
-use Hexa\PluginCore\LogFiles\ErrorLogSource;
-
-( new ErrorLogPanelRenderer() )->render(
-    [
-        new ErrorLogSource( 'debug', 'debug.log', WP_CONTENT_DIR . '/debug.log', true, 'delete-debug-log' ),
-        new ErrorLogSource( 'error', 'error_log', ABSPATH . 'error_log', true, 'delete-error-log' ),
-    ]
-);
-```
-
-
-## Host Dashboard Tabs
-
-Use `Hexa\PluginCore\WpAdminTabs\HostTabsRenderer` for the complete host dashboard shell. Core owns the tab or grouped-sidebar markup, responsive layout, AJAX loading, status updates, browser history, accessibility relationships, and optional persisted sidebar state. The host provides routes, labels, groups, request details, and the panel renderer.
-
-For sidebar layouts, hosts may pass a generic `sidebar_identity` array containing plugin and Core names, installed versions, GitHub versions, and repository URLs. Core owns its escaped markup, external-link safety, responsive wrapping, and collapsed-state visibility.
-
-```php
-( new \Hexa\PluginCore\WpAdminTabs\HostTabsRenderer() )->render(
-    [
-        "tabs"                => $tabs,
-        "active"              => $active,
-        "page_url"            => admin_url( "options-general.php?page=example-plugin" ),
-        "ajax_action"         => "example_load_tab",
-        "nonce"               => $nonce,
-        "root_id"             => "example-plugin-tabs",
-        "panel_id"            => "example-plugin-panel",
-        "layout"              => "sidebar",
-        "groups"              => $navigation_groups,
-        "sidebar_identity"    => [
-            "plugin_name"     => "Example Plugin",
-            "current_version" => $installed_version,
-            "github_version"  => $github_version,
-            "github_url"      => "https://github.com/example/example-plugin",
-            "core_name"       => "Hexa WP Core",
-            "core_version"    => $core_version,
-            "core_github_url" => "https://github.com/mikeyperes/hexa-wordpress-plugin-core",
-        ],
-        "sidebar_collapsible" => true,
-        "sidebar_collapsed"   => false,
-        "sidebar_persist"     => true,
-        "render_callback"     => [ $dashboard, "tab" ],
-    ]
-);
-```
-
-The sidebar is expanded by default, uses a 214px desktop rail, collapses to an icon control, and stores state under a key scoped to `root_id` when persistence is enabled. Optional identity metadata sits above navigation while expanded and is hidden when collapsed. Its rail remains in normal document flow and has no internal scroll container, so the complete navigation is reached through page scrolling. Mobile navigation and version text wrap without horizontal scrolling. Omit `layout` and `groups` for the standard top tab bar.
-
-## System Checks
-
-`Hexa\PluginCore\SystemChecks\SystemChecksRenderer` renders grouped pass/fail/warn/info checklists from a flat item array. Use it for launch readiness, plugin health, schema audits, and environment checks instead of duplicating checklist HTML in host plugins. See `docs/system-checks.md`.
-
-## Schema Detection
-
-`Hexa\PluginCore\SchemaDetection\SchemaPageScanner` fetches public URLs and extracts JSON-LD schema blocks into structured payloads. It also uses `SchemaGraph::validation_issues()` so malformed URL-property values fail even when the JSON itself is valid. `Hexa\PluginCore\SchemaDetection\SchemaScanRenderer` renders those payloads as a dark admin report with source labels, semantic property paths, duplicate-type conflict warnings, invalid JSON rows, and FAQPage validation. Host plugins keep their own expectations and pass those expected rows into the renderer. See `docs/schema-detection.md`.
-
-```php
-echo ( new \Hexa\PluginCore\SchemaDetection\SchemaScanRenderer() )->renderReport( [ $scan ], [ "title" => "Schema Detection Results" ] );
-```
-
-## FAQ Sets
-
-`Hexa\PluginCore\FaqSets\FaqSetManager` sanitizes repeatable FAQ set data, normalizes question and answer items, resolves a `primary` set, adds safe link attributes to answer HTML, generates FAQPage schema, and renders reusable list or accordion output. Host plugins keep their own option names and shortcodes. See `docs/faq-sets.md`.
-
-```php
-$manager = new \Hexa\PluginCore\FaqSets\FaqSetManager();
-$set = $manager->resolveSet( $sets, "primary", $primary_slug );
-echo $manager->renderFaqs(
-    $set,
-    [
-        "style" => "accordion",
-        "inject_schema" => true,
-    ]
-);
-```
+Before adding code in another Codex or Claude chat, read `AGENTS.md`, `HEXA_PLUGIN_CORE_LIBRARY.md`, `docs/folder-map.md`, `docs/setup-protocol.md`, `docs/implementation-checklist.md`, `docs/integration-tests.md`, `docs/new-plugin-master-checklist.md` and the doc for the folder being changed. A feature that does not fit an existing namespace gets its namespace documented first. Every new or changed feature updates its entry in `## Features` in the same commit.

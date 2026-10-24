@@ -85,10 +85,10 @@ final class ScopedCssOverride {
     }
 
     private static function example_html( string $title, string $language, string $code ): string {
+        $map = [ 'html' => 'html', 'css' => 'css', 'php' => 'php', 'javascript' => 'js', 'js' => 'js', 'json' => 'json' ];
         return '<section class="hpc-scoped-css-example">'
-            . '<header><div><strong>' . esc_html( $title ) . '</strong><span>' . esc_html( $language ) . '</span></div>'
-            . CoreUi::copy_button( $code, 'Copy' )
-            . '</header><pre><code>' . esc_html( $code ) . '</code></pre></section>';
+            . CodeDisplay::render( $code, [ 'language' => $map[ strtolower( $language ) ] ?? 'text', 'title' => $title ] )
+            . '</section>';
     }
 
     private static function normalize_code( string $code ): string {

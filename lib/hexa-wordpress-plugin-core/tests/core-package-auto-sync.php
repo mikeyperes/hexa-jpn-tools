@@ -75,7 +75,34 @@ if ( $transaction_passed ) {
         && 'old-two' === file_get_contents( $transaction_two . '/value.txt' );
 }
 
+// A sync that leaves the site unable to load is undone (site check fails).
+$broken_new = $workspace . '/broken-new';
+$broken_old = $workspace . '/broken-old';
+foreach ( [ $broken_new, $broken_old ] as $root ) {
+    mkdir( $root . '/src', 0777, true );
+    file_put_contents( $root . '/bootstrap.php', "<?php\n" );
+}
+file_put_contents( $broken_new . '/VERSION', "3.1.0\n" );
+file_put_contents( $broken_new . '/src/Current.php', "<?php\n// new\n" );
+file_put_contents( $broken_old . '/VERSION', "3.0.0\n" );
+file_put_contents( $broken_old . '/src/Removed.php', "<?php\n// still used by its host\n" );
+foreach ( [ $broken_new, $broken_old ] as $root ) {
+    file_put_contents( $root . '/PACKAGE_HASH', HexaPluginCorePackageRegistry::source_hash( $root ) . "\n" );
+}
+$broken = ( new Hexa\PluginCore\CorePackageUpdates\CorePackageFleetSynchronizer( static fn (): bool => false ) )->synchronize( [ 'candidates' => [
+    [ 'host' => 'new-host', 'root' => $broken_new, 'minimum_version' => '', 'maximum_version' => '' ],
+    [ 'host' => 'old-host', 'root' => $broken_old, 'minimum_version' => '', 'maximum_version' => '' ],
+] ] );
+$site_check_passed = is_wp_error( $broken )
+    && 'hexa_core_sync_site_broken' === $broken->get_error_code()
+    && '3.0.0' === trim( (string) file_get_contents( $broken_old . '/VERSION' ) )
+    && file_exists( $broken_old . '/src/Removed.php' );
+
 Hexa\PluginCore\PluginUpdates\UpdaterFilesystem::delete_directory( $workspace );
+if ( ! $site_check_passed ) {
+    fwrite( STDERR, "FAIL: a Core sync that broke the site was not undone.\n" );
+    exit( 1 );
+}
 if ( ! $passed || ! $transaction_passed ) {
     fwrite( STDERR, "FAIL: automatic Core fleet synchronization did not atomically replace the stale package.\n" );
     exit( 1 );

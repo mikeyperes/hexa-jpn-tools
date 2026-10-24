@@ -10,6 +10,14 @@ use WP_Error;
  * to the newest verified package already present on the site.
  */
 final class CorePackageFleetSynchronizer {
+    /** @var callable|null Returns false when the site no longer loads. */
+    private $site_check;
+
+    /** @param callable|null $site_check Replaces the default home-page load check (tests). */
+    public function __construct( ?callable $site_check = null ) {
+        $this->site_check = $site_check;
+    }
+
     /** @return array<string,mixed>|WP_Error */
     public function synchronize( ?array $report = null ): array|WP_Error {
         $report ??= $this->runtime_report();
@@ -81,6 +89,17 @@ final class CorePackageFleetSynchronizer {
             $updated[] = (string) $candidate['host'];
         }
 
+        // A newer Core can drop code an older host plugin still uses (Core 3.30.2
+        // removed DirectorySearch while Base Tools 13.13.2 still loaded it, and the
+        // site returned HTTP 500). Load the site once with the new files and undo
+        // the whole sync when it no longer loads.
+        if ( [] !== $updated && ! $this->site_loads() ) {
+            $rollback = $this->rollback_plans( $plans );
+            $error = new WP_Error( 'hexa_core_sync_site_broken', 'The site stopped loading after the Core sync, so every copied Core package was restored.' );
+            $error->add_data( [ 'updated_hosts' => $updated, 'version' => $highest_version, 'phase' => 'site_check', 'rollback_errors' => $rollback ] );
+            return $error;
+        }
+
         $cleanup_warnings = $this->finalize_plans( $plans );
 
         return [
@@ -121,6 +140,32 @@ final class CorePackageFleetSynchronizer {
             }
         }
         return $warnings;
+    }
+
+    /**
+     * True unless a fresh request for the home page fails with a server error
+     * or WordPress's critical-error page. An unreachable loopback proves
+     * nothing either way and keeps the sync.
+     */
+    private function site_loads(): bool {
+        if ( null !== $this->site_check ) {
+            return (bool) ( $this->site_check )();
+        }
+        if ( ! function_exists( 'wp_remote_get' ) || ! function_exists( 'home_url' ) ) {
+            return true;
+        }
+        $response = wp_remote_get( add_query_arg( 'hexa_core_sync_check', bin2hex( random_bytes( 6 ) ), home_url( '/' ) ), [
+            'timeout'     => 20,
+            'redirection' => 3,
+            'headers'     => [ 'Cache-Control' => 'no-cache' ],
+        ] );
+        if ( is_wp_error( $response ) ) {
+            return true;
+        }
+        $status = (int) wp_remote_retrieve_response_code( $response );
+        $body   = (string) wp_remote_retrieve_body( $response );
+
+        return $status < 500 && false === stripos( $body, 'There has been a critical error' );
     }
 
     /** @return array<string,mixed> */

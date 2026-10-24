@@ -19,6 +19,10 @@ final class Field {
     }
 
     public static function get( string $selector, mixed $context = false, bool $format = true, bool $escape_html = false ): mixed {
+        if ( Acf::active() && ! Acf::ready() ) {
+            // Before ACF has started (acf/init), get_field() would start it too early and crash; return the stored value.
+            return '' === $selector ? null : Storage::get( Storage::context( $context ), $selector );
+        }
         if ( Acf::active() ) {
             return get_field( $selector, $context, $format, $escape_html );
         }

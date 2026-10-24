@@ -116,7 +116,7 @@ final class SnippetsTableRenderer {
                         <?php echo $this->detail_line( "Shortcodes", $this->list_html( $definition->shortcodes, "" ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                     <?php endif; ?>
                     <?php echo $this->detail_line( "Test", $this->test_html( $test, $can_test ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                    <?php echo $this->detail_line( "Readme", "<pre class=\"hpc-snip-readme\">" . esc_html( $this->readme_text( $definition ) ) . "</pre>" ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                    <?php echo $this->detail_line( "Readme", \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( $this->readme_text( $definition ), [ "language" => "text", "title" => "Readme", "max_height" => 320 ] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                 </div>
             </td>
         </tr>

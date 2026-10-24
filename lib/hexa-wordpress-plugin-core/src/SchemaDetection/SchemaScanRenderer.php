@@ -156,7 +156,7 @@ final class SchemaScanRenderer {
             <?php echo $this->renderSchemaSummary( $schema ); ?>
             <details class="hpc-schema-json">
                 <summary>View full JSON</summary>
-                <pre><?php echo esc_html( wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+                <?php echo \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( (string) wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ), [ 'language' => 'json', 'title' => 'JSON-LD' ] ); ?>
             </details>
         </article>
         <?php

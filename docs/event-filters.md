@@ -8,7 +8,7 @@ box narrows, so it needs no extra CSS class.
 ## Filters
 
 - Text: event title, content, venue and host (the site search settings, events only).
-- `hf[when][]=today|tomorrow`: events on that local day, including ones that started earlier and are still running.
+- `hf[when][]=today|tomorrow|week|month`: events in that local period, including ones that started earlier and are still running. `week` runs from today to the end of the week (the site's first weekday starts the next one); `month` from today to the end of the month.
 - Kids events (`kids_event` field `1`) are left out by default; `hf[kids]=1` ("Show kids events") brings them back.
 - `hf[location][]=<area slug>`: one or more locations (taxonomy `area`), matched with "any".
 

@@ -14,6 +14,14 @@ final class Acf {
         return function_exists( 'acf_add_local_field_group' ) && function_exists( 'get_field' );
     }
 
+    /**
+     * True once ACF has started (acf/init has run). Before that, calling ACF's
+     * field functions during plugin startup boots ACF too early and can fatal.
+     */
+    public static function ready(): bool {
+        return (bool) did_action( 'acf/init' );
+    }
+
     /** `acf` when ACF owns custom fields, `native` otherwise. */
     public static function mode(): string {
         return self::active() ? 'acf' : 'native';
