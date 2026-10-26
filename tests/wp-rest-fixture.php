@@ -73,7 +73,7 @@ try {
     $expect(($manifestData['plugin']['name'] ?? null) === 'Hexa JPN Tools', 'manifest identifies Hexa JPN Tools');
     $expect(($manifestData['plugin']['version'] ?? null) === '1.0.2', 'manifest exposes plugin version 1.0.2');
     $expect(($manifestData['plugin']['slug'] ?? null) === 'hexa-jpn-tools', 'manifest exposes the canonical plugin slug');
-    $expect(($manifestData['timezone'] ?? null) === EventDates::TIMEZONE, 'manifest exposes the event timezone');
+    $expect(($manifestData['timezone'] ?? null) === EventDates::timezoneName(), 'manifest exposes the event timezone');
     $manifestJson = (string) wp_json_encode($manifestData);
     $expect(!str_contains($manifestJson, 'user_email') && !str_contains($manifestJson, 'jpn_host_code'), 'manifest excludes host email and access codes');
 
@@ -188,7 +188,7 @@ try {
     $expect(($createdData['result'] ?? null) === 'created' && ($createdData['success'] ?? false) === true, 'create receipt records a successful create');
     $expect(($createdData['public_state_changed'] ?? true) === false, 'draft create records no public state change');
     $expect($eventPostId > 0 && get_post_status($eventPostId) === 'draft', 'new event is created as a draft');
-    $expect((string) get_post_meta($eventPostId, 'start_date', true) === '2030-03-10 13:30:00', 'start date uses Miami local storage');
+    $expect((string) get_post_meta($eventPostId, 'start_date', true) === '2030-03-10 13:30:00', 'start date uses site-local storage');
     $expect((int) get_post_meta($eventPostId, 'start_date_timestamp', true) === 1899394200, 'start date stores a true Unix timestamp');
     $expect((string) get_post_meta($eventPostId, 'start_date_precision', true) === 'date_time', 'timed start stores date-time precision');
     $expect((int) get_post_meta($eventPostId, '_hexa_jpn_code_submission_id', true) === 987654321, 'Code submission ID is stored under the canonical key');

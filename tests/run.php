@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+// Fixture site timezone (Eastern rules), standing in for WordPress Settings → General.
+function wp_timezone(): DateTimeZone
+{
+    return new DateTimeZone('America/Toronto');
+}
+
 function wp_unslash(mixed $value): mixed
 {
     return is_string($value) ? stripslashes($value) : $value;
@@ -52,8 +58,8 @@ $dates = new EventDates();
 $normalized = $dates->normalize('2026-07-04 16:30:00');
 $expect($normalized['storage'] === '2026-07-04 16:30:00', 'local storage date is preserved');
 $expect($normalized['precision'] === 'date_time', 'timed events retain date-time precision');
-$expect(str_ends_with($normalized['iso8601'], '-04:00'), 'summer event uses Miami daylight offset');
-$expect($dates->normalize('2026-07-04T20:30:00+00:00')['storage'] === '2026-07-04 16:30:00', 'offset date normalizes to Miami time');
+$expect(str_ends_with($normalized['iso8601'], '-04:00'), 'summer event uses the site daylight offset');
+$expect($dates->normalize('2026-07-04T20:30:00+00:00')['storage'] === '2026-07-04 16:30:00', 'offset date normalizes to site time');
 $dateOnly = $dates->normalize('2027-01-14');
 $expect($dateOnly['storage'] === '2027-01-14 00:00:00', 'date-only events retain calendar storage without inventing a source time');
 $expect($dateOnly['display'] === 'January 14' && $dateOnly['precision'] === 'date', 'date-only events expose date precision and no midnight display');
@@ -118,10 +124,10 @@ $secondPayload['fields']['related_post_ids'] = [1, 2];
 $expect(EventController::requestDigest($firstPayload) !== EventController::requestDigest($secondPayload), 'request digest preserves list order');
 
 $dates = new EventDates();
-$sep25 = (new DateTimeImmutable('2026-09-25 18:55:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
-$sep27 = (new DateTimeImmutable('2026-09-27 21:00:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
-$sep25End = (new DateTimeImmutable('2026-09-25 22:00:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
-$sep26Midnight = (new DateTimeImmutable('2026-09-26 00:00:00', new DateTimeZone(EventDates::TIMEZONE)))->getTimestamp();
+$sep25 = (new DateTimeImmutable('2026-09-25 18:55:00', new DateTimeZone(EventDates::timezoneName())))->getTimestamp();
+$sep27 = (new DateTimeImmutable('2026-09-27 21:00:00', new DateTimeZone(EventDates::timezoneName())))->getTimestamp();
+$sep25End = (new DateTimeImmutable('2026-09-25 22:00:00', new DateTimeZone(EventDates::timezoneName())))->getTimestamp();
+$sep26Midnight = (new DateTimeImmutable('2026-09-26 00:00:00', new DateTimeZone(EventDates::timezoneName())))->getTimestamp();
 $expect($dates->when($sep25) === ['date' => 'Fri, Sep 25', 'time' => '6:55 PM'], 'card when shows one day and the start time');
 $expect($dates->when($sep25, $sep25End)['date'] === 'Fri, Sep 25', 'same-day end keeps one day');
 $expect($dates->when($sep25, $sep26Midnight + 7200)['date'] === 'Fri, Sep 25', 'timed event ending at 2 AM stays on its night');

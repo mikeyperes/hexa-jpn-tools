@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Hexa\JpnTools\Events;
 
 /**
- * The one "recently added" rule: an event first published on jpnmiami.com
+ * The one "recently added" rule: an event first published on this site
  * within the last HOURS hours (its WordPress publish time, so later edits do
  * not restart the window). Every listing asks this class, and every HTML
  * marker carries its expiry so assets/recently-added.js removes it from a

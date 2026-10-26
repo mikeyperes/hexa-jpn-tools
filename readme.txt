@@ -2,7 +2,7 @@
 Contributors: michaelperes
 Requires at least: 6.0
 Requires PHP: 8.1
-Stable tag: 1.17.3
+Stable tag: 1.17.5
 License: GPLv2 or later
 
 JPN event management, host tools, and the authenticated Code.Hexa integration contract.
@@ -13,6 +13,9 @@ Hexa JPN Tools owns the JPN Miami WordPress event workflow and provides a
 versioned REST contract for Code.Hexa using WordPress Application Passwords.
 
 == Changelog ==
+
+= 1.17.5 =
+* Names no city: labels use the site name and photo ZIPs the site domain, so one plugin serves every JPN city site.
 
 = 1.17.3 =
 * Events quick filters: the When filter adds This week and This month beside Today and Tomorrow.

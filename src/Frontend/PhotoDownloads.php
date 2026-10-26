@@ -94,7 +94,8 @@ final class PhotoDownloads
             static fn (array $file): array => [$file['name'], $file['path'], (int) @filemtime($file['path'])],
             $files
         )));
-        $name = sprintf('jpnmiami-event-photos-%dd-%s-%s.zip', $days, wp_date('Y-m-d'), substr($fingerprint, 0, 10));
+        $prefix = $this->filePrefix();
+        $name = sprintf('%s-event-photos-%dd-%s-%s.zip', $prefix, $days, wp_date('Y-m-d'), substr($fingerprint, 0, 10));
         $target = $folder . '/' . $name;
 
         if (!is_file($target)) {
@@ -110,7 +111,7 @@ final class PhotoDownloads
             $zip->close();
             rename($temporary, $target);
             // Earlier ZIPs for the same window are superseded by this one.
-            foreach ((array) glob($folder . '/jpnmiami-event-photos-' . $days . 'd-*.zip') as $old) {
+            foreach ((array) glob($folder . '/' . $prefix . '-event-photos-' . $days . 'd-*.zip') as $old) {
                 if ($old !== $target) {
                     @unlink($old);
                 }
@@ -140,5 +141,15 @@ final class PhotoDownloads
             . '<button type="button" class="jpn-photos-download__save" hidden>' . esc_html(sprintf(__('📥 Save all %d photos to your phone', 'hexa-jpn-tools'), $count)) . '</button>'
             . '<a class="jpn-photos-download__zip" href="' . esc_url($this->zipUrl($days)) . '">' . esc_html(sprintf(__('Download all %d photos (ZIP)', 'hexa-jpn-tools'), $count)) . '</a>'
             . '</div>';
+    }
+
+    /** The site's own name for download files: its domain without "www." and the top-level part. */
+    private function filePrefix(): string
+    {
+        $host = (string) wp_parse_url(home_url(), PHP_URL_HOST);
+        $host = preg_replace('/^www\./i', '', $host) ?? $host;
+        $label = sanitize_file_name((string) strtok($host, '.'));
+
+        return $label !== '' ? strtolower($label) : 'event';
     }
 }

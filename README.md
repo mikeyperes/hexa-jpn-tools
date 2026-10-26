@@ -7,6 +7,7 @@ keys, shortcodes, options, or stored content.
 
 ## Features
 
+- Any JPN city site: the plugin names no city. Visible labels (the WhatsApp feed sender and notification, the site search heading) use the site's own name, and photo ZIP downloads are named after the site's domain.
 - City timezone: event parsing, calendar filters, current-day boundaries and the integration manifest follow WordPress Settings > General. Date maintenance preserves that setting.
 
 - Events: JPN event post type, fields and the "Recently added" marker for events published in the last 24 hours.

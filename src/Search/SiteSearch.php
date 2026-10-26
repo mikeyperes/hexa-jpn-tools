@@ -55,7 +55,8 @@ final class SiteSearch
             'search' => [$this, 'allSettings'],
             'post_types' => $this->publicPostTypes(),
             'labels' => [
-                'search' => __('Search JPN Miami', 'hexa-jpn-tools'),
+                /* translators: %s: site name */
+                'search' => sprintf(__('Search %s', 'hexa-jpn-tools'), wp_strip_all_tags((string) get_bloginfo('name'))),
                 'placeholder' => __('Search events, hosts, pages or posts…', 'hexa-jpn-tools'),
                 'empty' => __('Nothing matched that search. Try another host, neighborhood, or keyword.', 'hexa-jpn-tools'),
             ],

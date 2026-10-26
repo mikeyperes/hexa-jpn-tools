@@ -12,13 +12,12 @@ use Throwable;
 
 final class EventDates
 {
-    public const TIMEZONE = 'America/New_York';
     public const STORAGE_FORMAT = 'Y-m-d H:i:s';
 
-    /** The site owns its event timezone; the constant remains a legacy fixture fallback. */
+    /** Each site owns its event timezone (WordPress Settings → General); UTC only outside WordPress. */
     public static function timezoneName(): string
     {
-        return function_exists('wp_timezone') ? wp_timezone()->getName() : self::TIMEZONE;
+        return function_exists('wp_timezone') ? wp_timezone()->getName() : 'UTC';
     }
 
     public function timezone(): DateTimeZone

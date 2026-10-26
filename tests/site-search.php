@@ -11,6 +11,16 @@ namespace {
         $GLOBALS['jpn_test_actions'][$hook][] = $callback;
     }
 
+    function get_bloginfo(string $show = ''): string
+    {
+        return 'JPN Test Site';
+    }
+
+    function wp_strip_all_tags(string $text): string
+    {
+        return trim(strip_tags($text));
+    }
+
     function __(string $text, string $domain = ''): string
     {
         return $text;

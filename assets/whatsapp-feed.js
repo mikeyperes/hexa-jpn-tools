@@ -32,6 +32,7 @@
 
         const events = Array.isArray(payload.events) ? payload.events : [];
         const totalCount = Math.max(0, Number.parseInt(payload.total_count, 10) || 0);
+        const siteName = String(payload.site_name || document.title || '');
         const phone = mount.closest('[data-jpn-whatsapp-phone]');
         const notification = phone ? phone.querySelector('[data-jpn-whatsapp-notification]') : null;
         const count = phone ? phone.querySelector('[data-jpn-whatsapp-count]') : null;
@@ -56,7 +57,7 @@
 
         const timestamp = () => element('span', 'jpn-wa-time', time());
         const sender = () => {
-            const from = element('span', 'jpn-wa-from', 'JPN Miami');
+            const from = element('span', 'jpn-wa-from', siteName);
             from.appendChild(element('small', '', '~ admin'));
             return from;
         };
@@ -134,7 +135,7 @@
             }
             const body = element('div', 'jpn-wa-drop-body');
             body.append(
-                element('b', '', 'JPN Miami · Events'),
+                element('b', '', `${siteName} · Events`),
                 element('p', '', `${isRecent(event) ? '🆕 NEW · ' : ''}📣 ${event.title} · 🗓️ ${event.date || ''}`)
             );
             notification.appendChild(body);

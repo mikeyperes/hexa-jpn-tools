@@ -43,6 +43,8 @@ final class WhatsAppFeed
         $payload = wp_json_encode([
             'events' => $events,
             'total_count' => count($upcoming),
+            // The sender and notification label are the site's own name.
+            'site_name' => wp_strip_all_tags((string) get_bloginfo('name')),
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
         return '<div class="jpn-whatsapp-feed" data-jpn-whatsapp-feed></div>'
