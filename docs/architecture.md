@@ -6,7 +6,7 @@ Hexa JPN Tools owns only JPN-specific WordPress behavior:
 
 - `Admin`: event editing, exports, notification message preparation, and host role behavior.
 - `Content`: Event, Service, and Profile registrations plus their JPN ACF groups.
-- `Events`: Miami-local date normalization, bounded queries, and related-event behavior.
+- `Events`: site-local date normalization (WordPress timezone), bounded queries, and related-event behavior.
 - `Frontend`: the four existing JPN shortcodes and private Code-reference filtering.
 - `Rest`: the authenticated Code.Hexa contract and durable event receipts.
 - `Security`: the dedicated integration role and capability.

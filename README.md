@@ -77,7 +77,7 @@ filters, month navigation (12 months back and ahead, `rel="nofollow"`), month
 caching, the public REST endpoint
 (`/wp-json/hexa-plugin-core/v1/calendar/jpn_events`), and live interaction.
 `Hexa\JpnTools\Events\EventCalendar` owns the profile: published events by
-`start_date_timestamp`/`end_date_timestamp` in New York time (date-only events
+`start_date_timestamp`/`end_date_timestamp` in the site's WordPress timezone (date-only events
 keep their stored last day), Area / Dates (matching events that run during the
 chosen days) / Kids events / Featured filters, and each event's time, title,
 area, and badges. Within each day, the profile uses Core's generic sort criteria
