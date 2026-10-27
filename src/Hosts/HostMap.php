@@ -27,6 +27,22 @@ final class HostMap
     {
     }
 
+    /**
+     * Where the map opens: this site's city, from the option hexa_jpn_map_view
+     * (['center' => [lat, lng], 'zoom' => n]). Without it the map opens on the
+     * whole United States.
+     */
+    private static function view(): array
+    {
+        $saved = get_option('hexa_jpn_map_view', []);
+        $center = is_array($saved) && isset($saved['center'][0], $saved['center'][1])
+            ? [(float) $saved['center'][0], (float) $saved['center'][1]]
+            : [39.8, -98.6];
+        $zoom = is_array($saved) && isset($saved['zoom']) ? (float) $saved['zoom'] : 3.5;
+
+        return ['center' => $center, 'zoom' => $zoom, 'fit_zoom' => 13];
+    }
+
     public function register(): void
     {
         if (!class_exists(MapRegistry::class)) {
@@ -49,7 +65,7 @@ final class HostMap
             'details' => [new AreaMapDetails($this->dates), 'items'],
             'details_per_page' => 10,
             'related_post_types' => ['event'],
-            'view' => ['center' => [26.2, -80.19], 'zoom' => 8.4, 'fit_zoom' => 13],
+            'view' => self::view(),
             'labels' => [
                 'region' => __('Map of JPN hosts', 'hexa-jpn-tools'),
                 'loading' => __('Loading map…', 'hexa-jpn-tools'),
