@@ -718,9 +718,20 @@ a.jpn-host__chip--link:focus-visible {
     color-scheme: dark;
 }
 
+/* Today: soft red, so it stands apart from the green event accents. */
 .jpn-calendar .hcal-day.is-today {
-    background: rgba(37, 211, 102, .1);
-    box-shadow: inset 0 0 0 2px var(--hcal-accent);
+    --jpn-today: #f07a7a;
+    background: rgba(240, 122, 122, .08);
+    box-shadow: inset 0 0 0 2px var(--jpn-today);
+}
+
+.jpn-calendar .hcal-day.is-today .hcal-dnum {
+    background: var(--jpn-today);
+    color: #1a0b0b;
+}
+
+.jpn-calendar .hcal-day.is-today .hcal-dlabel {
+    color: var(--jpn-today);
 }
 
 .jpn-calendar .hcal-item.is-featured {
