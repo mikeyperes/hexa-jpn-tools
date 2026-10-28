@@ -14,10 +14,14 @@ namespace Hexa\PluginCore\PublicComponents;
  * `--hlb-*` custom properties from the clicked component, so a page builder
  * styles the dialog where it styles the component.
  *
- * Previous and Next buttons (and the left and right arrow keys) step through
- * the other dialog links of the same component in page order. The open item
- * is kept in the address as `?hlb=<post ID>`, updated on every step, so a
- * reload or a shared link opens the same item again; closing removes it.
+ * Previous and Next buttons, worded by the profile's labels with the item's
+ * place between them ("4 of 18"), and the left and right arrow keys step
+ * through the other dialog links of the same component in page order. A step
+ * keeps the shown item until the next one is fetched and its photo decoded,
+ * then fades through to it; the items either side load in the background.
+ * The open item is kept in the address as `?hlb=<post ID>`, updated on every
+ * step, so a reload or a shared link opens the same item again; closing
+ * removes it.
  */
 final class ItemLightbox {
     /** @var array<string,callable> component => fn( string $profile_id ): ?array */
@@ -169,12 +173,16 @@ final class ItemLightbox {
             . '.hlb-close{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin-left:auto;padding:0;border:1px solid var(--hlb-border);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:22px;line-height:1;cursor:pointer}'
             // Without the full-page link the bar holds only the close button: a slim strip without a divider.
             . '.hlb.is-bare .hlb-bar{padding:8px 8px 0;border:0}.hlb.is-bare .hlb-body{padding-top:4px}'
-            . '.hlb-nav{display:inline-flex;flex:none;gap:8px}.hlb-nav[hidden]{display:none}'
-            . '.hlb-step{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:1px solid var(--hlb-border);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:17px;line-height:1;cursor:pointer;transition:border-color .2s,color .2s,opacity .2s}'
+            // Previous and Next are worded buttons with the item's place ("4 of 18") between them.
+            . '.hlb-nav{display:inline-flex;flex:none;align-items:center;gap:8px}.hlb-nav[hidden]{display:none}'
+            . '.hlb-step{display:inline-flex;align-items:center;justify-content:center;height:40px;padding:0 16px;border:1px solid var(--hlb-border);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:13px;font-weight:600;letter-spacing:.02em;line-height:1;white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,opacity .2s}'
             . '.hlb-step:hover:not(:disabled){border-color:var(--hlb-accent);color:var(--hlb-accent)}.hlb-step:disabled{opacity:.35;cursor:default}'
+            . '.hlb-count{min-width:4.5em;color:var(--hlb-muted);font-size:12px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}'
             . '.hlb-nav:not([hidden])+.hlb-close{margin-left:0}.hlb-open[hidden]+.hlb-nav{margin-left:auto}'
             . '.hlb-close:hover{border-color:var(--hlb-accent);color:var(--hlb-accent)}.hlb :focus-visible{outline:2px solid var(--hlb-accent);outline-offset:2px}'
-            . '.hlb-body{flex:1 1 auto;min-height:0;overflow:auto;padding:20px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.hlb-body.is-loading{opacity:.7}'
+            // Stepping keeps the shown item until the next is ready (dimmed only when that takes a moment), then fades through.
+            . '.hlb-body{flex:1 1 auto;min-height:0;overflow:auto;padding:20px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;transition:opacity .15s ease}.hlb-body.is-loading{opacity:.7}'
+            . '.hlb-body.is-busy{opacity:.6;transition-delay:.15s}.hlb-body.is-out{opacity:0;transition-delay:0s}.hlb.is-sizing{transition:height .24s ease}'
             . '.hlb-msg{margin:0;color:var(--hlb-muted)}.hlb-msg a{color:var(--hlb-accent)}'
             . '.hlb-image{display:block;width:100%;height:auto;max-height:50vh;margin:0 0 16px;object-fit:contain;border-radius:calc(var(--hlb-radius) - 4px)}'
             . '.hlb-title{margin:0 0 10px;color:inherit;font-size:22px;line-height:1.2}.hlb-excerpt{margin:0;color:var(--hlb-muted)}'
@@ -187,22 +195,23 @@ final class ItemLightbox {
             . '.hlb-item__media{display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;background:var(--hlb-media-bg,#000)}'
             . '.hlb-item__image{display:block;width:100%;height:100%;max-width:none;object-fit:contain}'
             . '.hlb-item__details{display:flex;flex-direction:column;gap:16px;min-width:0;min-height:0;padding:64px 32px 32px;overflow-y:auto;overscroll-behavior:contain;border-left:1px solid var(--hlb-border)}'
-            . '@media(max-width:760px){.hlb.is-media{width:100vw;height:auto;max-height:94vh;max-height:94dvh}.hlb.is-media .hlb-body{display:block;overflow:auto}.hlb-item{display:block}.hlb-item__image{height:auto;max-height:64vh;max-height:64dvh}.hlb-item__details{padding:20px 18px 28px;overflow:visible;border:0}}'
+            . '@media(max-width:760px){.hlb.is-media{width:100vw;height:auto;max-height:94vh;max-height:94dvh}.hlb.is-media .hlb-bar{position:static;padding:10px;border-bottom:1px solid var(--hlb-border);background:var(--hlb-bg)}.hlb.is-media .hlb-nav{margin:0 auto 0 0}.hlb.is-media .hlb-step{padding:0 13px}.hlb.is-media .hlb-body{display:block;overflow:auto}.hlb-item{display:block}.hlb-item__image{height:auto;max-height:64vh;max-height:64dvh}.hlb-item__details{padding:20px 18px 28px;overflow:visible;border:0}}'
             . '@media(max-width:600px){.hlb{width:100vw;max-height:92vh;max-height:92dvh;margin:auto 0 0;border-width:1px 0 0;border-radius:var(--hlb-radius) var(--hlb-radius) 0 0}.hlb-body{padding:16px}}'
-            . '@media(prefers-reduced-motion:no-preference){.hlb[open]{animation:hlbIn .2s ease-out}}@keyframes hlbIn{from{opacity:0;transform:translateY(16px)}}';
+            . '@media(prefers-reduced-motion:no-preference){.hlb[open]{animation:hlbIn .2s ease-out}}@keyframes hlbIn{from{opacity:0;transform:translateY(16px)}}'
+            . '@media(prefers-reduced-motion:reduce){.hlb-body,.hlb.is-sizing{transition:none}}';
     }
 
     public static function js(): string {
         return <<<'JS'
 (function(){
 if(window.hexaLightbox)return;window.hexaLightbox=1;
-var TOKENS=['bg','fg','muted','border','accent','radius','width','backdrop'],cache={},dlg,body,full,close,nav,prev,next,trigger=null,group=null,current='',seq=0,pushed=false,KEY='hlb';
+var TOKENS=['bg','fg','muted','border','accent','radius','width','backdrop'],cache={},dlg,body,full,close,nav,prev,next,count,lab={},trigger=null,group=null,current='',seq=0,pushed=false,KEY='hlb',still=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function allowed(u){try{var x=new URL(u,location.href);return x.origin===location.origin&&x.href.indexOf('hexa-plugin-core/v1/lightbox/')>-1;}catch(e){return false;}}
 function build(){dlg=document.createElement('dialog');dlg.className='hlb';
-dlg.innerHTML='<div class="hlb-bar"><a class="hlb-open" href="#"></a><span class="hlb-nav" hidden><button type="button" class="hlb-step hlb-prev"><span aria-hidden="true">←</span></button><button type="button" class="hlb-step hlb-next"><span aria-hidden="true">→</span></button></span><button type="button" class="hlb-close"><span aria-hidden="true">×</span></button></div><div class="hlb-body"></div>';
+dlg.innerHTML='<div class="hlb-bar"><a class="hlb-open" href="#"></a><span class="hlb-nav" hidden><button type="button" class="hlb-step hlb-prev"></button><span class="hlb-count" aria-live="polite"></span><button type="button" class="hlb-step hlb-next"></button></span><button type="button" class="hlb-close"><span aria-hidden="true">×</span></button></div><div class="hlb-body"></div>';
 document.body.appendChild(dlg);body=dlg.querySelector('.hlb-body');full=dlg.querySelector('.hlb-open');close=dlg.querySelector('.hlb-close');
-nav=dlg.querySelector('.hlb-nav');prev=dlg.querySelector('.hlb-prev');next=dlg.querySelector('.hlb-next');
+nav=dlg.querySelector('.hlb-nav');prev=dlg.querySelector('.hlb-prev');next=dlg.querySelector('.hlb-next');count=dlg.querySelector('.hlb-count');
 close.addEventListener('click',hide);prev.addEventListener('click',function(){step(-1);});next.addEventListener('click',function(){step(1);});
 dlg.addEventListener('keydown',function(e){if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;var t=e.target,tag=t&&t.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
 if(e.key==='ArrowLeft'){e.preventDefault();step(-1);}else if(e.key==='ArrowRight'){e.preventDefault();step(1);}});
@@ -210,32 +219,47 @@ dlg.addEventListener('click',function(e){if(e.target===dlg)hide();});
 dlg.addEventListener('cancel',function(e){e.preventDefault();hide();});
 dlg.addEventListener('close',function(){if(!dlg.open&&trigger)finish();});}
 // Cleanup runs as the dialog closes, not in the later close event, which could land after a quick reopen.
-function finish(){var t=trigger;trigger=null;group=null;current='';document.documentElement.classList.remove('hlb-lock');body.innerHTML='';if(t&&t.isConnected&&t.focus)t.focus();}
+function finish(){var t=trigger;trigger=null;group=null;current='';document.documentElement.classList.remove('hlb-lock');body.innerHTML='';body.className='hlb-body';dlg.classList.remove('is-sizing');dlg.style.height='';if(t&&t.isConnected&&t.focus)t.focus();}
 // The address names the open item (?hlb=<post ID>), so a reload or shared link opens it again.
 function itemId(u){var m=/\/(\d+)\/?(?:[?#].*)?$/.exec(u||'');return m?m[1]:'';}
 function address(id){var x=new URL(location.href);if(id){x.searchParams.set(KEY,id);}else{x.searchParams.delete(KEY);}return x.pathname+x.search+x.hash;}
 function shut(){var was=pushed;pushed=false;dlg.close();finish();if(!was&&window.history&&history.replaceState&&new URLSearchParams(location.search).has(KEY))history.replaceState(history.state,'',address(''));}
 // The component's dialog links in page order, each item once (an event spanning days links from every day).
 function items(){var seen={},out=[];if(!group||!group.isConnected)return out;Array.prototype.forEach.call(group.querySelectorAll('a[data-hlb]'),function(x){var u=x.getAttribute('data-hlb');if(!u||seen[u]||!allowed(u))return;seen[u]=1;out.push(x);});return out;}
-function sync(){var list=items(),i=-1;list.forEach(function(x,k){if(x.getAttribute('data-hlb')===current)i=k;});nav.hidden=list.length<2||i<0;prev.disabled=i<=0;next.disabled=i<0||i>=list.length-1;return {list:list,i:i};}
-function step(d){if(!dlg||!dlg.open)return;var s=sync(),t=s.i<0?null:s.list[s.i+d];if(t)show(t,'step');}
+function sync(){var list=items(),i=-1;list.forEach(function(x,k){if(x.getAttribute('data-hlb')===current)i=k;});nav.hidden=list.length<2||i<0;prev.disabled=i<=0;next.disabled=i<0||i>=list.length-1;
+count.textContent=i<0?'':String(lab.count||'%1$s of %2$s').replace('%1$s',i+1).replace('%2$s',list.length);return {list:list,i:i};}
+function step(d){if(!dlg||!dlg.open)return;var s=sync(),t=s.i<0?null:s.list[s.i+d];if(t)show(t,'step',d);}
+// Each item is fetched once and its first image decoded before it shows, so the photo never pops in.
+function warm(d){var t=document.createElement('template');t.innerHTML=d.html||'';var im=t.content.querySelector('img');if(!im||!window.Promise)return d;
+var x=new Image(),s=im.getAttribute('sizes'),ss=im.getAttribute('srcset');if(s)x.sizes=s;if(ss)x.srcset=ss;x.src=im.getAttribute('src')||'';
+var p=x.decode?x.decode():new Promise(function(r){x.onload=x.onerror=r;});
+return Promise.race([p.catch(function(){}),new Promise(function(r){setTimeout(r,1500);})]).then(function(){return d;});}
+function load(a){var url=a.getAttribute('data-hlb'),root=a.closest('[data-hlb-labels]')||a,nonce=root.getAttribute('data-hlb-nonce'),h={'Accept':'application/json'};if(nonce)h['X-WP-Nonce']=nonce;
+if(!cache[url]){cache[url]=fetch(url,{credentials:nonce?'same-origin':'omit',headers:h}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(warm);
+cache[url].catch(function(){delete cache[url];});}return cache[url];}
+// The items either side (two ahead in the stepping direction) load in the background as an item opens, so a step is usually instant.
+function around(d){var s=sync();if(s.i<0)return;[s.i-1,s.i+1,s.i+(d<0?-2:2)].forEach(function(k){if(s.list[k])load(s.list[k]).catch(function(){});});}
+// A step fades the old item out and the ready one in; a sheet that changes height eases to it.
+function put(html,soft,n){var old=dlg.offsetHeight;function done(){if(n!==seq||!dlg.open)return;body.innerHTML=html;body.scrollTop=0;body.classList.remove('is-busy','is-out','is-loading');if(soft&&!still)ease(old);}
+if(soft&&!still){body.classList.add('is-out');setTimeout(done,150);}else{done();}}
+function ease(old){dlg.classList.remove('is-sizing');dlg.style.height='';var h=dlg.offsetHeight;if(Math.abs(h-old)<2)return;
+dlg.style.height=old+'px';void dlg.offsetHeight;dlg.classList.add('is-sizing');dlg.style.height=h+'px';setTimeout(function(){dlg.classList.remove('is-sizing');dlg.style.height='';},260);}
 function hide(){if(!dlg||!dlg.open)return;if(pushed&&history.state&&history.state.hlb){pushed=false;history.back();return;}shut();}
 window.addEventListener('popstate',function(){if(dlg&&dlg.open)shut();});
-function show(a,how){if(!dlg)build();
+function show(a,how,d){if(!dlg)build();
 var root=a.closest('[data-hlb-labels]')||a,l={},cs=getComputedStyle(root),url=a.getAttribute('data-hlb'),href=a.href,n=++seq;
 try{l=JSON.parse(root.getAttribute('data-hlb-labels')||'{}')||{};}catch(e){}
-group=root.hasAttribute('data-hlb-labels')?root:null;current=url;prev.setAttribute('aria-label',l.prev||'Previous');next.setAttribute('aria-label',l.next||'Next');sync();
+var soft=dlg.open;lab=l;group=root.hasAttribute('data-hlb-labels')?root:null;current=url;prev.textContent=l.prev||'Previous';next.textContent=l.next||'Next';sync();
 TOKENS.forEach(function(t){var v=cs.getPropertyValue('--hlb-'+t).trim();if(v){dlg.style.setProperty('--hlb-'+t,v);}else{dlg.style.removeProperty('--hlb-'+t);}});
 dlg.classList.toggle('is-media',l.layout==='media');close.setAttribute('aria-label',l.close||'Close');full.href=href;full.textContent=l.open||'';full.hidden=l.page===false||!l.open;dlg.classList.toggle('is-bare',full.hidden);
 dlg.setAttribute('aria-label',(a.getAttribute('title')||a.textContent||'').trim().slice(0,120));
-body.classList.add('is-loading');body.innerHTML='<p class="hlb-msg" role="status">'+esc(l.loading||'')+'</p>';
+if(soft){body.classList.add('is-busy');}else{body.classList.add('is-loading');body.innerHTML='<p class="hlb-msg" role="status">'+esc(l.loading||'')+'</p>';}
 trigger=a;var id=itemId(url);
 if(!dlg.open){dlg.showModal();document.documentElement.classList.add('hlb-lock');if(window.history&&history.pushState){if(how==='load')history.replaceState(history.state,'',address(''));history.pushState({hlb:1},'',address(id));pushed=true;}}
 else if(window.history&&history.replaceState){history.replaceState(pushed?{hlb:1}:history.state,'',address(id));}
-var nonce=root.getAttribute('data-hlb-nonce'),h={'Accept':'application/json'};if(nonce)h['X-WP-Nonce']=nonce;
-if(!cache[url]){cache[url]=fetch(url,{credentials:nonce?'same-origin':'omit',headers:h}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
-cache[url].then(function(d){if(n!==seq||!dlg.open)return;body.classList.remove('is-loading');body.innerHTML=d.html||'';body.scrollTop=0;if(d.title)dlg.setAttribute('aria-label',d.title);var f=how==='step'&&document.activeElement;if(!f||!dlg.contains(f)||f.disabled)close.focus();})
-.catch(function(){delete cache[url];if(n!==seq||!dlg.open)return;body.classList.remove('is-loading');body.innerHTML='<p class="hlb-msg">'+esc(l.error||'')+' <a href="'+esc(href)+'">'+esc(l.open||href)+'</a></p>';});}
+load(a).then(function(p){if(n!==seq||!dlg.open)return;if(p.title)dlg.setAttribute('aria-label',p.title);put(p.html||'',soft,n);var f=how==='step'&&document.activeElement;if(!f||!dlg.contains(f)||f.disabled)close.focus();})
+.catch(function(){if(n!==seq||!dlg.open)return;put('<p class="hlb-msg">'+esc(l.error||'')+' <a href="'+esc(href)+'">'+esc(l.open||href)+'</a></p>',soft,n);});
+around(d);}
 document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hlb]'):null;
 if(!a||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||!window.fetch||!window.HTMLDialogElement||!allowed(a.getAttribute('data-hlb')))return;
 e.preventDefault();show(a,'open');});

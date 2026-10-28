@@ -57,12 +57,19 @@ link, Escape, the close button, a backdrop click, and the browser Back button
 close it, and the page behind does not scroll. Phones get a bottom sheet.
 Responses are cached in the page, so reopening an item is instant. Labels:
 `lightbox_close`, `lightbox_open`, `lightbox_loading`, `lightbox_error`,
-`lightbox_prev`, `lightbox_next`.
+`lightbox_prev`, `lightbox_next`, `lightbox_count` (`%1$s of %2$s`).
 
 Previous and Next buttons beside the close button (and the left and right
 arrow keys) step through the component's other dialog links in page order,
-each item once, so a calendar month reads like a slideshow. They hide when the
-component has one item and grey out at either end.
+each item once, so a calendar month reads like a slideshow. The buttons are
+worded (`lightbox_prev`, `lightbox_next`; a host names its items, for example
+"Previous event") with the item's place between them ("4 of 18"). They hide
+when the component has one item and grey out at either end.
+
+A step keeps the shown item on screen until the next one is fetched and its
+photo decoded, then fades through to it; a phone sheet eases to its new
+height. As an item opens, the items either side (and the one two ahead in the
+stepping direction) load in the background, so a step is usually instant. Visitors who ask for reduced motion get the swap without fades.
 
 The open item is kept in the address as `?hlb=<post ID>`: opening adds it as
 one history entry, each step replaces it, and closing (or Back) removes it. A

@@ -295,7 +295,7 @@
 - **Code:** `src/Map/` (docs: `docs/map.md`)
 
 ### Public components
-- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox (Previous and Next through the component's items, the open item kept in the address as `?hlb=<post ID>` so a reload reopens it), cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
+- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox (worded Previous and Next with the item's place, stepping smoothly through the component's items, the open item kept in the address as `?hlb=<post ID>` so a reload reopens it), cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
 - **Use:** `ImageZoom::html( $attachment_id, $options )`; `ItemLink::attributes()` with `link_behavior` = `page`/`new_tab`/`lightbox` (REST `hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`); `RelativeTime::html( $timestamp )`; `ProfileStore`, `ProfileValues`, `PublicComponent`.
 - **Code:** `src/PublicComponents/` (docs: `docs/image-zoom.md`, `docs/item-link.md`, `docs/relative-time.md`)
 

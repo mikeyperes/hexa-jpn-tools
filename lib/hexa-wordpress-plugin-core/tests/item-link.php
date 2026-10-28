@@ -207,5 +207,10 @@ $expect( str_contains( $js, 'hlb-prev' ) && str_contains( $js, 'hlb-next' ) && s
 $expect( str_contains( $js, "KEY='hlb'" ) && str_contains( $js, "history.replaceState(pushed?{hlb:1}:history.state,'',address(id))" ) && str_contains( $js, "show(hit,'load')" ), 'The open item is kept in the address and a reload reopens it.' );
 $expect( 'Previous' === ItemLink::LABELS['lightbox_prev'] && 'Next' === ItemLink::LABELS['lightbox_next'], 'Previous and Next have their own labels.' );
 $expect( str_contains( ItemLightbox::css(), '@media(max-width:600px)' ), 'Phones get a bottom-sheet dialog.' );
+$expect( '%1$s of %2$s' === ItemLink::LABELS['lightbox_count'] && str_contains( $js, 'hlb-count' ) && str_contains( $js, "prev.textContent=l.prev||'Previous'" ), 'Previous and Next are worded buttons with the item\'s place between them.' );
+$expect( ! preg_match( '/[\x{2190}-\x{21FF}]/u', $js ), 'The dialog draws no arrow icons.' );
+$expect( str_contains( $js, 'x.decode' ) && str_contains( $js, "body.classList.add('is-busy')" ) && str_contains( $js, "body.classList.add('is-out')" ), 'A step keeps the shown item until the next photo is decoded, then fades through.' );
+$expect( str_contains( $js, 'function around(d){' ) && str_contains( $js, 'around(d);' ), 'The items either side load in the background.' );
+$expect( str_contains( ItemLightbox::css(), 'prefers-reduced-motion:reduce' ), 'Reduced motion swaps without fades.' );
 
 echo "PASS: item link contract ({$assertions} assertions).\n";

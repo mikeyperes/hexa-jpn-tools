@@ -42,6 +42,8 @@ final class EventLightbox
             'lightbox_close' => __('Close', 'hexa-jpn-tools'),
             'lightbox_loading' => __('Loading event…', 'hexa-jpn-tools'),
             'lightbox_error' => __('This event could not load.', 'hexa-jpn-tools'),
+            'lightbox_prev' => __('Previous event', 'hexa-jpn-tools'),
+            'lightbox_next' => __('Next event', 'hexa-jpn-tools'),
         ];
     }
 
