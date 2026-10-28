@@ -56,7 +56,20 @@ A native modal `<dialog>`: focus moves into it and returns to the clicked
 link, Escape, the close button, a backdrop click, and the browser Back button
 close it, and the page behind does not scroll. Phones get a bottom sheet.
 Responses are cached in the page, so reopening an item is instant. Labels:
-`lightbox_close`, `lightbox_open`, `lightbox_loading`, `lightbox_error`.
+`lightbox_close`, `lightbox_open`, `lightbox_loading`, `lightbox_error`,
+`lightbox_prev`, `lightbox_next`.
+
+Previous and Next buttons beside the close button (and the left and right
+arrow keys) step through the component's other dialog links in page order,
+each item once, so a calendar month reads like a slideshow. They hide when the
+component has one item and grey out at either end.
+
+The open item is kept in the address as `?hlb=<post ID>`: opening adds it as
+one history entry, each step replaces it, and closing (or Back) removes it. A
+page loaded with `?hlb=<post ID>` opens that item when a dialog link to it is
+on the page (the calendar keeps its month in the address, so a reload lands on
+the same month); otherwise the parameter is dropped. The calendar ignores
+`hlb` when it reads its own state.
 
 ## Theming
 

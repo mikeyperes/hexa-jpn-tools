@@ -149,6 +149,11 @@ final class PageStructureTemplateService {
         if ( is_wp_error( $updated ) ) {
             return $updated;
         }
+        // A page built with Elementor shows its Elementor design over the page text. The default text
+        // only shows once the page leaves builder mode; its Elementor design stays saved on the page.
+        if ( function_exists( 'delete_post_meta' ) && 'builder' === get_post_meta( $page_id, '_elementor_edit_mode', true ) ) {
+            delete_post_meta( $page_id, '_elementor_edit_mode' );
+        }
 
         $this->log( 'Page template applied: ' . $page_key . ' -> ' . $page_id );
 

@@ -312,6 +312,6 @@ $expect( str_contains( CalendarRenderer::js(), "eu.href.indexOf('hexa-plugin-cor
 $expect( strlen( CalendarRenderer::css() ) < 6500 && strlen( CalendarRenderer::js() ) < 5000 && strlen( (string) gzencode( CalendarRenderer::css() . CalendarRenderer::js(), 9 ) ) < 3600, 'Calendar assets stay lightweight (under about 3.5 KB gzipped together).' );
 $expect( str_contains( $shortcode, 'data-hcal-today="2026-09-23" data-hcal-tz="America/New_York"' ), 'The rendered day and timezone let a cached page detect that it is stale.' );
 
-$expect( str_contains( CalendarRenderer::js(), 'if(location.search===shown)return;' ), 'A history entry that keeps the address (an open lightbox) does not reload the month.' );
+$expect( str_contains( CalendarRenderer::js(), 'if(here()===shown)return;' ) && str_contains( CalendarRenderer::js(), "q.delete('hlb')" ), 'A history entry that only opens, steps or closes a lightbox item does not reload the month.' );
 
 echo "PASS: calendar contract ({$assertions} assertions).\n";

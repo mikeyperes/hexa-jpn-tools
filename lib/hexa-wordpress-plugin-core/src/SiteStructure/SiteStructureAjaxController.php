@@ -47,6 +47,7 @@ final class SiteStructureAjaxController {
                 'page_details'             => '',
                 'page_workspace'           => '',
                 'update_page_slug'         => '',
+                'toggle_page'              => '',
             ],
             is_array( $this->config['actions'] ) ? $this->config['actions'] : []
         );
@@ -209,6 +210,16 @@ final class SiteStructureAjaxController {
                     $request->key( 'page_key' ),
                     $request->int( 'page_id' ),
                     $request->title_slug( 'slug' )
+                ),
+            ];
+        }
+
+        if ( '' !== (string) $actions['toggle_page'] ) {
+            $map['toggle_page'] = [
+                'action'   => (string) $actions['toggle_page'],
+                'callback' => fn( AjaxRequest $request ): array|\WP_Error => $this->manager->set_enabled(
+                    $request->key( 'page_key' ),
+                    1 === $request->int( 'enabled' )
                 ),
             ];
         }

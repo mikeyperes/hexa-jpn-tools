@@ -351,6 +351,7 @@ final class CalendarRenderer {
             . '@media(prefers-reduced-motion:reduce){.hcal-body,.hcal-item,.hcal-btn{transition:none}}';
     }
 
+    /** The calendar script. The open lightbox item (`?hlb=`) is not calendar state, so `here()` compares addresses without it. */
     public static function js(): string {
         return <<<'JS'
 (function(){
@@ -360,7 +361,8 @@ var body=root.querySelector('.hcal-body'),form=root.querySelector('.hcal-filters
 if(!body||!endpoint||!window.fetch||!window.URLSearchParams)return;
 try{var eu=new URL(endpoint,location.href);if(eu.origin!==location.origin||eu.href.indexOf('hexa-plugin-core/v1/calendar/')<0)return;}catch(e){return;}
 var id=root.getAttribute('data-hcal-id'),base=root.getAttribute('data-hcal-base')||location.pathname,nonce=root.getAttribute('data-hcal-nonce');
-var month=root.getAttribute('data-hcal-month'),reset=root.querySelector('.hcal-reset'),seq=0,controller=null,shown=location.search;
+function here(){var q=new URLSearchParams(location.search);q.delete('hlb');return q.toString();}
+var month=root.getAttribute('data-hcal-month'),reset=root.querySelector('.hcal-reset'),seq=0,controller=null,shown=here();
 root.classList.add('is-live');
 function each(fn){if(form)Array.prototype.forEach.call(form.elements,fn);}
 function filters(){var p=new URLSearchParams();each(function(el){if(!el.name||el.disabled||el.type==='hidden'||el.type==='submit')return;if(el.type==='checkbox'&&!el.checked)return;var v=(el.value||'').trim();if(v!=='')p.append(el.name,v);});return p;}
@@ -375,7 +377,7 @@ fetch(endpoint+(endpoint.indexOf('?')>-1?'&':'?')+rp.toString(),{credentials:non
 body.innerHTML=d.html||'';month=d.month||m||month;root.setAttribute('data-hcal-month',month);if(status)status.textContent=d.status||'';
 var mi=form&&form.querySelector('input[name="cmonth"]');if(mi)mi.value=month;if(reset)reset.hidden=f.toString()==='';
 if(focus){var t=body.querySelector('a.'+focus)||body.querySelector('.hcal-title');if(t)t.focus();}
-if(push!==null&&window.history&&history.replaceState){p.set('cmonth',month);var u=pageUrl(p);if(push){history.pushState({hcal:id},'',u);}else{history.replaceState({hcal:id},'',u);}shown=location.search;}
+if(push!==null&&window.history&&history.replaceState){p.set('cmonth',month);var u=pageUrl(p);if(push){history.pushState({hcal:id},'',u);}else{history.replaceState({hcal:id},'',u);}shown=here();}
 }).catch(function(e){if(n!==seq||(e&&e.name==='AbortError'))return;if(status)status.textContent=root.getAttribute('data-hcal-error')||'';}).then(function(){if(n!==seq)return;root.removeAttribute('aria-busy');body.classList.remove('is-loading');});}
 body.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hcal-month]'):null;if(!a||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button)return;e.preventDefault();run(a.getAttribute('data-hcal-month'),true);});
 if(form){form.addEventListener('submit',function(e){e.preventDefault();run(month,false);});form.addEventListener('change',function(){run(month,false);});}
@@ -384,7 +386,7 @@ var today=root.getAttribute('data-hcal-today'),now='';
 try{now=new Intl.DateTimeFormat('en-CA',{timeZone:root.getAttribute('data-hcal-tz'),year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());}catch(e){}
 if(/^\d{4}-\d{2}-\d{2}$/.test(now)&&now!==today){var sp0=new URLSearchParams(location.search),mine=!sp0.get('cal')||sp0.get('cal')===id;root.setAttribute('data-hcal-home',now.slice(0,7));run(mine&&sp0.get('cmonth')?month:now.slice(0,7),null);}
 // Only an address change is a calendar change: history entries other components add (a lightbox) leave the month alone.
-window.addEventListener('popstate',function(){if(location.search===shown)return;shown=location.search;var sp=new URLSearchParams(location.search),owner=sp.get('cal');if(owner&&owner!==id){sp=new URLSearchParams();}
+window.addEventListener('popstate',function(){if(here()===shown)return;shown=here();var sp=new URLSearchParams(location.search),owner=sp.get('cal');if(owner&&owner!==id){sp=new URLSearchParams();}
 restore(sp);run(sp.get('cmonth')||root.getAttribute('data-hcal-home'),null);});
 }
 function boot(){Array.prototype.forEach.call(document.querySelectorAll('.hcal[data-hcal-endpoint]'),init);}

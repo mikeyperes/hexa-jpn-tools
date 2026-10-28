@@ -30,6 +30,8 @@ final class ItemLink {
         'lightbox_open'    => 'Open full page',
         'lightbox_loading' => 'Loading…',
         'lightbox_error'   => 'This could not load.',
+        'lightbox_prev'    => 'Previous',
+        'lightbox_next'    => 'Next',
     ];
 
     /**

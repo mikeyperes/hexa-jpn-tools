@@ -31,11 +31,28 @@ final class SiteStructureScriptRenderer {
                 setTimeout(function() { $toast.fadeOut(function() { $(this).remove(); }); }, 3000);
             }
 
-            function statusBadge(success, text) {
-                var bg = success ? "#dcfce7" : "#fee2e2";
-                var color = success ? "#166534" : "#991b1b";
-                var icon = success ? "✓" : "×";
-                return '<span style="display:inline-block;background:' + bg + ';color:' + color + ';padding:4px 10px;border-radius:4px;font-size:12px;font-weight:500;">' + icon + ' ' + text + '</span>';
+            function statusBadge(success, enabled) {
+                if (enabled === false) return '<span class="hpc-sp-status hpc-sp-status--muted">Off</span>';
+                return '<span class="hpc-sp-status hpc-sp-status--' + (success ? 'on' : 'off') + '">' + (success ? 'Published' : 'Not created') + '</span>';
+            }
+
+            function primaryEdit(editUrl) {
+                return '<a href="' + editUrl + '" target="_blank" rel="noopener" class="button hpc-sp-newtab" title="Opens in a new tab">Edit page <span aria-hidden="true">&rarr;</span></a>';
+            }
+
+            function setLinked($row, linked, editUrl, viewUrl, pageKey, pageId) {
+                $row.attr("data-linked", linked ? "1" : "0");
+                $row.find(".hpc-site-page-status").html(statusBadge(linked));
+                $row.find(".hpc-sp-primary").html(linked ? primaryEdit(editUrl) : createButton($row));
+                $row.find(".hpc-site-page-actions").html(linked ? actionButtons(pageKey, pageId, editUrl, viewUrl) : "");
+                if ($row.attr("data-custom") === "1") $row.find(".hpc-apply-page-template").remove();
+                var $path = $row.find(".hpc-sp-path");
+                var $under = $path.find(".hpc-sp-under").detach();
+                if (linked && viewUrl && viewUrl !== "#") {
+                    var rel = viewUrl.replace(/^https?:\/\/[^\/]+/, "");
+                    $path.empty().append($("<a/>", {href: viewUrl, target: "_blank", rel: "noopener", text: rel}));
+                }
+                $path.append($under);
             }
 
             function post(actionName, data, done, fail) {
@@ -53,15 +70,14 @@ final class SiteStructureScriptRenderer {
             }
 
             function actionButtons(pageKey, pageId, editUrl, viewUrl) {
-                var html = '<a href="' + editUrl + '" target="_blank" rel="noopener" class="button button-small">Edit</a> ';
-                html += '<a href="' + viewUrl + '" target="_blank" rel="noopener" class="button button-small">View</a> ';
+                var html = '<a href="' + viewUrl + '" target="_blank" rel="noopener" class="button hpc-sp-newtab" title="Opens in a new tab">View <span aria-hidden="true">&rarr;</span></a> ';
                 if (!cfg.lazyPageWorkspace && cfg.enableTemplates && (cfg.actions.apply_template || cfg.applyTemplateAction)) {
-                    html += '<button type="button" class="button button-small hpc-apply-page-template" data-page-id="' + pageId + '" data-page-key="' + pageKey + '">Apply Template</button> ';
+                    html += '<button type="button" class="button hpc-apply-page-template" data-page-id="' + pageId + '" data-page-key="' + pageKey + '">Apply template</button> ';
                 }
                 if (cfg.lazyPageWorkspace) {
-                    html += '<button type="button" class="button button-small hpc-open-page-workspace" data-page-id="' + pageId + '" data-page-key="' + pageKey + '">Manage</button> ';
+                    html += '<button type="button" class="button hpc-open-page-workspace" data-page-id="' + pageId + '" data-page-key="' + pageKey + '">Manage</button> ';
                 }
-                html += '<button type="button" class="button button-small hpc-delete-page" data-page="' + pageKey + '" data-page-id="' + pageId + '" style="color:#dc2626;border-color:#fca5a5;">Delete</button>';
+                html += '<button type="button" class="button hpc-delete-page" data-page="' + pageKey + '" data-page-id="' + pageId + '">Delete</button>';
                 return html;
             }
 
@@ -70,9 +86,9 @@ final class SiteStructureScriptRenderer {
                 var title = $row.data("page-title");
                 var slug = $row.data("page-slug");
                 var parentKey = $row.data("parent-key") || "";
-                var html = '<button type="button" class="button button-small button-primary hpc-create-page" data-page="' + pageKey + '" data-title="' + title + '" data-slug="' + slug + '"';
+                var html = '<button type="button" class="button button-primary hpc-create-page" data-page="' + pageKey + '" data-title="' + title + '" data-slug="' + slug + '"';
                 if (parentKey) html += ' data-parent="' + parentKey + '"';
-                html += '>+ Create</button>';
+                html += '>Create page</button>';
                 if (cfg.lazyPageWorkspace) html += ' <button type="button" class="button button-small hpc-open-page-workspace" data-page-id="0" data-page-key="' + pageKey + '">Manage</button>';
                 return html;
             }
@@ -242,7 +258,7 @@ final class SiteStructureScriptRenderer {
             }
 
             function detailRow($row) {
-                return $row.nextAll(".hpc-site-page-detail-row").first();
+                return $row.find(".hpc-site-page-detail-row").first();
             }
 
             function setPageDetail($row, html) {
@@ -296,6 +312,35 @@ final class SiteStructureScriptRenderer {
                 filterParentItems($card.find(".hpc-structure-parent"), $(this).val());
             });
 
+            $root.on("click", ".hpc-sp-toggle", function() {
+                var $btn = $(this);
+                var open = $btn.attr("aria-expanded") !== "true";
+                $btn.attr("aria-expanded", open ? "true" : "false");
+                $("#" + $btn.attr("aria-controls")).prop("hidden", !open);
+            });
+
+            $root.on("change", ".hpc-sp-enable", function() {
+                var $box = $(this);
+                var $row = $box.closest(".hpc-site-page-row");
+                var on = $box.is(":checked");
+                $box.prop("disabled", true);
+                post("toggle_page", {page_key: $box.data("page"), enabled: on ? 1 : 0}, function(response) {
+                    $box.prop("disabled", false);
+                    if (response.success) {
+                        $row.toggleClass("is-off", !on);
+                        $row.find(".hpc-sp-off-note").prop("hidden", on);
+                        $row.find(".hpc-site-page-status").html(on ? statusBadge($row.attr("data-linked") === "1") : statusBadge(false, false));
+                        toast(message(response, on ? "Page turned on." : "Page turned off."), "success");
+                    } else {
+                        $box.prop("checked", !on);
+                        toast(message(response, "Could not change the page."), "error");
+                    }
+                }, function() {
+                    $box.prop("disabled", false).prop("checked", !on);
+                    toast("Request failed.", "error");
+                });
+            });
+
             $root.on("change", ".hpc-site-page-select", function() {
                 var $select = $(this);
                 var $row = $select.closest(".hpc-site-page-row");
@@ -312,12 +357,10 @@ final class SiteStructureScriptRenderer {
                             var data = response.data || {};
                             var editUrl = data.edit_url || (cfg.adminPostBase + pageId + "&action=edit");
                             var viewUrl = data.permalink || "#";
-                            $row.find(".hpc-site-page-status").html(statusBadge(true, "Set"));
-                            $row.find(".hpc-site-page-actions").html(actionButtons($select.data("page"), pageId, editUrl, viewUrl));
+                            setLinked($row, true, editUrl, viewUrl, $select.data("page"), pageId);
                             setPageDetail($row, data.detail_html || "");
                         } else {
-                            $row.find(".hpc-site-page-status").html(statusBadge(false, "Not Set"));
-                            $row.find(".hpc-site-page-actions").html(createButton($row));
+                            setLinked($row, false);
                             setPageDetail($row, "");
                         }
                         toast("Page assignment saved.", "success");
@@ -352,17 +395,16 @@ final class SiteStructureScriptRenderer {
                             $select.append($("<option/>").val(pageId).text(data.title || title));
                         }
                         $select.val(pageId);
-                        $row.find(".hpc-site-page-status").html(statusBadge(true, "Set"));
-                        $row.find(".hpc-site-page-actions").html(actionButtons(pageKey, pageId, editUrl, viewUrl));
+                        setLinked($row, true, editUrl, viewUrl, pageKey, pageId);
                         setPageDetail($row, data.detail_html || "");
                         toast("Page created: " + (data.title || title), "success");
                     } else {
                         toast(message(response, "Failed to create page."), "error");
-                        $btn.prop("disabled", false).text("+ Create");
+                        $btn.prop("disabled", false).text("Create page");
                     }
                 }, function() {
                     toast("Page creation request failed.", "error");
-                    $btn.prop("disabled", false).text("+ Create");
+                    $btn.prop("disabled", false).text("Create page");
                 });
             });
 
@@ -377,8 +419,7 @@ final class SiteStructureScriptRenderer {
                 }, function(response) {
                     if (response.success) {
                         $row.find(".hpc-site-page-select").val("");
-                        $row.find(".hpc-site-page-status").html(statusBadge(false, "Not Set"));
-                        $row.find(".hpc-site-page-actions").html(createButton($row));
+                        setLinked($row, false);
                         setPageDetail($row, "");
                         toast(message(response, "Page deleted or unassigned."), "success");
                     } else {
@@ -546,10 +587,10 @@ final class SiteStructureScriptRenderer {
                     } else {
                         setStatus($status, message(response, "Template save failed."), false);
                     }
-                    $btn.prop("disabled", false).text("Save Template");
+                    $btn.prop("disabled", false).text("Save template");
                 }, function() {
                     setStatus($status, "Template save request failed.", false);
-                    $btn.prop("disabled", false).text("Save Template");
+                    $btn.prop("disabled", false).text("Save template");
                 });
             });
 
@@ -612,20 +653,20 @@ final class SiteStructureScriptRenderer {
                 }, function(response) {
                     if (response.success) {
                         toast("Template applied.", "success");
-                        $btn.prop("disabled", false).text("Apply Template");
+                        $btn.prop("disabled", false).text("Apply template");
                     } else if (response.data && response.data.code === "has_content" && force !== "true") {
                         if (confirm("Page already has content. Overwrite with default template?")) {
                             postTemplate(pageId, pageKey, "true", $btn);
                         } else {
-                            $btn.prop("disabled", false).text("Apply Template");
+                            $btn.prop("disabled", false).text("Apply template");
                         }
                     } else {
                         toast(message(response, "Template apply failed."), "error");
-                        $btn.prop("disabled", false).text("Apply Template");
+                        $btn.prop("disabled", false).text("Apply template");
                     }
                 }).fail(function() {
                     toast("Template request failed.", "error");
-                    $btn.prop("disabled", false).text("Apply Template");
+                    $btn.prop("disabled", false).text("Apply template");
                 });
             }
 
@@ -634,7 +675,7 @@ final class SiteStructureScriptRenderer {
                 var $detail = $btn.closest(".hpc-page-detail");
                 var $detailRow = $btn.closest(".hpc-site-page-detail-row");
                 var $workspace = $btn.closest("[data-hpc-page-workspace]");
-                var $row = $workspace.length ? $root.find('.hpc-site-page-row[data-page-key="' + ($workspace.attr("data-page-key") || "") + '"]').first() : $detailRow.prevAll(".hpc-site-page-row").first();
+                var $row = $workspace.length ? $root.find('.hpc-site-page-row[data-page-key="' + ($workspace.attr("data-page-key") || "") + '"]').first() : $btn.closest(".hpc-site-page-row");
                 var $status = $detail.find(".hpc-page-slug-status");
                 var pageId = $detail.data("page-id") || $btn.data("page-id");
                 var slug = $detail.find(".hpc-page-slug-input").val();

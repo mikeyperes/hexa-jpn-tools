@@ -13,6 +13,11 @@ namespace Hexa\PluginCore\PublicComponents;
  * trap, Escape, backdrop click, browser Back closes it) and copies the
  * `--hlb-*` custom properties from the clicked component, so a page builder
  * styles the dialog where it styles the component.
+ *
+ * Previous and Next buttons (and the left and right arrow keys) step through
+ * the other dialog links of the same component in page order. The open item
+ * is kept in the address as `?hlb=<post ID>`, updated on every step, so a
+ * reload or a shared link opens the same item again; closing removes it.
  */
 final class ItemLightbox {
     /** @var array<string,callable> component => fn( string $profile_id ): ?array */
@@ -164,6 +169,10 @@ final class ItemLightbox {
             . '.hlb-close{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin-left:auto;padding:0;border:1px solid var(--hlb-border);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:22px;line-height:1;cursor:pointer}'
             // Without the full-page link the bar holds only the close button: a slim strip without a divider.
             . '.hlb.is-bare .hlb-bar{padding:8px 8px 0;border:0}.hlb.is-bare .hlb-body{padding-top:4px}'
+            . '.hlb-nav{display:inline-flex;flex:none;gap:8px}.hlb-nav[hidden]{display:none}'
+            . '.hlb-step{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:1px solid var(--hlb-border);border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:17px;line-height:1;cursor:pointer;transition:border-color .2s,color .2s,opacity .2s}'
+            . '.hlb-step:hover:not(:disabled){border-color:var(--hlb-accent);color:var(--hlb-accent)}.hlb-step:disabled{opacity:.35;cursor:default}'
+            . '.hlb-nav:not([hidden])+.hlb-close{margin-left:0}.hlb-open[hidden]+.hlb-nav{margin-left:auto}'
             . '.hlb-close:hover{border-color:var(--hlb-accent);color:var(--hlb-accent)}.hlb :focus-visible{outline:2px solid var(--hlb-accent);outline-offset:2px}'
             . '.hlb-body{flex:1 1 auto;min-height:0;overflow:auto;padding:20px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.hlb-body.is-loading{opacity:.7}'
             . '.hlb-msg{margin:0;color:var(--hlb-muted)}.hlb-msg a{color:var(--hlb-accent)}'
@@ -172,7 +181,7 @@ final class ItemLightbox {
             . 'html.hlb-lock{overflow:hidden}'
             // Media layout: a large dialog, the photo filling the left, the details scrolling on the right.
             . '.hlb.is-media{width:min(var(--hlb-media-width,1240px),calc(100vw - 48px));height:min(var(--hlb-media-height,880px),calc(100vh - 48px));height:min(var(--hlb-media-height,880px),calc(100dvh - 48px))}'
-            . '.hlb.is-media .hlb-bar{position:absolute;top:0;right:0;z-index:2;padding:14px;border:0;background:none}.hlb.is-media .hlb-close{background:var(--hlb-bg)}'
+            . '.hlb.is-media .hlb-bar{position:absolute;top:0;right:0;z-index:2;padding:14px;border:0;background:none}.hlb.is-media .hlb-close,.hlb.is-media .hlb-step{background:var(--hlb-bg)}'
             . '.hlb.is-media .hlb-body{display:flex;padding:0;overflow:hidden}.hlb.is-media .hlb-body>.hlb-msg{margin:auto;padding:24px}'
             . '.hlb-item{display:grid;flex:1;grid-template-columns:minmax(0,1fr) minmax(320px,var(--hlb-details-width,440px));width:100%;min-height:0}.hlb-item--text{grid-template-columns:minmax(0,1fr)}'
             . '.hlb-item__media{display:flex;align-items:center;justify-content:center;min-height:0;overflow:hidden;background:var(--hlb-media-bg,#000)}'
@@ -187,36 +196,53 @@ final class ItemLightbox {
         return <<<'JS'
 (function(){
 if(window.hexaLightbox)return;window.hexaLightbox=1;
-var TOKENS=['bg','fg','muted','border','accent','radius','width','backdrop'],cache={},dlg,body,full,close,trigger=null,seq=0,pushed=false;
+var TOKENS=['bg','fg','muted','border','accent','radius','width','backdrop'],cache={},dlg,body,full,close,nav,prev,next,trigger=null,group=null,current='',seq=0,pushed=false,KEY='hlb';
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function allowed(u){try{var x=new URL(u,location.href);return x.origin===location.origin&&x.href.indexOf('hexa-plugin-core/v1/lightbox/')>-1;}catch(e){return false;}}
 function build(){dlg=document.createElement('dialog');dlg.className='hlb';
-dlg.innerHTML='<div class="hlb-bar"><a class="hlb-open" href="#"></a><button type="button" class="hlb-close"><span aria-hidden="true">×</span></button></div><div class="hlb-body"></div>';
+dlg.innerHTML='<div class="hlb-bar"><a class="hlb-open" href="#"></a><span class="hlb-nav" hidden><button type="button" class="hlb-step hlb-prev"><span aria-hidden="true">←</span></button><button type="button" class="hlb-step hlb-next"><span aria-hidden="true">→</span></button></span><button type="button" class="hlb-close"><span aria-hidden="true">×</span></button></div><div class="hlb-body"></div>';
 document.body.appendChild(dlg);body=dlg.querySelector('.hlb-body');full=dlg.querySelector('.hlb-open');close=dlg.querySelector('.hlb-close');
-close.addEventListener('click',hide);
+nav=dlg.querySelector('.hlb-nav');prev=dlg.querySelector('.hlb-prev');next=dlg.querySelector('.hlb-next');
+close.addEventListener('click',hide);prev.addEventListener('click',function(){step(-1);});next.addEventListener('click',function(){step(1);});
+dlg.addEventListener('keydown',function(e){if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;var t=e.target,tag=t&&t.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT'||(t&&t.isContentEditable))return;
+if(e.key==='ArrowLeft'){e.preventDefault();step(-1);}else if(e.key==='ArrowRight'){e.preventDefault();step(1);}});
 dlg.addEventListener('click',function(e){if(e.target===dlg)hide();});
 dlg.addEventListener('cancel',function(e){e.preventDefault();hide();});
 dlg.addEventListener('close',function(){if(!dlg.open&&trigger)finish();});}
 // Cleanup runs as the dialog closes, not in the later close event, which could land after a quick reopen.
-function finish(){var t=trigger;trigger=null;document.documentElement.classList.remove('hlb-lock');body.innerHTML='';if(t&&t.isConnected&&t.focus)t.focus();}
-function shut(){pushed=false;dlg.close();finish();}
+function finish(){var t=trigger;trigger=null;group=null;current='';document.documentElement.classList.remove('hlb-lock');body.innerHTML='';if(t&&t.isConnected&&t.focus)t.focus();}
+// The address names the open item (?hlb=<post ID>), so a reload or shared link opens it again.
+function itemId(u){var m=/\/(\d+)\/?(?:[?#].*)?$/.exec(u||'');return m?m[1]:'';}
+function address(id){var x=new URL(location.href);if(id){x.searchParams.set(KEY,id);}else{x.searchParams.delete(KEY);}return x.pathname+x.search+x.hash;}
+function shut(){var was=pushed;pushed=false;dlg.close();finish();if(!was&&window.history&&history.replaceState&&new URLSearchParams(location.search).has(KEY))history.replaceState(history.state,'',address(''));}
+// The component's dialog links in page order, each item once (an event spanning days links from every day).
+function items(){var seen={},out=[];if(!group||!group.isConnected)return out;Array.prototype.forEach.call(group.querySelectorAll('a[data-hlb]'),function(x){var u=x.getAttribute('data-hlb');if(!u||seen[u]||!allowed(u))return;seen[u]=1;out.push(x);});return out;}
+function sync(){var list=items(),i=-1;list.forEach(function(x,k){if(x.getAttribute('data-hlb')===current)i=k;});nav.hidden=list.length<2||i<0;prev.disabled=i<=0;next.disabled=i<0||i>=list.length-1;return {list:list,i:i};}
+function step(d){if(!dlg||!dlg.open)return;var s=sync(),t=s.i<0?null:s.list[s.i+d];if(t)show(t,'step');}
 function hide(){if(!dlg||!dlg.open)return;if(pushed&&history.state&&history.state.hlb){pushed=false;history.back();return;}shut();}
 window.addEventListener('popstate',function(){if(dlg&&dlg.open)shut();});
-function show(a){if(!dlg)build();
+function show(a,how){if(!dlg)build();
 var root=a.closest('[data-hlb-labels]')||a,l={},cs=getComputedStyle(root),url=a.getAttribute('data-hlb'),href=a.href,n=++seq;
 try{l=JSON.parse(root.getAttribute('data-hlb-labels')||'{}')||{};}catch(e){}
+group=root.hasAttribute('data-hlb-labels')?root:null;current=url;prev.setAttribute('aria-label',l.prev||'Previous');next.setAttribute('aria-label',l.next||'Next');sync();
 TOKENS.forEach(function(t){var v=cs.getPropertyValue('--hlb-'+t).trim();if(v){dlg.style.setProperty('--hlb-'+t,v);}else{dlg.style.removeProperty('--hlb-'+t);}});
 dlg.classList.toggle('is-media',l.layout==='media');close.setAttribute('aria-label',l.close||'Close');full.href=href;full.textContent=l.open||'';full.hidden=l.page===false||!l.open;dlg.classList.toggle('is-bare',full.hidden);
 dlg.setAttribute('aria-label',(a.getAttribute('title')||a.textContent||'').trim().slice(0,120));
 body.classList.add('is-loading');body.innerHTML='<p class="hlb-msg" role="status">'+esc(l.loading||'')+'</p>';
-trigger=a;if(!dlg.open){dlg.showModal();document.documentElement.classList.add('hlb-lock');if(window.history&&history.pushState){history.pushState({hlb:1},'');pushed=true;}}
+trigger=a;var id=itemId(url);
+if(!dlg.open){dlg.showModal();document.documentElement.classList.add('hlb-lock');if(window.history&&history.pushState){if(how==='load')history.replaceState(history.state,'',address(''));history.pushState({hlb:1},'',address(id));pushed=true;}}
+else if(window.history&&history.replaceState){history.replaceState(pushed?{hlb:1}:history.state,'',address(id));}
 var nonce=root.getAttribute('data-hlb-nonce'),h={'Accept':'application/json'};if(nonce)h['X-WP-Nonce']=nonce;
 if(!cache[url]){cache[url]=fetch(url,{credentials:nonce?'same-origin':'omit',headers:h}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();});}
-cache[url].then(function(d){if(n!==seq||!dlg.open)return;body.classList.remove('is-loading');body.innerHTML=d.html||'';body.scrollTop=0;if(d.title)dlg.setAttribute('aria-label',d.title);close.focus();})
+cache[url].then(function(d){if(n!==seq||!dlg.open)return;body.classList.remove('is-loading');body.innerHTML=d.html||'';body.scrollTop=0;if(d.title)dlg.setAttribute('aria-label',d.title);var f=how==='step'&&document.activeElement;if(!f||!dlg.contains(f)||f.disabled)close.focus();})
 .catch(function(){delete cache[url];if(n!==seq||!dlg.open)return;body.classList.remove('is-loading');body.innerHTML='<p class="hlb-msg">'+esc(l.error||'')+' <a href="'+esc(href)+'">'+esc(l.open||href)+'</a></p>';});}
 document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[data-hlb]'):null;
 if(!a||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||!window.fetch||!window.HTMLDialogElement||!allowed(a.getAttribute('data-hlb')))return;
-e.preventDefault();show(a);});
+e.preventDefault();show(a,'open');});
+function boot(){var id=new URLSearchParams(location.search).get(KEY);if(!/^\d+$/.test(id||'')||!window.fetch||!window.HTMLDialogElement)return;
+var hit=null;Array.prototype.some.call(document.querySelectorAll('a[data-hlb]'),function(x){var u=x.getAttribute('data-hlb');if(allowed(u)&&itemId(u)===id){hit=x;return true;}return false;});
+if(hit){show(hit,'load');}else if(history.replaceState){history.replaceState(history.state,'',address(''));}}
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',boot);}else{boot();}
 })();
 JS;
     }

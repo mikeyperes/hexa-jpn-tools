@@ -146,3 +146,11 @@ In a WordPress host plugin, verify:
 Set `lazy_page_workspace => true` when a host has many page blueprints or template editors. Core renders the assignment rows plus one shared page workspace instead of constructing a detail row and WordPress editor for every page.
 
 The host must register and pass a `page_workspace` AJAX action. Clicking a row's Manage button loads only that page's detail HTML and template through `PageStructureManager::page_workspace_payload()`. Saving, applying a template, and changing the page slug continue through the existing guarded actions.
+
+## Parents, setup in one call and moved pages (3.35.0)
+
+- A page definition may name a `parent` page key from any plugin. `resolve_page_id( $key )` looks in this manager, then every other loaded `PageStructureManager`, then the `hexa_site_structure_page_id` filter, so a plugin with its own page linking can answer for its keys.
+- `ensure_pages()` sets every page up, parents first; `ensure_page( $key )` sets up one: the linked page, else a page already at its slug at any level (linked, content untouched), else a new page from its template. The page is then moved under its parent.
+- `PageStructureManager::place_under_parent( $page_id, $parent_id )` moves a page and records its old path; `PageRedirects` sends that path to the new address with a 301.
+- `required_facts` on a definition (`label => [ fact, alternative ]`) with the `facts_getter` config callable powers `missing_facts( $key )`.
+- `slugs` on a definition lists other addresses the page may already have (`*` is a wildcard, `find_page_by_pattern()`); `ensure_page()` links the first match before creating anything (3.36.0).

@@ -226,8 +226,8 @@
 - **Code:** `src/Users/`
 
 ### Site structure
-- **Does:** the plugin's list of key pages, which page fills each, creating pages from templates, and building WordPress menus from them.
-- **Use:** `PageStructureManager` with the host's page blueprint, `SiteStructureRenderer::render( [ show_pages, show_menus ] )`, `SiteStructureAjaxController::register()`; `PageStructureMenuService`, `PageStructureTemplateService`.
+- **Does:** the plugin's list of key pages, which page fills each, creating pages from templates, placing each page under its parent (also a parent another plugin owns) with its old address redirecting, the facts each page needs, and building WordPress menus from them.
+- **Use:** `PageStructureManager` with the host's page blueprint (`parent`, `slugs` alternatives with `*`, `required_facts`, config `facts_getter`); `ensure_pages()` sets every page up in one call, `ensure_page( $key )` one, `resolve_page_id( $key )` finds a page from any plugin (filter `hexa_site_structure_page_id`), `missing_facts( $key )`, `PageStructureManager::place_under_parent()`, `PageRedirects`; `SiteStructureRenderer::render( [ show_pages, show_menus ] )`, `SiteStructureAjaxController::register()`; `PageStructureMenuService`, `PageStructureTemplateService`.
 - **Code:** `src/SiteStructure/` (docs: `docs/site-structure.md`)
 
 ### Schema tools
@@ -247,7 +247,7 @@
 - **Code:** `src/FaqSets/` (docs: `docs/faq-sets.md`)
 
 ### Search
-- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
+- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. The status line marks its count as `<b class="hls-count">` for styling, and any element marked `data-hls-sync` (such as a heading naming the search term) is refreshed with the results. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
 - **Use:** register a profile with `SearchRegistry::register( 'id', [...] )` (add `render_item` for cards, `source` = `users` with `roles` for people), then `[hexa_search id="id"]` or `SearchBox::render( 'id', $options )`; `SearchBox::header( $options )` for the header. HWS Base Tools ships `[hws_search]` and `[hws_search_box]`. Add `SearchModule` to the host bootstrap.
 - **Extend:** `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`, `hexa_plugin_core_search_register`.
 - **Code:** `src/Search/`. Markup and styling: HWS Base Tools `docs/hws-search.md`; API: `docs/hexa-search.md`.
@@ -295,7 +295,7 @@
 - **Code:** `src/Map/` (docs: `docs/map.md`)
 
 ### Public components
-- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox, cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
+- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox (Previous and Next through the component's items, the open item kept in the address as `?hlb=<post ID>` so a reload reopens it), cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
 - **Use:** `ImageZoom::html( $attachment_id, $options )`; `ItemLink::attributes()` with `link_behavior` = `page`/`new_tab`/`lightbox` (REST `hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`); `RelativeTime::html( $timestamp )`; `ProfileStore`, `ProfileValues`, `PublicComponent`.
 - **Code:** `src/PublicComponents/` (docs: `docs/image-zoom.md`, `docs/item-link.md`, `docs/relative-time.md`)
 

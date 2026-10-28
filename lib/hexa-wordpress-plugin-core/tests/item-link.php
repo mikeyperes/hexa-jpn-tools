@@ -202,7 +202,10 @@ $js = ItemLightbox::js();
 $expect( str_contains( $js, "x.origin===location.origin" ) && str_contains( $js, 'hexa-plugin-core/v1/lightbox/' ), 'The script only fetches same-origin lightbox endpoints.' );
 $expect( str_contains( $js, 'e.metaKey||e.ctrlKey||e.shiftKey||e.altKey' ), 'Modified clicks open the real link.' );
 $expect( str_contains( $js, 'showModal' ) && str_contains( $js, 'popstate' ), 'The dialog is modal and the Back button closes it.' );
-$expect( str_contains( $js, 'function shut(){pushed=false;dlg.close();finish();}' ), 'Closing unlocks the page and restores focus at once, so a quick reopen is never undone.' );
+$expect( str_contains( $js, 'function shut(){var was=pushed;pushed=false;dlg.close();finish();' ), 'Closing unlocks the page and restores focus at once, so a quick reopen is never undone.' );
+$expect( str_contains( $js, 'hlb-prev' ) && str_contains( $js, 'hlb-next' ) && str_contains( $js, "e.key==='ArrowLeft'" ) && str_contains( $js, 'seen[u]' ), 'Previous and Next (and the arrow keys) step through the component\'s items, each once.' );
+$expect( str_contains( $js, "KEY='hlb'" ) && str_contains( $js, "history.replaceState(pushed?{hlb:1}:history.state,'',address(id))" ) && str_contains( $js, "show(hit,'load')" ), 'The open item is kept in the address and a reload reopens it.' );
+$expect( 'Previous' === ItemLink::LABELS['lightbox_prev'] && 'Next' === ItemLink::LABELS['lightbox_next'], 'Previous and Next have their own labels.' );
 $expect( str_contains( ItemLightbox::css(), '@media(max-width:600px)' ), 'Phones get a bottom-sheet dialog.' );
 
 echo "PASS: item link contract ({$assertions} assertions).\n";
