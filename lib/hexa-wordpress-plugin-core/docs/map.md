@@ -83,6 +83,10 @@ MapRegistry::register( 'hosts', [
 [hexa_map id="hosts"]
 ```
 
+   Add `pulse="ring"` (`[hexa_map id="hosts" pulse="ring"]`) to draw the pulse on
+   happening-now pins as small rings that fade and grow on the graphics chip, so the
+   map is never redrawn in a loop. Without it the map draws the pulse itself.
+
 4. Brand it with CSS custom properties on the component (for example in the
    widget's Custom CSS):
 

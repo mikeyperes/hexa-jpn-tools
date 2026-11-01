@@ -3,6 +3,10 @@
 Release notes moved from the README (3.31.1). Newest first; each Core release adds its line here.
 
 
+Version 3.47.1: the map shortcode takes `pulse="ring"`: happening-now pins pulse as small HTML rings animated with transform and opacity, so the map is no longer redrawn every frame. Without the attribute the pulse is unchanged.
+
+Version 3.47.0: API key fields for every plugin (`src/ApiKeys/`): save, remove and test a service key, stored encrypted, with the service's setup steps; a general key test (`ApiKeyVerifier`, `HttpApiKeyVerifier`) that services extend. HWS Base Tools' Stripe keys are the first user.
+
 Version 3.46.2: on phones the media-layout lightbox shows its Previous, count, Next and close controls as a solid strip above the photo instead of floating over it, so the count stays readable and the photo uncovered.
 
 Version 3.46.1: the item lightbox starts loading the neighbouring items as soon as an item opens (the one before, the one after, and two ahead in the stepping direction), instead of after the shown item finishes, so steps through a slow server stay instant.

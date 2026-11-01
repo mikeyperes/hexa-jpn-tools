@@ -190,6 +190,9 @@ $expect( str_contains( $html, '<details class="hmap-list">' ) && substr_count( $
 $expect( ! str_contains( $html, 'No Address' ), 'Items without an address stay off the map.' );
 $expect( in_array( 'litespeed_tag_add', MapTestStore::$actions, true ), 'Pages with a public map are tagged for purging.' );
 $expect( '' === ( new MapRenderer() )->render( 'missing' ), 'An unknown profile renders nothing.' );
+$ring = ( new MapRenderer() )->render( 'hosts', 'ring' );
+$expect( false !== strpos( $ring, '&quot;pulse&quot;:&quot;ring&quot;' ), 'pulse="ring" selects HTML ring pulses.' );
+$expect( false !== strpos( $html, '&quot;pulse&quot;:&quot;paint&quot;' ), 'The default pulse is unchanged.' );
 $expect( str_contains( $html, '<div class="hmap-windows" role="group" aria-label="Filter by date"><button type="button" class="hmap-chip" data-hmap-hours="0" aria-pressed="true">Any time</button>' ) && str_contains( $html, 'data-hmap-hours="24" aria-pressed="false">24 hours <span></span>' ) && str_contains( $html, 'data-hmap-hours="336"' ), 'A profile with `next` gets Any time / 24 hours / 48 hours / 1 week / 2 weeks chips.' );
 $expect( 1790003600 === $points[1]['n'] && 0 === $points[0]['n'], 'Points carry each item\'s next start time for the browser-side date filter.' );
 $expect( str_contains( MapRenderer::js(), "p.n <= now + h * 3600" ) && str_contains( MapRenderer::js(), 'Date.now()' ), 'The date filter runs on the visitor\'s clock, so cached pages stay correct.' );

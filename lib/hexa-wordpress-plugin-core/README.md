@@ -18,6 +18,11 @@
 
 ## Features
 
+- Search filter chips: opt-in `filter_layout="chips"` renders accessible single-choice radio chips, including All, with the same markup under `style="none"`. Dropdowns remain the default. [Markup](docs/search-filter-chips.md).
+
+- Automatic and direct plugin updates resolve a published stable release tag, verify its version, and never fall back to a branch archive.
+
+
 ### Plugin bootstrap and context
 - **Does:** loads one Core copy per site (the newest bundled one among all plugins), builds the plugin's context and boots its modules.
 - **Use:** `hexa_plugin_core_register_package( '<slug>', <core root> )`, then `new PluginContext( [ slug, basename, version, path, url, github_repo, admin_page, capability ] )` and `( new CoreBootstrap( $context ) )->add_module( $m )->boot()`. Modules implement `ModuleInterface` (or extend `RegisterMethodModule`). `CorePackageRuntime::report()` shows which Core copy was selected and any integrity issues. See [Setup protocol](#setup-protocol).
@@ -61,6 +66,11 @@
 - **Does:** admin AJAX actions with nonce and capability checks, request parsing, error handling and JSON replies done once.
 - **Use:** `( new AjaxActionRegistry( [ capability, nonce_action, nonce_field ] ) )->register( [ 'action' => [ 'callback' => fn( AjaxRequest $r ) => [...] ] ] )`; `AjaxRequest::key()` and friends read input; throw `AjaxFailure` for a clean error.
 - **Code:** `src/WpAdminAjax/` (docs: `docs/wp-admin-ajax.md`)
+
+### API key fields
+- **Does:** a real field for any service's API key: save (encrypted through the credential store), remove, and a Test key button that calls the service and says plainly whether the key is active, rejected or unreachable, with the service's own setup steps under it. Saving refuses a key the test rejects.
+- **Use:** `ApiKeyFields::register( new ApiKeyField( id, slug, key_name, label, verifier, steps[], placeholder, help_url, help_label ) )`, then `ApiKeyFields::render( id )` on the screen and `ApiKeyFields::value( id )` in code. A verifier implements `ApiKeyVerifier::verify( string ): ApiKeyCheck`; `HttpApiKeyVerifier` covers services with one read-only endpoint (set `endpoint()`, and optionally `headers()`, `shape_error()`, `on_active()`).
+- **Code:** `src/ApiKeys/` (AJAX actions `hexa_core_api_key_save`, `_delete`, `_test`)
 
 ### Activity log
 - **Does:** a collapsible dark log of what a job did, kept for the page, for a while (transient) or until cleared (option).
@@ -289,7 +299,7 @@
 
 ### Map
 - **Does:** a brandable map of posts or users by address, geocoded in the background without an API key, with clustered pins, group and date filters, item cards and a details sidebar.
-- **Use:** `MapRegistry::register( 'id', [...] )`, add `MapModule`, then `[hexa_map id="id"]`; details at REST `hexa-plugin-core/v1/map/{profile}/details/{item}`.
+- **Use:** `MapRegistry::register( 'id', [...] )`, add `MapModule`, then `[hexa_map id="id"]` (add `pulse="ring"` for a pulse that never redraws the map); details at REST `hexa-plugin-core/v1/map/{profile}/details/{item}`.
 - **Style:** `--hmap-*` CSS variables, including the base map.
 - **Extend:** `hexa_plugin_core_map_register`.
 - **Code:** `src/Map/` (docs: `docs/map.md`)

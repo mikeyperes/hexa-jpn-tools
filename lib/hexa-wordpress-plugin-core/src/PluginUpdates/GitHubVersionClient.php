@@ -12,14 +12,18 @@ final class GitHubVersionClient {
     }
 
     public function remote_version( bool $force = false ): string|false {
-        $transient_key = $this->config->cache_key( 'github_version' );
+        $transient_key = $this->config->cache_key( 'published_release_version' );
         $cached        = get_site_transient( $transient_key );
 
         if ( false !== $cached && ! $force ) {
             return (string) $cached;
         }
 
-        $version = $this->version_from_ref( $this->config->github_branch(), $force );
+        $release = $this->latest_release( $force );
+        $version = $release ? $this->version_from_ref( $release['tag_name'], $force ) : false;
+        if ( $version && ltrim( $release['tag_name'], 'v' ) !== $version ) {
+            return false;
+        }
 
         if ( false !== $version ) {
             set_site_transient( $transient_key, $version, 30 * MINUTE_IN_SECONDS );
@@ -28,19 +32,47 @@ final class GitHubVersionClient {
         return $version;
     }
 
+    /** Resolve only a published, stable release; never fall back to a branch. */
+    public function latest_release( bool $force = false ): array|false {
+        $key = $this->config->cache_key( 'published_release' );
+        $release = $force ? false : get_site_transient( $key );
+        if ( false === $release ) {
+            $response = wp_remote_get( $this->config->github_api_url() . '/releases/latest', $this->request_args( 15 ) );
+            if ( is_wp_error( $response ) || 200 !== (int) wp_remote_retrieve_response_code( $response ) ) {
+                return false;
+            }
+            $release = json_decode( (string) wp_remote_retrieve_body( $response ), true );
+        }
+        if ( ! is_array( $release ) || ! empty( $release['draft'] ) || ! empty( $release['prerelease'] )
+            || ! preg_match( '/^v?\d+\.\d+\.\d+$/D', (string) ( $release['tag_name'] ?? '' ) ) ) {
+            return false;
+        }
+        set_site_transient( $key, $release, 30 * MINUTE_IN_SECONDS );
+        return $release;
+    }
+
+    public function release_package_url( string $version = '' ): string {
+        $release = $this->latest_release();
+        if ( ! $release || ( '' !== $version && ltrim( $release['tag_name'], 'v' ) !== $version ) ) {
+            return '';
+        }
+        return 'https://github.com/' . $this->config->github_repo() . '/archive/refs/tags/' . rawurlencode( $release['tag_name'] ) . '.zip';
+    }
+
     /**
      * The "Requires PHP" of the source the updater offers (the branch's main
      * plugin file), or '' when it declares none or cannot be read.
      */
     public function remote_requires_php( bool $force = false ): string {
-        $transient_key = $this->config->cache_key( 'github_requires_php' );
+        $transient_key = $this->config->cache_key( 'published_release_requires_php' );
         $cached        = get_site_transient( $transient_key );
 
         if ( false !== $cached && ! $force ) {
             return (string) $cached;
         }
 
-        $body = $this->main_file_from_ref( $this->config->github_branch(), $force );
+        $release = $this->latest_release( $force );
+        $body = $release ? $this->main_file_from_ref( $release['tag_name'], $force ) : false;
         if ( false === $body ) {
             return '';
         }
@@ -192,8 +224,10 @@ final class GitHubVersionClient {
     }
 
     public function clear_cache(): void {
-        delete_site_transient( $this->config->cache_key( 'github_version' ) );
+        delete_site_transient( $this->config->cache_key( 'published_release_version' ) );
         delete_site_transient( $this->config->cache_key( 'github_repo' ) );
+        delete_site_transient( $this->config->cache_key( 'published_release' ) );
+        delete_site_transient( $this->config->cache_key( 'published_release_requires_php' ) );
     }
 
     public static function extract_requires_php( string $plugin_file_contents ): string {

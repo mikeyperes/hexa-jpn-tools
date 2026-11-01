@@ -106,7 +106,7 @@ final class SearchBox {
             . '<label class="hls-field hls-field--text"><span class="hls-visually-hidden">' . esc_html( $labels['search'] ) . '</span>'
             . self::icon( 'hls-icon' )
             . '<input class="hls-input" type="search" name="' . esc_attr( $site ? 's' : Search::PARAM_TEXT ) . '" value="' . esc_attr( $state['text'] ) . '" placeholder="' . esc_attr( $placeholder ) . '" autocomplete="off" enterkeyhint="search"></label>'
-            . '<div class="hls-filters">' . QueryFilterSet::controls( $filters, $state['values'], Search::PARAM_FILTER, 'hls', $state['scope'], $counts ) . '</div>'
+            . '<div class="hls-filters">' . QueryFilterSet::controls( $filters, $state['values'], Search::PARAM_FILTER, 'hls', $state['scope'], $counts, [], (string) ( $options['filter_layout'] ?? 'dropdown' ) ) . '</div>'
             . self::sort( $state, $labels )
             . '<a class="hls-clear" href="' . esc_url( $site ? PublicComponent::url( $base, [ 's' => '' ] ) : $base ) . '"' . ( $active ? '' : ' hidden' ) . '>' . esc_html( $labels['clear'] ) . '</a>'
             . '<button class="hls-submit hls-visually-hidden" type="submit">' . esc_html( $labels['search'] ) . '</button>'
@@ -306,6 +306,9 @@ final class SearchBox {
             $css .= '.hls.hls.hls--none .hls-icon{display:none}';
         }
 
+        if ( 'none' !== $style ) {
+            $css .= '.hls .hls-chips{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0}.hls .hls-chips legend{font-size:var(--hls-small)}.hls .hls-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hls-border);border-radius:999px;padding:6px 12px;cursor:pointer}.hls .hls-chip:has(input:checked){border-color:var(--hls-accent);font-weight:700}.hls .hls-chip:focus-within{outline:2px solid currentColor;outline-offset:2px}';
+        }
         return $css;
     }
 
@@ -337,7 +340,7 @@ document.addEventListener('click',function(e){var a=e.target.closest?e.target.cl
 form.addEventListener('submit',function(e){e.preventDefault();window.clearTimeout(timer);go(url());});
 if(text){text.addEventListener('input',function(){window.clearTimeout(timer);var v=text.value.trim();if(v&&v.length<min)return;timer=window.setTimeout(function(){go(url());},350);});}
 form.addEventListener('change',function(e){if(e.target===text)return;window.clearTimeout(timer);go(url());});
-var clear=form.querySelector('.hls-clear');if(clear){clear.addEventListener('click',function(e){e.preventDefault();if(text)text.value='';each(form.querySelectorAll('.hls-filters input,.hls-filters select'),function(el){if(el.type==='checkbox')el.checked=false;else el.value='';});each(form.querySelectorAll('details[open]'),function(d){d.open=false;});go(url());});}
+var clear=form.querySelector('.hls-clear');if(clear){clear.addEventListener('click',function(e){e.preventDefault();if(text)text.value='';each(form.querySelectorAll('.hls-filters input,.hls-filters select'),function(el){if(el.type==='checkbox')el.checked=false;else if(el.type==='radio')el.checked=el.value==='';else el.value='';});each(form.querySelectorAll('details[open]'),function(d){d.open=false;});go(url());});}
 document.addEventListener('click',function(e){each(form.querySelectorAll('details[open]'),function(d){if(!d.contains(e.target))d.open=false;});});
 form.addEventListener('toggle',function(e){var d=e.target;if(!d||d.tagName!=='DETAILS'||!d.open)return;var p=d.querySelector('.hls-filter-panel');if(!p)return;p.style.left='';p.style.right='';if(p.getBoundingClientRect().right>document.documentElement.clientWidth-8){p.style.left='auto';p.style.right='0';}},true);
 form.addEventListener('keydown',function(e){if(e.key==='Escape'){var d=e.target.closest?e.target.closest('details'):null;if(d){d.open=false;var s=d.querySelector('summary');if(s)s.focus();}}});

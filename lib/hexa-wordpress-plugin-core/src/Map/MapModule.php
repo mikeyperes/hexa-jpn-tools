@@ -49,9 +49,9 @@ final class MapModule implements ModuleInterface {
 
     /** @param array<string,mixed>|string $attributes */
     public function shortcode( $attributes = [] ): string {
-        $attributes = shortcode_atts( [ 'id' => '' ], is_array( $attributes ) ? $attributes : [], self::SHORTCODE );
+        $attributes = shortcode_atts( [ 'id' => '', 'pulse' => '' ], is_array( $attributes ) ? $attributes : [], self::SHORTCODE );
 
-        return ( new MapRenderer() )->render( (string) $attributes['id'] );
+        return ( new MapRenderer() )->render( (string) $attributes['id'], (string) $attributes['pulse'] );
     }
 
     public function schedule(): void {

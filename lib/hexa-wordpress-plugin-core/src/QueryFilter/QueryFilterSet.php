@@ -285,7 +285,7 @@ final class QueryFilterSet {
      * @param array<string,array<string,int>>   $counts
      * @param string[]                          $open   Keys of checkbox filters to render open.
      */
-    public static function controls( array $filters, array $values, string $param, string $prefix, array $scope, array $counts = [], array $open = [] ): string {
+    public static function controls( array $filters, array $values, string $param, string $prefix, array $scope, array $counts = [], array $open = [], string $layout = 'dropdown' ): string {
         $html = '';
         foreach ( $filters as $key => $filter ) {
             $name  = $param . '[' . $key . ']';
@@ -294,7 +294,7 @@ final class QueryFilterSet {
             $count = $counts[ $key ] ?? null;
 
             if ( self::CONTROL_CHECKBOXES === $filter['control'] ) {
-                $html .= self::checkboxes( $filter, is_array( $value ) ? $value : [], $name, $prefix, $scope, $count, in_array( (string) $key, $open, true ) );
+                $html .= 'chips' === $layout ? self::chips( $filter, is_array( $value ) ? $value : [], $name, $prefix, $scope, $count ) : self::checkboxes( $filter, is_array( $value ) ? $value : [], $name, $prefix, $scope, $count, in_array( (string) $key, $open, true ) );
                 continue;
             }
 
@@ -535,6 +535,16 @@ final class QueryFilterSet {
      * @param string[]               $selected
      * @param array<string,int>|null $counts
      */
+    private static function chips( array $filter, array $selected, string $name, string $prefix, array $scope, ?array $counts ): string {
+        $options = [ '' => $filter['all_label'] ] + self::visible_options( $filter, $scope, $counts, $selected );
+        $html = '<fieldset class="' . esc_attr( $prefix . '-chips' ) . '"><legend>' . esc_html( $filter['label'] ) . '</legend>';
+        foreach ( $options as $value => $label ) {
+            $checked = '' === (string) $value ? [] === $selected : in_array( (string) $value, $selected, true );
+            $html .= '<label class="' . esc_attr( $prefix . '-chip' . ( $checked ? ' is-active' : '' ) ) . '"><input type="radio" name="' . esc_attr( $name . '[]' ) . '" value="' . esc_attr( (string) $value ) . '"' . ( $checked ? ' checked' : '' ) . '><span>' . esc_html( $label ) . '</span></label>';
+        }
+        return $html . '</fieldset>';
+    }
+
     private static function checkboxes( array $filter, array $selected, string $name, string $prefix, array $scope, ?array $counts, bool $open ): string {
         $options = self::visible_options( $filter, $scope, $counts, $selected );
         if ( [] === $options ) {

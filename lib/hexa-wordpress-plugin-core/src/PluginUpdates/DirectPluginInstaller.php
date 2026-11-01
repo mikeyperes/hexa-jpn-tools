@@ -21,7 +21,12 @@ final class DirectPluginInstaller {
         $canonical_plugin_dir  = WP_PLUGIN_DIR . '/' . $this->config->proper_folder_name();
         $runtime_plugin_dir    = WP_PLUGIN_DIR . '/' . $this->config->runtime_folder_name();
         $canonical_plugin_file = $this->config->canonical_plugin_basename();
-        $download_url          = $this->config->zip_url();
+        $client                = new GitHubVersionClient( $this->config );
+        $expected_version      = $client->remote_version( true );
+        $download_url          = $expected_version ? $client->release_package_url( $expected_version ) : '';
+        if ( '' === $download_url ) {
+            return new \WP_Error( 'hexa_plugin_core_release_missing', 'No published release-tag artifact is available; branch archives are not permitted.' );
+        }
         $upgrade_root          = WP_CONTENT_DIR . '/upgrade';
 
         if ( ! wp_mkdir_p( $upgrade_root ) ) {
@@ -50,7 +55,7 @@ final class DirectPluginInstaller {
             $this->progress->step( 'Detected non-canonical install folder "' . $this->config->runtime_folder_name() . '"; will normalize to "' . $this->config->proper_folder_name() . '".', 'warn' );
         }
 
-        $this->progress->step( 'Downloading latest build from ' . $this->config->github_repo() . ' (' . $this->config->github_branch() . ').' );
+        $this->progress->step( 'Downloading published release from ' . $this->config->github_repo() . ' (' . $this->config->github_branch() . ').' );
         $response = wp_remote_get(
             $download_url,
             [
@@ -100,6 +105,9 @@ final class DirectPluginInstaller {
 
         $new_plugin_data = get_plugin_data( $staged_folder . '/' . $this->config->plugin_starter_file(), false, false );
         $new_version     = ! empty( $new_plugin_data['Version'] ) ? $new_plugin_data['Version'] : 'unknown';
+        if ( $new_version !== $expected_version ) {
+            return $fail( 'Release artifact version does not match its published tag.' );
+        }
         $purged_staged   = UpdaterFilesystem::purge_ignored_package_paths( $staged_folder, true );
 
         if ( is_wp_error( $purged_staged ) ) {

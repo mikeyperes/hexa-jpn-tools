@@ -268,7 +268,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
     }
 
     private function package_url(): string {
-        return $this->config->zip_url();
+        return $this->client->release_package_url();
     }
 
     /**
@@ -290,7 +290,7 @@ final class GitHubPluginUpdater implements ModuleInterface {
             }
         }
 
-        return [ 'package' => $this->package_url(), 'requires_php' => $requires ];
+        return [ 'package' => $this->client->release_package_url( $version ), 'requires_php' => $requires ];
     }
 
     private function capture_activation_scope(): string {

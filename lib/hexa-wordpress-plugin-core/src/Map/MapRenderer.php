@@ -26,7 +26,11 @@ final class MapRenderer {
 
     private static bool $assets_printed = false;
 
-    public function render( string $profile_id ): string {
+    /**
+     * @param string $pulse '' keeps the pulse drawn by the map itself; 'ring' draws it as small HTML rings that
+     *                      animate on the graphics chip, so the map is never redrawn in a loop.
+     */
+    public function render( string $profile_id, string $pulse = '' ): string {
         $profile = MapRegistry::get( $profile_id );
         if ( null === $profile || ! PublicComponent::can_view( $profile['public'] ) ) {
             return '';
@@ -49,6 +53,7 @@ final class MapRenderer {
             'view'    => $profile['view'],
             'cluster' => $profile['cluster'],
             'selection' => $profile['selection'],
+            'pulse'   => 'ring' === $pulse ? 'ring' : 'paint',
             'labels'  => [ 'one' => $labels['count_one'], 'many' => $labels['count_many'] ] + $labels,
         ];
 
@@ -383,10 +388,12 @@ final class MapRenderer {
 .hmap .hmap-sidebar__more:hover,.hmap .hmap-sidebar__retry:hover,.hmap-list button:hover{border-color:var(--hmap-accent);background:transparent;color:var(--hmap-accent)}
 .hmap .hmap-sidebar__more:disabled{opacity:.5;cursor:default}
 .hmap-sidebar button:focus-visible,.hmap-list button:focus-visible,.hmap-sidebar a:focus-visible{outline:2px solid var(--hmap-accent);outline-offset:3px}
+@keyframes hmap-ring{from{opacity:.45;transform:scale(.3077)}to{opacity:0;transform:scale(1)}}
+.hmap-ring{width:52px;height:52px;pointer-events:none}.hmap-ring i{display:block;width:100%;height:100%;border-radius:50%;background:var(--hmap-live);opacity:0;animation:hmap-ring 1.8s linear infinite;will-change:transform,opacity}
 @keyframes hmap-in{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
 @keyframes hmap-shimmer{to{background-position:-300% 0}}
 @media(max-width:767px){.hmap-stage.has-selection .maplibregl-ctrl-top-right{right:0}.hmap-sidebar{top:auto;right:8px;bottom:8px;left:8px;width:auto;max-width:none;max-height:78%;transform:translate3d(0,calc(100% + 16px),0)}.hmap-stage.has-selection .hmap-sidebar{transform:none}.hmap-sidebar__header{padding:16px 14px 12px 16px}.hmap-sidebar__body{padding:0 16px 16px}.hmap-sidebar__footer{padding:10px 16px}}
-@media(prefers-reduced-motion:reduce){.hmap-sidebar,.hmap-stage.has-selection .hmap-sidebar,.hmap-entry,.hmap-skeleton li{transition:none;animation:none}}
+@media(prefers-reduced-motion:reduce){.hmap-sidebar,.hmap-stage.has-selection .hmap-sidebar,.hmap-entry,.hmap-skeleton li,.hmap-ring i{transition:none;animation:none}}
 @media (max-width:767px){.hmap{--hmap-height:440px}.hmap-status{flex-basis:100%;margin:2px 0 0}}
 CSS;
     }
@@ -591,7 +598,25 @@ CSS;
         // Invisible, generous target around every pin so a pin is easy to hover and tap.
         map.addLayer({ id: 'hmap-hit', type: 'circle', source: 'hmap', filter: ['!', ['has', 'point_count']],
           paint: { 'circle-color': '#000000', 'circle-opacity': 0, 'circle-radius': 22 } });
-        if (!reduce) {
+        if (!reduce && cfg.pulse === 'ring') {
+          // Rings are HTML markers animated by CSS, so pulsing never redraws the map.
+          var rings = {};
+          map.on('idle', function () {
+            var seen = {};
+            map.queryRenderedFeatures({ layers: ['hmap-pulse'] }).forEach(function (f) {
+              var k = String(f.id);
+              seen[k] = true;
+              if (!rings[k]) {
+                var r = document.createElement('div');
+                r.className = 'hmap-ring';
+                r.setAttribute('aria-hidden', 'true');
+                r.appendChild(document.createElement('i'));
+                rings[k] = new gl.Marker({ element: r }).setLngLat(f.geometry.coordinates).addTo(map);
+              }
+            });
+            Object.keys(rings).forEach(function (k) { if (!seen[k]) { rings[k].remove(); delete rings[k]; } });
+          });
+        } else if (!reduce) {
           var start = performance.now();
           (function pulse(now) {
             if (!map.getLayer('hmap-pulse')) { return; }
