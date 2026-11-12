@@ -49,9 +49,21 @@
             return `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`;
         };
 
+        // The feed is pinned to the bottom, so a new message makes it taller and lifts the older ones. Hold them
+        // in place with a transform, then let the feed's own transition slide them up: the page never jumps.
         const append = (node) => {
+            const before = mount.offsetHeight;
             mount.appendChild(node);
             while (mount.children.length > MAX_CHILDREN) mount.firstElementChild.remove();
+            const delta = mount.offsetHeight - before;
+            if (delta) {
+                const transition = mount.style.transition;
+                mount.style.transition = 'none';
+                mount.style.transform = `translateY(${delta}px)`;
+                void mount.offsetHeight;
+                mount.style.transition = transition;
+                mount.style.transform = '';
+            }
             return node;
         };
 
