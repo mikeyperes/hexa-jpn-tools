@@ -6,7 +6,7 @@ Core is the one schema library for every Hexa plugin: generic node builders, Wor
 
 ## Classes
 
-- `SchemaNodes`: generic builders for Organization (any organization type), Person, WebSite, WebPage types, Article types, ImageObject, PostalAddress, Place, ContactPoint, area served, PropertyValue, BreadcrumbList, ItemList, Book, Offer, Brand, credential, Demand, Event and named Things. Builders take plain values and return cleaned nodes; they never read WordPress.
+- `SchemaNodes`: generic builders for Organization (any organization type), Person, a complete Person profile from one record (`person_profile()`), Occupation, schools, Country, Quotation, any CreativeWork, WebSite, WebPage types, Article types, ImageObject, PostalAddress, Place, ContactPoint, area served, PropertyValue, BreadcrumbList, ItemList, Book, Offer, Brand, credential, Demand, Event and named Things. Builders take plain values and return cleaned nodes; they never read WordPress.
 - `SchemaSources`: standard WordPress data as nodes: the site's WebSite, attachment and featured images (original upload size, offloaded files included), logos with site-icon fallback, users as Person, post and archive breadcrumbs, post pages, descriptions, terms, language.
 - `SchemaIds`: shared `@id` conventions (`/#organization`, `/#website`, `/#person`, `<url>#webpage`, `<url>#article`, `<url>#primaryimage`, `<url>#breadcrumb`) so the same thing built by two plugins merges into one node.
 - `SchemaPage`: one graph per page. Plugins register a source callback; Core merges every source's nodes by `@id` and prints one `<script id="hexa-schema">` in the head. On a conflict the source with the lower priority number keeps its value; list values are combined. `data-sources` lists the plugins that contributed.
@@ -14,6 +14,8 @@ Core is the one schema library for every Hexa plugin: generic node builders, Wor
 - `SchemaGraph`: cleaning, URL guards, validation issues and standalone node references.
 - `SchemaDocumentRenderer`: normalization and safe JSON-LD encoding.
 - `SchemaDashboardRenderer`: shared schema inspection UI.
+- `SchemaContext`: the page a structure is built for (front page, a post, a list, an author), from the live query or for any post, so builders work the same live, in previews and in tests.
+- `SchemaStructures`, `SchemaStructuresPanel`, `SchemaStructuresModule`: plugins declare their structures; Core keeps their modes, prints them, previews them and adds `wp hexa schema`. See `docs/schema-structures.md`.
 - `SchemaInjector`: older one-shot single-provider module, kept only so plugins that have not yet moved to `SchemaPage` keep working. New code uses `SchemaPage`.
 
 ```php

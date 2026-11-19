@@ -30,7 +30,7 @@ final class UserProfileBridge {
     /** Meta never read or written: login sessions and API credentials. */
     public const PROTECTED_META = [ 'session_tokens', '_application_passwords' ];
 
-    private const AVATAR_PLUGINS = [ 'simple-local-avatars/simple-local-avatars.php', 'one-user-avatar/one-user-avatar.php', 'wp-user-avatar/wp-user-avatar.php' ];
+    private const AVATAR_PLUGINS = [ 'simple-local-avatars/simple-local-avatars.php', 'simple-user-avatar/simple-user-avatar.php', 'one-user-avatar/one-user-avatar.php', 'wp-user-avatar/wp-user-avatar.php' ];
 
     private static bool $registered = false;
 
@@ -100,6 +100,9 @@ final class UserProfileBridge {
             'meta'              => $meta,
             'legacy_avatar_url' => $legacy_url,
             'avatar_provider'   => self::provider(),
+            'provider' => self::provider(),
+            'frontend_avatar_url' => (string) get_avatar_url( $user_id, [ 'size' => 96 ] ),
+            'admin_avatar_url' => (string) get_avatar_url( $user_id, [ 'size' => 250 ] ),
         ];
     }
 
@@ -165,6 +168,27 @@ final class UserProfileBridge {
 
     /** Store (or, with 0, clear) the user's avatar the way the active avatar provider reads it. */
     public static function set_avatar( int $user_id, int $media_id ) {
+        $active = array_merge( (array) get_option( 'active_plugins', [] ), array_keys( (array) get_site_option( 'active_sitewide_plugins', [] ) ) );
+        $other = array_values( array_intersect( array_diff( self::AVATAR_PLUGINS, [ 'simple-local-avatars/simple-local-avatars.php' ] ), $active ) );
+        if ( [] !== $other || ! in_array( 'simple-local-avatars/simple-local-avatars.php', $active, true ) ) {
+            return new \WP_Error( 'hexa_avatar_provider_unsupported', 'Simple Local Avatars is the only supported photo plugin. Active competing avatar plugins: ' . ( [] !== $other ? implode( ', ', $other ) : 'none; Simple Local Avatars is inactive' ), [ 'status' => 422 ] );
+        }
+        if ( $media_id > 0 && ! wp_attachment_is_image( $media_id ) ) {
+            return new \WP_Error( 'hexa_user_profile_avatar_invalid', 'Avatar attachment must be an image.', [ 'status' => 422 ] );
+        }
+        // Remove outgoing provider derivatives before replacing metadata, including rollback.
+        $previous = get_user_meta( $user_id, 'simple_local_avatar', true );
+        if ( is_array( $previous ) && (int) ( $previous['media_id'] ?? 0 ) !== $media_id ) {
+            $uploads = wp_upload_dir();
+            foreach ( $previous as $size => $url ) {
+                if ( ! is_numeric( $size ) || ! is_string( $url ) || $url === ( $previous['full'] ?? '' ) ) continue;
+                $base = rtrim( $uploads['baseurl'], '/' ) . '/';
+                if ( 0 !== strpos( $url, $base ) ) continue;
+                $relative = substr( $url, strlen( $base ) );
+                if ( false !== strpos( $relative, '..' ) ) continue;
+                wp_delete_file( rtrim( $uploads['basedir'], '/' ) . '/' . $relative );
+            }
+        }
         if ( $media_id > 0 ) {
             if ( ! wp_attachment_is_image( $media_id ) ) {
                 return new \WP_Error( 'hexa_user_profile_avatar_invalid', 'WordPress media #' . $media_id . ' is not an image attachment.', [ 'status' => 422 ] );
@@ -175,20 +199,11 @@ final class UserProfileBridge {
                 update_user_meta( $user_id, 'simple_local_avatar', [ 'media_id' => $media_id, 'full' => $full, 'blog_id' => get_current_blog_id() ] );
                 update_user_meta( $user_id, 'simple_local_avatar_rating', 'G' );
                 do_action( 'simple_local_avatar_updated', $user_id );
-            } else {
-                $payload = [ 'media_id' => $media_id, 'site_id' => get_current_blog_id(), 'full' => $full ];
-                foreach ( [ 24, 48, 96, 250, 256, 500 ] as $size ) {
-                    $source = wp_get_attachment_image_src( $media_id, [ $size, $size ] );
-                    $payload[ $size ] = is_array( $source ) && ! empty( $source[0] ) ? (string) $source[0] : $full;
-                }
-                update_user_meta( $user_id, 'wp_user_avatar', $media_id );
-                update_user_meta( $user_id, 'wp_user_avatars', $payload );
-                update_user_meta( $user_id, 'wp_user_avatars_rating', 'G' );
             }
 
             return true;
         }
-        foreach ( [ 'simple_local_avatar', 'simple_local_avatar_rating', 'wp_user_avatar', 'wp_user_avatars', 'wp_user_avatars_rating' ] as $key ) {
+        foreach ( [ 'simple_local_avatar', 'simple_local_avatar_rating' ] as $key ) {
             delete_user_meta( $user_id, $key );
         }
 
@@ -242,7 +257,7 @@ final class UserProfileBridge {
         if ( class_exists( 'Simple_Local_Avatars' ) || class_exists( 'WP_User_Avatar' ) || defined( 'ONE_USER_AVATAR_VERSION' ) ) {
             return true;
         }
-        $active = (array) get_option( 'active_plugins', [] );
+        $active = array_merge( (array) get_option( 'active_plugins', [] ), array_keys( (array) get_site_option( 'active_sitewide_plugins', [] ) ) );
 
         return [] !== array_intersect( self::AVATAR_PLUGINS, $active );
     }

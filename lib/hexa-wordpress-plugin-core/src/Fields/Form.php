@@ -2,38 +2,20 @@
 
 namespace Hexa\PluginCore\Fields;
 
-/**
- * Field forms and saving: `head()`/`render()` mirror `acf_form_head()` and
- * `acf_form()`, delegating to ACF when it is active.
- */
+/** Renders and saves forms through Core Fields and WordPress storage. */
 final class Form {
     /** @var array<string,mixed> */
     private static array $data = [];
 
     public static function head(): void {
-        if ( Acf::active() ) {
-            if ( function_exists( 'acf_form_head' ) ) {
-                acf_form_head();
-            }
-            return;
-        }
         self::handle();
     }
 
     public static function enqueue(): void {
-        if ( Acf::active() ) {
-            if ( function_exists( 'acf_enqueue_scripts' ) ) {
-                acf_enqueue_scripts();
-            }
-            return;
-        }
-        AdminScreens::assets();
+        AdminScreens::enqueue();
     }
 
     public static function data( string $key = '' ): mixed {
-        if ( Acf::active() && function_exists( 'acf_get_form_data' ) ) {
-            return acf_get_form_data( $key );
-        }
         return '' === $key ? self::$data : ( self::$data[ $key ] ?? null );
     }
 
@@ -45,26 +27,14 @@ final class Form {
      * @param array<string,mixed> $field
      */
     public static function field( array $field, string $element = 'div', string $instruction = 'label' ): void {
-        if ( Acf::active() ) {
-            if ( function_exists( 'acf_render_field_wrap' ) ) {
-                acf_render_field_wrap( $field, $element, $instruction );
-            }
-            return;
-        }
         $field = array_merge( [ 'key' => '', 'name' => '', 'label' => '', 'type' => 'text', 'instructions' => '', 'required' => 0, 'prefix' => 'acf' ], $field );
-        AdminScreens::assets();
+        self::enqueue();
         Renderer::field( $field, $field['value'] ?? null, (string) $field['prefix'] . '[' . (string) $field['key'] . ']', 0 );
         Renderer::standalone();
     }
 
     /** @param array<string,mixed> $args acf_form() arguments. */
     public static function render( array $args = [] ): void {
-        if ( Acf::active() ) {
-            if ( function_exists( 'acf_form' ) ) {
-                acf_form( $args );
-            }
-            return;
-        }
         $args = array_merge(
             [
                 'post_id' => false, 'field_groups' => [], 'fields' => [], 'form' => true, 'form_attributes' => [],
@@ -76,7 +46,7 @@ final class Form {
         );
         $context = Storage::context( $args['post_id'] );
         $fields = self::select_fields( $args, $context );
-        AdminScreens::assets();
+        self::enqueue();
 
         if ( isset( $_GET['updated'] ) && 'true' === $_GET['updated'] && '' !== (string) $args['updated_message'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             printf( (string) $args['html_updated_message'], esc_html( (string) $args['updated_message'] ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -90,7 +60,7 @@ final class Form {
             $payload = wp_json_encode( [ 'post_id' => Storage::acf_id( $context ), 'field_groups' => array_values( (array) $args['field_groups'] ), 'fields' => array_values( (array) $args['fields'] ), 'return' => (string) $args['return'] ] );
             echo '<input type="hidden" name="hexa_fields_form" value="' . esc_attr( base64_encode( (string) $payload ) ) . '"><input type="hidden" name="hexa_fields_form_sig" value="' . esc_attr( wp_hash( (string) $payload, 'nonce' ) ) . '">';
         }
-        Renderer::nonce();
+        Renderer::nonce( true );
         echo $args['html_before_fields']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
         Renderer::fields( $fields, $context );
         echo $args['html_after_fields']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -111,6 +81,7 @@ final class Form {
      * @param array<int,string>|null $only Field keys or names to limit saving.
      */
     public static function save( array $groups, array $context, array $input, ?array $only = null ): void {
+        $changes = [];
         foreach ( $groups as $group ) {
             foreach ( (array) $group['fields'] as $field ) {
                 if ( ! array_key_exists( $field['key'], $input ) ) {
@@ -119,8 +90,17 @@ final class Form {
                 if ( null !== $only && ! in_array( $field['key'], $only, true ) && ! in_array( $field['name'], $only, true ) ) {
                     continue;
                 }
-                Values::write( $context, $field, (string) $field['name'], self::sanitize( $field, $input[ $field['key'] ] ) );
+                $raw = $input[ $field['key'] ];
+                $valid = Hooks::field_filter( 'validate_value', true, $field, $raw, $field, $field['key'] );
+                if ( true !== $valid ) {
+                    $message = is_string( $valid ) ? $valid : __( 'A field value is invalid.', 'hexa-plugin-core' );
+                    wp_die( esc_html( $message ), '', [ 'back_link' => true, 'response' => 400 ] );
+                }
+                $changes[] = [ $field, self::sanitize( $field, $raw ) ];
             }
+        }
+        foreach ( $changes as [ $field, $value ] ) {
+            Values::write( $context, $field, (string) $field['name'], $value );
         }
     }
 
@@ -202,9 +182,9 @@ final class Form {
      * @return array<int,array<string,mixed>>
      */
     private static function select_fields( array $args, array $context ): array {
-        $only = array_values( array_filter( array_map( 'strval', (array) $args['fields'] ) ) );
+        $only = array_values( array_filter( array_map( 'strval', (array) ( $args['fields'] ?? [] ) ) ) );
         $fields = [];
-        foreach ( self::groups( array_map( 'strval', (array) $args['field_groups'] ), $context ) as $group ) {
+        foreach ( self::groups( array_map( 'strval', (array) ( $args['field_groups'] ?? [] ) ), $context ) as $group ) {
             foreach ( (array) $group['fields'] as $field ) {
                 if ( [] === $only || in_array( $field['key'], $only, true ) || in_array( $field['name'], $only, true ) ) {
                     $fields[] = $field;
@@ -239,8 +219,8 @@ final class Form {
             wp_die( esc_html__( 'Sorry, you are not allowed to edit these fields.' ), 403 );
         }
         self::$data = $form;
-        $only = array_values( array_filter( array_map( 'strval', (array) ( $form['fields'] ?? [] ) ) ) );
-        self::save( self::groups( array_map( 'strval', (array) ( $form['field_groups'] ?? [] ) ), $context ), $context, Renderer::posted(), [] === $only ? null : $only );
+        $fields = self::select_fields( $form, $context );
+        self::save( [ [ 'fields' => $fields ] ], $context, Renderer::posted() );
         Hooks::action( 'save_post', Storage::acf_id( $context ) );
         $return = '' !== (string) ( $form['return'] ?? '' ) ? (string) $form['return'] : add_query_arg( 'updated', 'true', wp_get_referer() ?: home_url( add_query_arg( [] ) ) );
         wp_safe_redirect( $return );

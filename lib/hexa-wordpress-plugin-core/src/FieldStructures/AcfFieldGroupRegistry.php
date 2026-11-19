@@ -53,7 +53,7 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
     }
 
     public function register(): void {
-        add_filter( 'acf/load_field_group', [ $this, 'apply_managed_state' ], 999 );
+        add_filter( 'hexa_fields/load_field_groups', [ $this, 'apply_managed_groups' ], 999 );
         \Hexa\PluginCore\Fields\FieldGroups::ready( [ $this, 'register_groups' ], (int) $this->config['hook_priority'] );
         ( new AcfFieldGroupAjaxController( $this, $this->config ) )->register();
     }
@@ -78,7 +78,12 @@ final class AcfFieldGroupRegistry implements ModuleInterface {
         return $field_group;
     }
 
-    /** Registers enabled groups through Fields\FieldGroups (ACF or native). */
+    /** Applies saved visibility to Core's field groups. */
+    public function apply_managed_groups( array $groups ): array {
+        return array_map( [ $this, 'apply_managed_state' ], $groups );
+    }
+
+    /** Registers enabled groups through Core Fields. */
     public function register_groups(): void {
         foreach ( $this->resolved_definitions() as $definition ) {
             if ( empty( $definition['enabled'] ) || empty( $definition['available'] ) ) {

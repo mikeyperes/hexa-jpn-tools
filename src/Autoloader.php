@@ -18,6 +18,12 @@ final class Autoloader
                     return;
                 }
 
+                // Maintain the historical class alias after renaming the field definitions.
+                if ($className === Content\AcfFields::class) {
+                    class_alias(Content\ContentFields::class, $className);
+                    return;
+                }
+
                 $relative = substr($className, strlen(self::PREFIX));
                 $path = $sourceRoot . DIRECTORY_SEPARATOR
                     . str_replace('\\', DIRECTORY_SEPARATOR, $relative) . '.php';

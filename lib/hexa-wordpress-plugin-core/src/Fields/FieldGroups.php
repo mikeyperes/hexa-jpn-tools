@@ -2,29 +2,20 @@
 
 namespace Hexa\PluginCore\Fields;
 
-/**
- * Single registry for ACF-format field groups.
- *
- * Hosts pass the same arrays they would give `acf_add_local_field_group()`.
- * With ACF active the group is forwarded to ACF unchanged; without ACF it is
- * kept here and rendered, stored and formatted by the native engine.
- */
+/** Registers Core field definitions and resolves legacy stored definitions. */
 final class FieldGroups {
     /** @var array<string,array<string,mixed>> */
     private static array $groups = [];
     /** @var array<int,array<string,mixed>> */
     private static array $pending = [];
-    /** @var array<int,array<string,mixed>> */
-    private static array $acf_queue = [];
     private static bool $pending_hooked = false;
-    private static bool $acf_hooked = false;
     /** @var array<string,array<string,mixed>>|null Normalized database groups. */
     private static ?array $database = null;
 
     /** @param array<string,mixed> $group */
     public static function add( array $group ): void {
         if ( ! did_action( 'init' ) && ! doing_action( 'init' ) ) {
-            // ACF may not be loaded yet; decide once all plugins are loaded.
+            // Resolve the current user and audience after WordPress initialization.
             self::$pending[] = $group;
             if ( ! self::$pending_hooked ) {
                 self::$pending_hooked = true;
@@ -45,36 +36,17 @@ final class FieldGroups {
         $group = Audience::apply( $group );
         self::$groups[ $group['key'] ] = $group;
 
-        if ( ! Acf::active() ) {
-            AdminScreens::boot();
-            return;
-        }
-        if ( did_action( 'acf/init' ) ) {
-            acf_add_local_field_group( $group );
-            return;
-        }
-        self::$acf_queue[] = $group;
-        if ( ! self::$acf_hooked ) {
-            self::$acf_hooked = true;
-            add_action( 'acf/init', [ self::class, 'flush_acf' ], 1 );
-        }
+        AdminScreens::boot();
     }
 
     public static function remove( string $key ): bool {
-        if ( Acf::active() && function_exists( 'acf_remove_local_field_group' ) ) {
-            acf_remove_local_field_group( $key );
-        }
         $existed = isset( self::$groups[ $key ] );
         unset( self::$groups[ $key ] );
         return $existed;
     }
 
-    /**
-     * Runs a registration callback when field groups can be registered: on
-     * `acf/init` with ACF, otherwise during `init`.
-     */
+    /** Runs a field registration callback during Core initialization. */
     public static function ready( callable $callback, int $priority = 10 ): void {
-        // acf/init with ACF, hexa_fields/init at the same moment without it; priorities keep their order.
         Hooks::on( 'init', $callback, $priority );
     }
 
@@ -86,31 +58,16 @@ final class FieldGroups {
         }
     }
 
-    public static function flush_acf(): void {
-        $queue = self::$acf_queue;
-        self::$acf_queue = [];
-        foreach ( $queue as $group ) {
-            acf_add_local_field_group( $group );
-        }
-    }
-
     /** @return array<string,mixed>|null */
     public static function get_group( string $key ): ?array {
         if ( '' === $key ) {
             return null;
-        }
-        if ( Acf::active() && function_exists( 'acf_get_field_group' ) ) {
-            $group = acf_get_field_group( $key );
-            return is_array( $group ) ? $group : ( self::$groups[ $key ] ?? null );
         }
         return self::$groups[ $key ] ?? self::database()[ $key ] ?? null;
     }
 
     /** @return array<int,array<string,mixed>> */
     public static function all(): array {
-        if ( Acf::active() && function_exists( 'acf_get_field_groups' ) ) {
-            return (array) acf_get_field_groups();
-        }
         return self::listed();
     }
 
@@ -151,9 +108,6 @@ final class FieldGroups {
      * @return array<int,array<string,mixed>>
      */
     public static function fields( array|string $group ): array {
-        if ( Acf::active() && function_exists( 'acf_get_fields' ) ) {
-            return (array) acf_get_fields( $group );
-        }
         $group = is_array( $group ) ? $group : self::get_group( $group );
         return is_array( $group ) ? (array) $group['fields'] : [];
     }
@@ -167,10 +121,6 @@ final class FieldGroups {
     public static function get_field( string $selector, mixed $context = false ): ?array {
         if ( '' === $selector ) {
             return null;
-        }
-        if ( Acf::active() && function_exists( 'acf_get_field' ) ) {
-            $field = acf_get_field( $selector );
-            return is_array( $field ) ? $field : null;
         }
 
         $is_key = str_starts_with( $selector, 'field_' );
@@ -204,8 +154,8 @@ final class FieldGroups {
      * @param array<string,mixed> $screen
      * @return array<int,array<string,mixed>>
      */
-    public static function for_screen( array $screen ): array {
-        $groups = array_filter( self::listed(), static fn( array $group ): bool => ! empty( $group['active'] ) && self::matches( $group, $screen ) );
+    public static function for_screen( array $screen, bool $core_only = false ): array {
+        $groups = array_filter( self::listed(), static fn( array $group ): bool => ! empty( $group['active'] ) && ( ! $core_only || isset( self::$groups[ $group['key'] ] ) ) && self::matches( $group, $screen ) );
         uasort( $groups, static fn( array $a, array $b ): int => (int) $a['menu_order'] <=> (int) $b['menu_order'] );
         return array_values( $groups );
     }

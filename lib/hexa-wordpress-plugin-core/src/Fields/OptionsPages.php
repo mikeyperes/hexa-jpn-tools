@@ -2,11 +2,7 @@
 
 namespace Hexa\PluginCore\Fields;
 
-/**
- * Options pages: `add()`/`add_sub()` mirror `acf_add_options_page()` and
- * `acf_add_options_sub_page()`, delegating to ACF when it is active.
- * Native pages store values under `{post_id}_{name}` options, as ACF does.
- */
+/** Registers, renders and saves Core options pages in existing option rows. */
 final class OptionsPages {
     /** @var array<string,array<string,mixed>> */
     private static array $pages = [];
@@ -15,18 +11,14 @@ final class OptionsPages {
     /** @param array<string,mixed>|string $page */
     public static function add( array|string $page = [] ): array {
         $page = is_string( $page ) ? [ 'page_title' => $page ] : $page;
+        $page = self::normalize( $page );
+        self::$pages[ $page['menu_slug'] ] = $page;
         if ( ! did_action( 'init' ) && ! doing_action( 'init' ) ) {
             FieldGroups::ready( static function () use ( $page ): void {
                 self::add( $page );
             } );
-            return self::normalize( $page );
+            return $page;
         }
-        if ( Acf::active() ) {
-            $function = '' !== (string) ( $page['parent_slug'] ?? '' ) ? 'acf_add_options_sub_page' : 'acf_add_options_page';
-            return function_exists( $function ) ? (array) $function( $page ) : $page;
-        }
-        $page = self::normalize( $page );
-        self::$pages[ $page['menu_slug'] ] = $page;
         AdminScreens::boot();
         if ( ! self::$hooked ) {
             self::$hooked = true;
@@ -57,9 +49,14 @@ final class OptionsPages {
                 self::render( $slug );
             };
             if ( '' === $page['parent_slug'] ) {
-                add_menu_page( $page['page_title'], $page['menu_title'], $page['capability'], $slug, $render, (string) $page['icon_url'], $page['position'] );
+                $screen = add_menu_page( $page['page_title'], $page['menu_title'], $page['capability'], $slug, $render, (string) $page['icon_url'], $page['position'] );
             } else {
-                add_submenu_page( $page['parent_slug'], $page['page_title'], $page['menu_title'], $page['capability'], $slug, $render, $page['position'] );
+                $screen = add_submenu_page( $page['parent_slug'], $page['page_title'], $page['menu_title'], $page['capability'], $slug, $render, $page['position'] );
+            }
+            if ( $screen ) {
+                add_action( 'load-' . $screen, static function (): void {
+                    add_action( 'admin_enqueue_scripts', [ AdminScreens::class, 'enqueue' ] );
+                } );
             }
         }
     }
@@ -70,13 +67,12 @@ final class OptionsPages {
             return;
         }
         $context = Storage::context( $page['post_id'] );
-        AdminScreens::assets();
         echo '<div class="wrap"><h1>' . esc_html( $page['page_title'] ) . '</h1>';
         if ( isset( $_GET['updated'] ) && 'true' === $_GET['updated'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $page['updated_message'] ) . '</p></div>';
         }
         echo '<form method="post" action=""><input type="hidden" name="hexa_fields_options_page" value="' . esc_attr( $slug ) . '">';
-        Renderer::nonce();
+        Renderer::nonce( true );
         foreach ( FieldGroups::for_screen( [ 'options_page' => $slug ] ) as $group ) {
             echo '<div class="postbox" style="padding:0 14px 6px;margin-top:14px"><h2>' . esc_html( (string) $group['title'] ) . '</h2>';
             Renderer::fields( (array) $group['fields'], $context );
@@ -88,7 +84,7 @@ final class OptionsPages {
     }
 
     public static function save(): void {
-        if ( empty( $_POST['hexa_fields_options_page'] ) || Acf::active() ) {
+        if ( empty( $_POST['hexa_fields_options_page'] ) ) {
             return;
         }
         $slug = sanitize_key( wp_unslash( $_POST['hexa_fields_options_page'] ) );

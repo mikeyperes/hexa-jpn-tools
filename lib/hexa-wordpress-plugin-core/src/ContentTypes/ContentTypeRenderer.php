@@ -112,14 +112,14 @@ final class ContentTypeRenderer {
         <div class="hpc-content-type-form" data-content-type-id="<?php echo esc_attr( $definition['id'] ); ?>">
             <?php echo $cpt_card; ?>
 
-            <section class="hpc-content-type-acf-siblings" aria-label="<?php echo esc_attr( 'ACF field groups for ' . $post['plural'] ); ?>">
+            <section class="hpc-content-type-acf-siblings" aria-label="<?php echo esc_attr( 'field groups for ' . $post['plural'] ); ?>">
                 <header class="hpc-content-type-acf-siblings-heading">
-                    <h4>ACF field groups for <?php echo esc_html( $post['plural'] ); ?></h4>
+                    <h4>field groups for <?php echo esc_html( $post['plural'] ); ?></h4>
                     <p>These ACF groups belong to the <span class="hpc-code"><?php echo esc_html( $post['key'] ); ?></span> CPT.</p>
                 </header>
 
                 <?php if ( empty( $definition['field_groups'] ) ) : ?>
-                    <p class="hpc-content-type-empty">No ACF field groups are attached to this CPT.</p>
+                    <p class="hpc-content-type-empty">No field groups are attached to this CPT.</p>
                 <?php else : ?>
                     <div class="hpc-content-type-acf-list">
                         <?php foreach ( $definition['field_groups'] as $group ) : ?>
@@ -166,7 +166,7 @@ final class ContentTypeRenderer {
                     <div><dt>Attached CPT</dt><dd><span class="hpc-code"><?php echo esc_html( $post_type_key ); ?></span></dd></div>
                     <div><dt>Field count</dt><dd><?php echo esc_html( (string) $field_count ); ?></dd></div>
                     <div><dt>Dependencies</dt><dd><?php echo esc_html( $group['dependencies'] ? implode( ', ', $group['dependencies'] ) : 'None declared' ); ?></dd></div>
-                    <div><dt>Field storage</dt><dd><?php echo esc_html( 'native' === \Hexa\PluginCore\Fields\Acf::mode() ? 'Native WordPress fields (ACF is not active)' : 'ACF' ); ?></dd></div>
+                    <div><dt>Field storage</dt><dd><?php echo esc_html( 'Hexa WP Core fields' ); ?></dd></div>
                 </dl>
             </section>
 

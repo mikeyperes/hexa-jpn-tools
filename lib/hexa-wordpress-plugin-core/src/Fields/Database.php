@@ -4,7 +4,7 @@ namespace Hexa\PluginCore\Fields;
 
 /**
  * Field groups created in the ACF admin screen, stored as `acf-field-group`
- * and `acf-field` posts. Without ACF they are read from there as ACF reads
+ * and `acf-field` posts. Core reads these definitions as the legacy engine reads
  * them, so their fields keep resolving, formatting and (when the group is
  * active) rendering. Groups registered in code with the same key win, as in
  * ACF. A trashed group is never listed, but its published fields still
@@ -23,7 +23,7 @@ final class Database {
     }
 
     public static function admin_screens(): void {
-        if ( ! Acf::active() && [] !== array_filter( self::groups(), static fn( array $group ): bool => ! empty( $group['active'] ) && empty( $group['trashed'] ) ) ) {
+        if ( ! post_type_exists( 'acf-field-group' ) && [] !== array_filter( self::groups(), static fn( array $group ): bool => ! empty( $group['active'] ) && empty( $group['trashed'] ) ) ) {
             AdminScreens::boot();
         }
     }

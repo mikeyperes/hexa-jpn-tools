@@ -6,7 +6,8 @@ namespace Hexa\JpnTools\Content;
 
 use Hexa\JpnTools\Events\EventDates;
 
-final class AcfFields
+/** Registers the native event and host fields. */
+final class ContentFields
 {
     public function __construct(private ?EventDates $dates = null)
     {

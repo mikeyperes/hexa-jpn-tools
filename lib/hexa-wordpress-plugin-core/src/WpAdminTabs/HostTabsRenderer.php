@@ -81,6 +81,10 @@ final class HostTabsRenderer {
                         </div>
                     <?php endif; ?>
                     <div id="<?php echo esc_attr( $rail_navigation_id ); ?>" class="hpc-host-rail-navigation" data-hpc-sidebar-navigation<?php echo $sidebar_collapsed ? " hidden" : ""; ?>>
+                        <div class="hpc-host-rail-search">
+                            <input type="search" class="hpc-host-rail-search-input" data-hpc-tab-search placeholder="Filter sections" aria-label="Filter sections" autocomplete="off">
+                            <p class="hpc-host-rail-search-empty" data-hpc-tab-search-empty hidden>No matching sections.</p>
+                        </div>
                         <?php echo $this->grouped_nav_html( $groups, $tabs, $page_url, $active, $root_id, $panel_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
                     </div>
                 </aside>
@@ -197,6 +201,32 @@ final class HostTabsRenderer {
                     })
                     .catch(function(){ setMessage("Error loading tab."); dispatch("error", { tab: tab }); })
                     .finally(function(){ delete panel.dataset.loading; setLoading(false); });
+            }
+            var search = root.querySelector("[data-hpc-tab-search]");
+            var searchEmpty = root.querySelector("[data-hpc-tab-search-empty]");
+            function filterTabs(){
+                var term = search ? search.value.trim().toLowerCase() : "";
+                var shown = 0;
+                Array.prototype.slice.call(root.querySelectorAll(".hpc-host-rail-group")).forEach(function(group){
+                    var title = group.querySelector(".hpc-host-rail-title");
+                    var groupHit = !!term && !!title && title.textContent.toLowerCase().indexOf(term) !== -1;
+                    var visible = 0;
+                    Array.prototype.slice.call(group.querySelectorAll("[data-hpc-host-tab]")).forEach(function(tab){
+                        var hit = !term || groupHit || tab.textContent.toLowerCase().indexOf(term) !== -1 || (tab.getAttribute("data-hpc-host-tab") || "").indexOf(term) !== -1;
+                        tab.hidden = !hit;
+                        if (hit) visible++;
+                    });
+                    group.hidden = visible === 0;
+                    shown += visible;
+                });
+                if (searchEmpty) searchEmpty.hidden = shown > 0;
+            }
+            if (search) {
+                search.addEventListener("input", filterTabs);
+                search.addEventListener("keydown", function(event){
+                    if (event.key === "Escape") { search.value = ""; filterTabs(); }
+                    if (event.key === "Enter") { event.preventDefault(); var first = root.querySelector(".hpc-host-rail [data-hpc-host-tab]:not([hidden])"); if (first) first.click(); }
+                });
             }
             restoreSidebar();
             if (sidebarToggle) {

@@ -1,16 +1,6 @@
 <?php
 /**
- * Unit-test support for host plugins that call Hexa\PluginCore\Fields.
- *
- * Require it after the test's own WordPress and ACF stubs:
- *
- *     require $plugin_root . '/lib/hexa-wordpress-plugin-core/tests/support/fields.php';
- *
- * It autoloads the Fields classes from this Core copy and runs them in ACF
- * mode, so Field::get(), FieldGroups::add() and friends delegate to the test's
- * get_field()/update_field() stubs exactly as they delegate to ACF on a live
- * site. Only functions the test did not define are stubbed. Core's
- * bootstrap.php is loaded too, for hexa_fields_on().
+ * Loads Core Fields for host tests using WordPress storage and hook stubs.
  */
 
 spl_autoload_register(
@@ -54,22 +44,23 @@ if ( ! function_exists( 'doing_action' ) ) {
 		return false;
 	}
 }
-if ( ! function_exists( 'get_field' ) ) {
-	function get_field( $selector, $post_id = false, $format = true ) {
-		if ( is_string( $post_id ) && str_starts_with( $post_id, 'user_' ) ) {
-			return function_exists( 'get_user_meta' ) ? get_user_meta( (int) substr( $post_id, 5 ), $selector, true ) : null;
-		}
-		if ( is_string( $post_id ) && in_array( $post_id, [ 'option', 'options' ], true ) ) {
-			return function_exists( 'get_option' ) ? get_option( 'options_' . $selector, null ) : null;
-		}
-		return function_exists( 'get_post_meta' ) ? get_post_meta( (int) $post_id, $selector, true ) : null;
+if ( ! function_exists( 'get_metadata' ) ) {
+	function get_metadata( $type, $id, $key, $single = false ) {
+		$reader = 'get_' . $type . '_meta';
+		return function_exists( $reader ) ? $reader( $id, $key, $single ) : null;
 	}
 }
-if ( ! function_exists( 'acf_add_local_field_group' ) ) {
-	function acf_add_local_field_group( $group ) {
-		$GLOBALS['hexa_test_local_field_groups'][ $group['key'] ?? '' ] = $group;
-		return true;
+if ( ! function_exists( 'metadata_exists' ) ) {
+	function metadata_exists( $type, $id, $key ) {
+		$value = get_metadata( $type, $id, $key, true );
+		return null !== $value && '' !== $value;
 	}
+}
+if ( ! function_exists( 'get_option' ) ) {
+	function get_option( $name, $default = false ) { return $default; }
+}
+if ( ! function_exists( 'get_the_ID' ) ) {
+	function get_the_ID() { return false; }
 }
 
 require_once dirname( __DIR__, 2 ) . '/bootstrap.php';

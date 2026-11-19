@@ -49,7 +49,7 @@ final class AcfSettingsPanel implements ModuleInterface {
             ]
         );
         $form = (string) ob_get_clean();
-        $body = ( '' !== (string) $this->config['description'] ? '<p>' . esc_html( (string) $this->config['description'] ) . '</p>' : '' ) . $form . $this->append_script();
+        $body = ( '' !== (string) $this->config['description'] ? '<p>' . esc_html( (string) $this->config['description'] ) . '</p>' : '' ) . $form;
         return $assets . CoreUi::collapsible(
             [
                 'title' => (string) $this->config['title'], 'body_html' => $body, 'open' => ! empty( $this->config['open'] ),
@@ -77,7 +77,4 @@ final class AcfSettingsPanel implements ModuleInterface {
         return $requested_tab === $configured_tab;
     }
 
-    private function append_script(): string {
-        return '<script>(function(){if(!window.acf||!window.jQuery)return;var panel=document.currentScript.closest(".hpc-section-body");if(panel)window.acf.doAction("append",window.jQuery(panel));})();</script>';
-    }
 }

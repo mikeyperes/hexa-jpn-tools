@@ -80,6 +80,7 @@ final class CoreUi {
             .hpc-host-tabs-shell.is-sidebar-collapsed .hpc-host-rail-tools{justify-content:center;padding:0;position:static}
             .hpc-host-rail-group{padding:4px 2px 8px}
             .hpc-host-rail-group+.hpc-host-rail-group{border-top:1px solid #eef1f6;margin-top:2px;padding-top:8px}
+            .hpc-host-rail-search{padding:4px 6px 8px}.hpc-host-rail-search-input{box-sizing:border-box;width:100%;min-height:30px;font-size:13px}.hpc-host-rail-search-empty{color:#8492a6;font-size:12px;margin:6px 4px 0}.hpc-host-rail [hidden]{display:none!important}
             .hpc-host-rail-title{color:#8492a6;font-size:10.5px;font-weight:800;letter-spacing:.07em;margin:0;padding:6px 10px 4px;text-transform:uppercase}
             .hpc-host-tabs{background:#fff;border:1px solid var(--hpc-line);border-radius:var(--hpc-radius);display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;max-width:100%;padding:6px}
             .hpc-host-rail .hpc-host-tabs{background:none;border:0;border-radius:0;display:block;gap:0;margin:0;padding:0}

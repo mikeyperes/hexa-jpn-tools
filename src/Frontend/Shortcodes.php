@@ -263,7 +263,7 @@ final class Shortcodes
 
     /**
      * Additional Photos gallery for the current event; renders nothing when the
-     * ACF gallery is empty, so templates need no visibility plugin.
+     * field gallery is empty, so templates need no visibility plugin.
      */
     public function eventPhotos(array|string $attributes = []): string
     {

@@ -1,5 +1,5 @@
 <?php
-/** Native Fields (no ACF) resolve selectors, derive keys and return values as ACF does. */
+/** Core Fields resolve, save, render and iterate values with ACF present. */
 
 declare(strict_types=1);
 
@@ -11,6 +11,13 @@ function do_action( $hook, ...$args ) {}
 function did_action( $hook ) { return 1; }
 function doing_action( $hook = null ) { return false; }
 function is_admin() { return false; }
+function wp_enqueue_script( $handle ) {}
+function sanitize_key( $key ) { return preg_replace( '/[^a-z0-9_-]/', '', strtolower( $key ) ); }
+function get_field( ...$args ) { throw new RuntimeException( 'ACF read called' ); }
+function update_field( ...$args ) { throw new RuntimeException( 'ACF write called' ); }
+function acf_add_local_field_group( ...$args ) { throw new RuntimeException( 'ACF registration called' ); }
+function acf_add_options_page( ...$args ) { throw new RuntimeException( 'ACF options page called' ); }
+function acf_form( ...$args ) { throw new RuntimeException( 'ACF form called' ); }
 function esc_attr( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES ); }
 function esc_html( $v ) { return htmlspecialchars( (string) $v, ENT_QUOTES ); }
 function esc_url( $v ) { return (string) $v; }
@@ -66,7 +73,11 @@ $fail = static function ( string $message ): void {
 	exit( 1 );
 };
 
-Acf::active() && $fail( 'The test must run without ACF.' );
+! Acf::active() && 'native' === Acf::mode() || $fail( 'Core owns fields when ACF is present.' );
+\Hexa\PluginCore\Fields\OptionsPages::add( [ 'menu_slug' => 'core-test', 'page_title' => 'Core options' ] );
+isset( \Hexa\PluginCore\Fields\OptionsPages::pages()['core-test'] ) || $fail( 'Core registers the options page.' );
+\Hexa\PluginCore\Fields\Hooks::on( 'save_post', static fn() => null );
+empty( $GLOBALS['filters']['acf/save_post'] ) && ! empty( $GLOBALS['filters']['hexa_fields/save_post'] ) || $fail( 'Field save hooks are isolated from ACF.' );
 
 FieldGroups::add( [
 	'title'    => 'Publication Profile',
@@ -106,6 +117,11 @@ update_option( '_options_db_emails', 'field_db_emails' );
 update_option( 'options_db_emails_0_db_email', 'desk@example.test' );
 update_option( '_options_db_emails_0_db_email', 'field_db_email' );
 [ [ 'db_email' => 'desk@example.test' ] ] === Field::get( 'db_emails', 'option' ) || $fail( 'A database repeater returns its rows, not the stored row count.' );
+Field::have_rows( 'db_emails', 'option' ) || $fail( 'An existing repeater starts a Core row loop.' );
+[ 'field_db_email' => 'desk@example.test' ] === Field::the_row() || $fail( 'Unformatted rows keep the stored subfield keys.' );
+[ 'db_email' => 'desk@example.test' ] === Field::get_row( true ) || $fail( 'Formatted rows use subfield names.' );
+'desk@example.test' === Field::get_sub_field( 'field_db_email', false ) || $fail( 'Core resolves a raw subfield by key.' );
+! Field::have_rows( 'db_emails', 'option' ) || $fail( 'The Core loop ends after the last row.' );
 update_option( '_options_db_note', 'field_db_note' );
 '' === Field::get( 'db_note', 'option' ) || $fail( 'A field of a disabled database group still resolves, as in ACF.' );
 FieldGroups::add( [ 'key' => 'group_db_old', 'title' => 'Code wins', 'fields' => [ [ 'key' => 'field_code_only', 'name' => 'code_only' ] ] ] );

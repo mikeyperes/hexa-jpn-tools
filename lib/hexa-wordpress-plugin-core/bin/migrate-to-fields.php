@@ -28,7 +28,7 @@ $map = [
     'get_field' => $field . 'get', 'the_field' => $field . 'the', 'update_field' => $field . 'update',
     'delete_field' => $field . 'delete', 'get_fields' => $field . 'all', 'get_field_object' => $field . 'object',
     'get_field_objects' => $field . 'objects', 'have_rows' => $field . 'have_rows', 'the_row' => $field . 'the_row',
-    'get_sub_field' => $field . 'get_sub_field', 'the_sub_field' => $field . 'the_sub_field',
+    'get_row' => $field . 'get_row', 'get_sub_field' => $field . 'get_sub_field', 'the_sub_field' => $field . 'the_sub_field',
     'get_row_index' => $field . 'get_row_index', 'get_row_layout' => $field . 'get_row_layout', 'reset_rows' => $field . 'reset_rows',
     'acf_add_local_field_group' => $groups . 'add', 'acf_remove_local_field_group' => $groups . 'remove',
     'acf_get_field_group' => $groups . 'get_group', 'acf_get_local_field_group' => $groups . 'get_group',

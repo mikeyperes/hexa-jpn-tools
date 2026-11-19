@@ -2,10 +2,12 @@
 
 Hexa JPN Tools owns each JPN city's WordPress-specific event, host, notification,
 shortcode, and Code.Hexa integration behavior. The plugin replaces the legacy
-`jpn-structure` plugin without changing its event post type, taxonomies, ACF
+`jpn-structure` plugin without changing its event post type, taxonomies, field
 keys, shortcodes, options, or stored content.
 
 ## Features
+
+- Hexa WP Core 3.64.0 registers and edits the existing event and host fields with their original keys.
 
 - Any JPN city site: the plugin names no city. Visible labels (the WhatsApp feed sender and notification, the site search heading) use the site's own name, and photo ZIP downloads are named after the site's domain.
 - City timezone: event parsing, calendar filters, current-day boundaries and the integration manifest follow WordPress Settings > General. Date maintenance preserves that setting.

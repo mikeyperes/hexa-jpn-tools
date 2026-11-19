@@ -9,7 +9,7 @@ final class AcfFieldGroupRenderer {
         ob_start();
         CoreUi::render_assets();
         $assets = (string) ob_get_clean();
-        $title = (string) ( $args['title'] ?? 'Additional ACF Structures' );
+        $title = (string) ( $args['title'] ?? 'Additional Field Structures' );
         $description = (string) ( $args['description'] ?? 'Optional field groups that target users, settings, or other objects outside the custom post types above.' );
         $persist = sanitize_key( (string) ( $args['persist_prefix'] ?? $registry->store()->option_name() ) );
         ob_start();
@@ -45,7 +45,7 @@ final class AcfFieldGroupRenderer {
         ?>
         <div class="hpc-acf-group" data-field-group-id="<?php echo esc_attr( $definition['id'] ); ?>">
             <p><?php echo esc_html( $definition['description'] ); ?></p>
-            <dl class="hpc-acf-facts"><div><dt>ACF group</dt><dd><span class="hpc-code"><?php echo esc_html( $definition['group_key'] ); ?></span></dd></div><div><dt>Location</dt><dd><?php echo esc_html( $definition['location'] ); ?></dd></div></dl>
+            <dl class="hpc-acf-facts"><div><dt>Field group</dt><dd><span class="hpc-code"><?php echo esc_html( $definition['group_key'] ); ?></span></dd></div><div><dt>Location</dt><dd><?php echo esc_html( $definition['location'] ); ?></dd></div></dl>
             <?php if ( ! $available ) : ?><p class="hpc-small">A dedicated owner plugin has replaced this compatibility structure.</p><?php endif; ?>
             <?php echo CoreUi::inline_details( 'Detailed field breakdown', $details ?: '<p>No field summary supplied.</p>' ); ?>
             <div class="hpc-actions hpc-actions-bottom">

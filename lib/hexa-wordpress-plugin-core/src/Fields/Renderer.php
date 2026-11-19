@@ -21,8 +21,9 @@ final class Renderer {
         add_action( 'admin_footer', [ self::class, 'print_script' ] );
     }
 
-    public static function nonce(): void {
-        if ( self::$nonce_printed ) {
+    /** Prints one editor nonce or a nonce for each standalone form. */
+    public static function nonce( bool $separate_form = false ): void {
+        if ( self::$nonce_printed && ! $separate_form ) {
             return;
         }
         self::$nonce_printed = true;
@@ -73,6 +74,7 @@ final class Renderer {
         $extra = trim( (string) ( $wrapper['class'] ?? '' ) );
         echo '<div class="hexa-field hexa-field-' . esc_attr( $type ) . ( '' !== $extra ? ' ' . esc_attr( $extra ) : '' ) . '"'
             . ( '' !== (string) ( $wrapper['id'] ?? '' ) ? ' id="' . esc_attr( (string) $wrapper['id'] ) . '"' : '' )
+            . ' data-key="' . esc_attr( (string) ( $field['key'] ?? '' ) ) . '"'
             . ' data-name="' . esc_attr( (string) ( $field['name'] ?? '' ) ) . '">';
         if ( 'true_false' !== $type && '' !== (string) $field['label'] ) {
             echo '<label class="hexa-field-label" for="' . esc_attr( $id ) . '">' . esc_html( (string) $field['label'] ) . ( ! empty( $field['required'] ) ? ' <span class="required">*</span>' : '' ) . '</label>';
@@ -187,7 +189,7 @@ final class Renderer {
             case 'flexible_content':
             case 'clone':
             case 'google_map':
-                echo '<p class="description">This field type is edited with ACF. Its stored value is kept unchanged.</p>';
+                echo '<p class="description">This field type has no editor here. Its saved value is preserved.</p>';
                 return;
             default:
                 $html = [ 'email' => 'email', 'url' => 'url', 'oembed' => 'url', 'number' => 'number', 'range' => 'number', 'password' => 'password', 'date_picker' => 'date', 'date_time_picker' => 'datetime-local', 'time_picker' => 'time' ][ $type ] ?? 'text';
@@ -211,6 +213,8 @@ final class Renderer {
         $rows = is_array( $value ) ? array_values( $value ) : [];
         $placeholder = '__hexa_row_' . $depth . '__';
         $subs = (array) ( $field['sub_fields'] ?? [] );
+        // An empty row list must still be posted when the last row is removed.
+        echo '<input type="hidden" name="' . esc_attr( $name ) . '[_hexa_present]" value="1">';
         echo '<div class="hexa-repeater" data-next="' . esc_attr( (string) count( $rows ) ) . '" data-placeholder="' . esc_attr( $placeholder ) . '"><table class="widefat striped"><tbody class="hexa-repeater-rows">';
         foreach ( $rows as $i => $row ) {
             self::repeater_row( $subs, is_array( $row ) ? $row : [], $name . '[' . $i . ']', $depth, (string) ( $i + 1 ) );

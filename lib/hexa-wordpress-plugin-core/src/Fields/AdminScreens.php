@@ -3,7 +3,7 @@
 namespace Hexa\PluginCore\Fields;
 
 /**
- * Native edit screens for registered field groups while ACF is not active:
+ * Core edit screens for registered field groups:
  * post meta boxes, user profiles and taxonomy terms.
  */
 final class AdminScreens {
@@ -29,9 +29,14 @@ final class AdminScreens {
     }
 
     public static function assets(): void {
-        if ( Acf::active() || ! is_admin() || ! self::field_screen() ) {
+        if ( ! is_admin() || ! self::field_screen() ) {
             return;
         }
+        self::enqueue();
+    }
+
+    /** Loads the assets shared by Core's field forms and editors. */
+    public static function enqueue(): void {
         wp_enqueue_script( 'jquery' );
         if ( function_exists( 'wp_enqueue_media' ) && ! did_action( 'wp_enqueue_media' ) ) {
             wp_enqueue_media();
@@ -48,10 +53,10 @@ final class AdminScreens {
     }
 
     public static function meta_boxes( string $post_type, mixed $post = null ): void {
-        if ( Acf::active() || ! $post instanceof \WP_Post ) {
+        if ( ! $post instanceof \WP_Post ) {
             return;
         }
-        foreach ( FieldGroups::for_screen( Storage::screen( [ 'post', $post->ID ] ) ) as $group ) {
+        foreach ( self::groups( Storage::screen( [ 'post', $post->ID ] ) ) as $group ) {
             $position = (string) $group['position'];
             add_meta_box(
                 'hexa-fields-' . sanitize_html_class( (string) $group['key'] ),
@@ -72,7 +77,7 @@ final class AdminScreens {
     }
 
     public static function save_post( int $post_id, \WP_Post $post ): void {
-        if ( Acf::active() || self::$saving || ! Renderer::verify() ) {
+        if ( self::$saving || ! Renderer::verify() ) {
             return;
         }
         if ( ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) || wp_is_post_revision( $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) {
@@ -80,46 +85,37 @@ final class AdminScreens {
         }
         self::$saving = true;
         $context = [ 'post', $post_id ];
-        Form::save( FieldGroups::for_screen( Storage::screen( $context ) ), $context, Renderer::posted() );
+        Form::save( self::groups( Storage::screen( $context ) ), $context, Renderer::posted() );
         Hooks::action( 'save_post', $post_id );
         self::$saving = false;
     }
 
     public static function user_fields( \WP_User $user ): void {
-        if ( Acf::active() ) {
-            return;
-        }
-        self::render_sections( FieldGroups::for_screen( [ 'user_form' => 'edit', 'user_roles' => (array) $user->roles ] ), [ 'user', $user->ID ] );
+        self::render_sections( self::groups( [ 'user_form' => 'edit', 'user_roles' => (array) $user->roles ] ), [ 'user', $user->ID ] );
     }
 
     public static function new_user_fields(): void {
-        if ( Acf::active() ) {
-            return;
-        }
-        self::render_sections( FieldGroups::for_screen( [ 'user_form' => 'add', 'user_roles' => [] ] ), null );
+        self::render_sections( self::groups( [ 'user_form' => 'add', 'user_roles' => [] ] ), null );
     }
 
     public static function save_user( int $user_id ): void {
-        if ( Acf::active() || ! Renderer::verify() || ! current_user_can( 'edit_user', $user_id ) ) {
+        if ( ! Renderer::verify() || ! current_user_can( 'edit_user', $user_id ) ) {
             return;
         }
         $user = get_userdata( $user_id );
         $context = [ 'user', $user_id ];
         $form = doing_action( 'user_register' ) ? 'add' : 'edit';
-        Form::save( FieldGroups::for_screen( [ 'user_form' => $form, 'user_roles' => $user instanceof \WP_User ? (array) $user->roles : [] ] ), $context, Renderer::posted() );
+        Form::save( self::groups( [ 'user_form' => $form, 'user_roles' => $user instanceof \WP_User ? (array) $user->roles : [] ] ), $context, Renderer::posted() );
         Hooks::action( 'save_post', 'user_' . $user_id );
     }
 
     public static function term_hooks(): void {
-        if ( Acf::active() ) {
-            return;
-        }
         foreach ( get_taxonomies() as $taxonomy ) {
-            if ( [] === FieldGroups::for_screen( [ 'taxonomy' => $taxonomy ] ) ) {
+            if ( [] === self::groups( [ 'taxonomy' => $taxonomy ] ) ) {
                 continue;
             }
-            add_action( $taxonomy . '_add_form_fields', static fn() => self::render_sections( FieldGroups::for_screen( [ 'taxonomy' => $taxonomy ] ), null, 'div' ) );
-            add_action( $taxonomy . '_edit_form_fields', static fn( $term ) => self::render_sections( FieldGroups::for_screen( [ 'taxonomy' => $taxonomy ] ), [ 'term', (int) $term->term_id ], 'row' ) );
+            add_action( $taxonomy . '_add_form_fields', static fn() => self::render_sections( self::groups( [ 'taxonomy' => $taxonomy ] ), null, 'div' ) );
+            add_action( $taxonomy . '_edit_form_fields', static fn( $term ) => self::render_sections( self::groups( [ 'taxonomy' => $taxonomy ] ), [ 'term', (int) $term->term_id ], 'row' ) );
             add_action( 'created_' . $taxonomy, static fn( $term_id ) => self::save_term( (int) $term_id, $taxonomy ) );
             add_action( 'edited_' . $taxonomy, static fn( $term_id ) => self::save_term( (int) $term_id, $taxonomy ) );
         }
@@ -130,8 +126,16 @@ final class AdminScreens {
             return;
         }
         $context = [ 'term', $term_id ];
-        Form::save( FieldGroups::for_screen( [ 'taxonomy' => $taxonomy ] ), $context, Renderer::posted() );
+        Form::save( self::groups( [ 'taxonomy' => $taxonomy ] ), $context, Renderer::posted() );
         Hooks::action( 'save_post', 'term_' . $term_id );
+    }
+
+    /** Matches the groups rendered by the Core editor. */
+    private static function groups( array $screen ): array {
+        // Bug: drawing legacy database groups twice creates competing inputs on the same screen.
+        // Fix: leave database-only groups to their registered post type's editor.
+        // Why: Core groups stay here and legacy definitions still resolve for reads.
+        return FieldGroups::for_screen( $screen, post_type_exists( 'acf-field-group' ) );
     }
 
     /**

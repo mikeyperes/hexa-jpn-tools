@@ -15,7 +15,7 @@ final class AcfFieldGroupAjaxController {
 
     public function save(): void {
         if ( ! current_user_can( (string) ( $this->config['capability'] ?? 'manage_options' ) ) ) {
-            wp_send_json_error( [ 'message' => 'You do not have permission to change ACF structures.' ], 403 );
+            wp_send_json_error( [ 'message' => 'You do not have permission to change field structures.' ], 403 );
         }
         check_ajax_referer( (string) $this->config['nonce_action'], (string) ( $this->config['nonce_field'] ?? 'nonce' ) );
         $id = isset( $_POST['field_group_id'] ) ? sanitize_key( (string) wp_unslash( $_POST['field_group_id'] ) ) : '';

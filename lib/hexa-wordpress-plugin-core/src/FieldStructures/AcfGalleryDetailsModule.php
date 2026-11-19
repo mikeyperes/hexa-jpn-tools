@@ -51,7 +51,7 @@ final class AcfGalleryDetailsModule implements ModuleInterface {
     }
 
     public function register(): void {
-        add_action( 'acf/render_field/key=' . $this->field_key(), [ $this, 'render' ] );
+        add_action( 'hexa_fields/render_field/key=' . $this->field_key(), [ $this, 'render' ] );
         add_action( 'wp_ajax_' . $this->ajax_action(), [ $this, 'handle_ajax' ] );
     }
 

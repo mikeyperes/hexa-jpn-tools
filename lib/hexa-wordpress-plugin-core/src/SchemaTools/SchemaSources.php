@@ -17,6 +17,11 @@ final class SchemaSources {
         'url_x', 'url_twitter', 'url_youtube', 'url_crunchbase', 'url_muckrack', 'url_wikipedia', 'url_tiktok',
     ];
 
+    /** Shared semantic declaration. Owners return a schema.org type, or preserve the prior value. */
+    public static function content_type(int $post_id): string {
+        return (string) apply_filters('hexa_plugin_core_content_schema_type', '', $post_id);
+    }
+
     public static function language(): string {
         $language = (string) get_bloginfo( 'language' );
         return '' !== $language ? $language : 'en-US';

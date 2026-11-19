@@ -11,10 +11,13 @@ use Hexa\PluginCore\CoreContracts\ModuleInterface;
  * limit is also enforced on save, so the editor UI cannot be bypassed.
  *
  * Rules: [ "taxonomy" => "category", "max" => 1, "capability" => "edit_others_posts", "post_types" => [ "post" ] ]
- * A rule with "max" 0 is ignored.
+ * A rule with "max" 0 is ignored. Optional excluded_terms (IDs or callback)
+ * preserves mandatory terms outside the count; applies_to (post callback)
+ * scopes enforcement to the host's ownership policy. Anonymous, CLI and cron
+ * saves are never limited.
  */
 final class TermChoiceLimits implements ModuleInterface {
-    /** @var array<int,array{taxonomy:string,max:int,capability:string,post_types:array<int,string>}> */
+    /** @var array<int,array{taxonomy:string,max:int,capability:string,post_types:array<int,string>,excluded_terms:mixed,applies_to:mixed}> */
     private array $rules = [];
     private bool $saving = false;
 
@@ -27,6 +30,8 @@ final class TermChoiceLimits implements ModuleInterface {
                 "taxonomy" => $taxonomy,
                 "max" => $max,
                 "capability" => (string) ( $rule["capability"] ?? "manage_options" ),
+                "excluded_terms" => $rule["excluded_terms"] ?? [],
+                "applies_to" => $rule["applies_to"] ?? null,
                 "post_types" => array_values( array_filter( array_map( "strval", (array) ( $rule["post_types"] ?? [] ) ) ) ),
             ];
         }
@@ -39,8 +44,9 @@ final class TermChoiceLimits implements ModuleInterface {
         add_action( "admin_footer-post-new.php", [ $this, "editor_script" ] );
     }
 
-    /** @return array<int,array{taxonomy:string,max:int,capability:string,post_types:array<int,string>}> */
+    /** @return array<int,array{taxonomy:string,max:int,capability:string,post_types:array<int,string>,excluded_terms:mixed,applies_to:mixed}> */
     public function rules_for( string $post_type ): array {
+        if ( ! is_user_logged_in() ) return [];
         return array_values( array_filter( $this->rules, static fn( array $rule ): bool =>
             ( [] === $rule["post_types"] || in_array( $post_type, $rule["post_types"], true ) )
             && ! current_user_can( $rule["capability"] )
@@ -48,12 +54,19 @@ final class TermChoiceLimits implements ModuleInterface {
     }
 
     public function enforce( int $post_id, \WP_Post $post ): void {
+        if ( ( defined( "WP_CLI" ) && WP_CLI ) || wp_doing_cron() ) return;
         if ( $this->saving || wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) return;
         foreach ( $this->rules_for( $post->post_type ) as $rule ) {
+            if ( is_callable( $rule["applies_to"] ) && ! ( $rule["applies_to"] )( $post ) ) continue;
             $ids = wp_get_object_terms( $post_id, $rule["taxonomy"], [ "fields" => "ids", "orderby" => "term_order" ] );
-            if ( is_wp_error( $ids ) || count( $ids ) <= $rule["max"] ) continue;
+            if ( is_wp_error( $ids ) ) continue;
+            $ids = array_map( "intval", $ids );
+            $excluded = $rule["excluded_terms"];
+            $excluded = wp_parse_id_list( is_callable( $excluded ) ? $excluded() : $excluded );
+            $choices = array_values( array_diff( $ids, $excluded ) );
+            if ( count( $choices ) <= $rule["max"] ) continue;
             $this->saving = true;
-            wp_set_object_terms( $post_id, array_slice( array_map( "intval", $ids ), 0, $rule["max"] ), $rule["taxonomy"], false );
+            wp_set_object_terms( $post_id, array_merge( array_values( array_intersect( $ids, $excluded ) ), array_slice( $choices, 0, $rule["max"] ) ), $rule["taxonomy"], false );
             $this->saving = false;
         }
     }

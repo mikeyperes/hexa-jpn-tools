@@ -3,7 +3,7 @@
 namespace Hexa\PluginCore\FaqSets;
 
 use Hexa\PluginCore\SchemaTools\SchemaDocumentRenderer;
-use Hexa\PluginCore\WpAdminComponents\CoreUi;
+use Hexa\PluginCore\PublicComponents\InlineStyles;
 
 final class FaqSetManager {
     public function sanitizeSets( array $sets ): array {
@@ -195,10 +195,6 @@ final class FaqSetManager {
             return "";
         }
 
-        ob_start();
-        CoreUi::render_assets();
-        $assets = (string) ob_get_clean();
-
         $style         = isset( $args["style"] ) ? (string) $args["style"] : "accordion";
         $inject_schema = array_key_exists( "inject_schema", $args ) ? (bool) $args["inject_schema"] : false;
         $slug          = isset( $set["slug"] ) ? (string) $set["slug"] : "faq";
@@ -206,8 +202,7 @@ final class FaqSetManager {
 
         ob_start();
         ?>
-        <?php echo $assets; ?>
-        <?php echo $this->styles(); ?>
+        <?php echo $this->styles(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
         <div class="<?php echo esc_attr( $class ); ?>" data-faq-set="<?php echo esc_attr( $slug ); ?>">
             <?php foreach ( $items as $index => $item ) : ?>
                 <?php if ( "list" === $style ) : ?>
@@ -233,14 +228,14 @@ final class FaqSetManager {
         return $html;
     }
 
+    /** The FAQ styles: queued once per page in WordPress, inline elsewhere. */
     private function styles(): string {
-        ob_start();
-        ?>
-        <style>
-            .hpc-faqs{display:grid;gap:10px;margin:14px 0}.hpc-faq-item{background:#fff;border:1px solid #d9e0ea;border-radius:8px;overflow:hidden}.hpc-faq-item summary{align-items:center;color:#172033;cursor:pointer;display:flex;font-weight:800;gap:10px;justify-content:space-between;line-height:1.35;padding:14px 16px}.hpc-faq-item summary::-webkit-details-marker{display:none}.hpc-faq-item summary:after{color:#65758b;content:"+";font-size:20px;line-height:1}.hpc-faq-item[open] summary{border-bottom:1px solid #e5eaf1}.hpc-faq-item[open] summary:after{content:"-"}.hpc-faq-answer{color:#3f4d63;line-height:1.65;padding:14px 16px}.hpc-faq-answer p:first-child{margin-top:0}.hpc-faq-answer p:last-child{margin-bottom:0}.hpc-faq-list-item{background:#fff;border:1px solid #d9e0ea;border-radius:8px;padding:14px 16px}.hpc-faq-list-item h4{font-size:15px;margin:0 0 8px}.hpc-faq-list-item div{color:#3f4d63;line-height:1.65}
-        </style>
-        <?php
-        return (string) ob_get_clean();
+        $css = '.hpc-faqs{display:grid;gap:10px;margin:14px 0}.hpc-faq-item{background:#fff;border:1px solid #d9e0ea;border-radius:8px;overflow:hidden}.hpc-faq-item summary{align-items:center;color:#172033;cursor:pointer;display:flex;font-weight:800;gap:10px;justify-content:space-between;line-height:1.35;padding:14px 16px}.hpc-faq-item summary::-webkit-details-marker{display:none}.hpc-faq-item summary:after{color:#65758b;content:"+";font-size:20px;line-height:1}.hpc-faq-item[open] summary{border-bottom:1px solid #e5eaf1}.hpc-faq-item[open] summary:after{content:"-"}.hpc-faq-answer{color:#3f4d63;line-height:1.65;padding:14px 16px}.hpc-faq-answer p:first-child{margin-top:0}.hpc-faq-answer p:last-child{margin-bottom:0}.hpc-faq-list-item{background:#fff;border:1px solid #d9e0ea;border-radius:8px;padding:14px 16px}.hpc-faq-list-item h4{font-size:15px;margin:0 0 8px}.hpc-faq-list-item div{color:#3f4d63;line-height:1.65}';
+        if ( function_exists( 'wp_register_style' ) ) {
+            InlineStyles::enqueue( 'hexa-faqs', $css );
+            return '';
+        }
+        return '<style>' . $css . '</style>';
     }
 
     private function htmlTag( string $tag, string $fallback ): string {

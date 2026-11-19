@@ -46,9 +46,11 @@ final class DiscussionOperations {
                 break;
             }
             $batch_updated = 0;
+            // Avoid content-save hooks for a site-wide discussion policy change.
+            $bulk_ok = $all ? $this->close_post_batch( $targets ) : null;
             foreach ( $targets as $post_id ) {
                 $attempted++;
-                $result = function_exists( 'wp_update_post' ) ? wp_update_post( [ 'ID' => $post_id, 'comment_status' => 'closed', 'ping_status' => 'closed' ], true ) : false;
+                $result = $all ? $bulk_ok : ( function_exists( 'wp_update_post' ) ? wp_update_post( [ 'ID' => $post_id, 'comment_status' => 'closed', 'ping_status' => 'closed' ], true ) : false );
                 $ok = ! ( function_exists( 'is_wp_error' ) && is_wp_error( $result ) ) && false !== $result && 0 !== $result;
                 $updated += $ok ? 1 : 0;
                 $failed += $ok ? 0 : 1;
@@ -185,6 +187,28 @@ final class DiscussionOperations {
         ];
     }
 
+    /** Close only discussion fields; explicit post edits keep native save hooks.
+     *  @param list<int> $ids
+     */
+    private function close_post_batch( array $ids ): bool {
+        global $wpdb;
+        if ( ! isset( $wpdb ) || [] === $ids ) {
+            return false;
+        }
+        $ids = $this->normalize_ids( $ids );
+        $result = $wpdb->query(
+            "UPDATE {$wpdb->posts} SET comment_status = 'closed', ping_status = 'closed'"
+            . ' WHERE ID IN (' . implode( ',', $ids ) . ')'
+        );
+        if ( false === $result ) {
+            return false;
+        }
+        foreach ( $ids as $id ) {
+            clean_post_cache( $id );
+        }
+        return true;
+    }
+
     /** @return list<int> */
     private function normalize_ids( array $ids ): array {
         return array_values( array_unique( array_filter( array_map( 'intval', $ids ), static fn( int $id ): bool => $id > 0 ) ) );
@@ -220,15 +244,22 @@ final class DiscussionOperations {
 
     /** @return list<int> */
     private function open_post_ids( int $limit = -1 ): array {
-        if ( ! function_exists( 'get_posts' ) ) {
+        global $wpdb;
+        if ( ! isset( $wpdb ) || ! function_exists( 'get_post_types' ) ) {
             return [];
         }
-        $post_types = function_exists( 'get_post_types' ) ? array_values( get_post_types( [], 'names' ) ) : 'any';
-        $post_stati = function_exists( 'get_post_stati' ) ? array_values( get_post_stati( [], 'names' ) ) : 'any';
-        $args = [ 'numberposts' => $limit, 'post_type' => $post_types, 'post_status' => $post_stati, 'fields' => 'ids', 'orderby' => 'ID', 'order' => 'ASC', 'suppress_filters' => false ];
-        $comments = get_posts( array_merge( $args, [ 'comment_status' => 'open' ] ) );
-        $pings = get_posts( array_merge( $args, [ 'ping_status' => 'open' ] ) );
-        $ids = array_values( array_unique( array_map( 'intval', array_merge( (array) $comments, (array) $pings ) ) ) );
-        return $limit > 0 ? array_slice( $ids, 0, $limit ) : $ids;
+        $post_types = array_values( get_post_types( [], 'names' ) );
+        if ( [] === $post_types ) {
+            return [];
+        }
+        $placeholders = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+        // Include every stored status of registered types, including attachments.
+        // Testing only 'open' misses imported/nonstandard discussion statuses.
+        $sql = "SELECT ID FROM {$wpdb->posts} WHERE post_type IN ($placeholders)"
+            . " AND (comment_status <> 'closed' OR ping_status <> 'closed') ORDER BY ID ASC";
+        if ( $limit > 0 ) {
+            $sql .= ' LIMIT ' . (int) $limit;
+        }
+        return $this->normalize_ids( (array) $wpdb->get_col( $wpdb->prepare( $sql, $post_types ) ) );
     }
 }

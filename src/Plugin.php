@@ -8,7 +8,7 @@ use Hexa\JpnTools\Admin\EventAdmin;
 use Hexa\JpnTools\Admin\EventExports;
 use Hexa\JpnTools\Admin\HostRole;
 use Hexa\JpnTools\Admin\NotificationDashboard;
-use Hexa\JpnTools\Content\AcfFields;
+use Hexa\JpnTools\Content\ContentFields;
 use Hexa\JpnTools\Content\ContentTypes;
 use Hexa\JpnTools\Content\LatestVideo;
 use Hexa\JpnTools\Cli\MigrationCommand;
@@ -68,7 +68,7 @@ final class Plugin
 
         (new ContentTypes())->register();
         Migration::register();
-        (new AcfFields())->register();
+        (new ContentFields())->register();
         (new HostRole())->register();
         (new EventAdmin($dates))->register();
         (new EventExports($queries))->register();

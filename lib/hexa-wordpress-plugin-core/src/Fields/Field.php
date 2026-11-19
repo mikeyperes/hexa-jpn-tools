@@ -2,15 +2,9 @@
 
 namespace Hexa\PluginCore\Fields;
 
-/**
- * The one field API for Hexa plugins.
- *
- * Signatures match ACF's template functions. With ACF active every call is
- * delegated to ACF unchanged; without ACF the native engine reads and writes
- * the same storage and returns the same formats.
- */
+/** Reads, formats, updates and iterates fields through the Core engine. */
 final class Field {
-    /** @var array<int,array{rows:array<int,array<string,mixed>>,raw:array<int,array<string,mixed>>,index:int,selector:string,context:string}> */
+    /** @var array<int,array{rows:array,field:array,context:array,index:int,selector:string}> */
     private static array $loops = [];
 
     /** Always true once this Core version is loaded; replaces `function_exists( 'get_field' )` guards. */
@@ -19,16 +13,11 @@ final class Field {
     }
 
     public static function get( string $selector, mixed $context = false, bool $format = true, bool $escape_html = false ): mixed {
-        if ( Acf::active() && ! Acf::ready() ) {
-            // Before ACF has started (acf/init), get_field() would start it too early and crash; return the stored value.
-            return '' === $selector ? null : Storage::get( Storage::context( $context ), $selector );
-        }
-        if ( Acf::active() ) {
-            return get_field( $selector, $context, $format, $escape_html );
-        }
         if ( '' === $selector ) {
             return null;
         }
+        // Bug: an installed ACF plugin took over Core reads and applied its own filters.
+        // Fix: resolve fields and load values in Core. Why: both engines can run independently.
         $context = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $context );
         if ( null === $field ) {
@@ -40,18 +29,11 @@ final class Field {
     }
 
     public static function the( string $selector, mixed $context = false, bool $format = true ): void {
-        if ( Acf::active() ) {
-            the_field( $selector, $context, $format );
-            return;
-        }
         $value = self::get( $selector, $context, $format );
         echo is_array( $value ) ? esc_html( implode( ', ', array_filter( $value, 'is_scalar' ) ) ) : wp_kses_post( (string) $value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     public static function update( string $selector, mixed $value, mixed $context = false ): bool {
-        if ( Acf::active() ) {
-            return (bool) update_field( $selector, $value, $context );
-        }
         $context = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $context, false );
         if ( null === $field ) {
@@ -61,9 +43,6 @@ final class Field {
     }
 
     public static function delete( string $selector, mixed $context = false ): bool {
-        if ( Acf::active() ) {
-            return (bool) delete_field( $selector, $context );
-        }
         $context = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $context );
         // Like delete_field(): a name with no stored reference is not a field.
@@ -72,9 +51,6 @@ final class Field {
 
     /** @return array<string,mixed>|false Equivalent of get_fields(). */
     public static function all( mixed $context = false, bool $format = true ): array|false {
-        if ( Acf::active() ) {
-            return get_fields( $context, $format );
-        }
         $values = [];
         foreach ( self::objects( $context, $format ) ?: [] as $name => $object ) {
             $values[ $name ] = $object['value'];
@@ -84,9 +60,6 @@ final class Field {
 
     /** @return array<string,mixed>|false Equivalent of get_field_object(). */
     public static function object( string $selector, mixed $context = false, bool $format = true, bool $load_value = true ): array|false {
-        if ( Acf::active() ) {
-            return get_field_object( $selector, $context, $format, $load_value );
-        }
         $resolved = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $resolved );
         if ( null === $field ) {
@@ -101,9 +74,6 @@ final class Field {
 
     /** @return array<string,array<string,mixed>>|false Equivalent of get_field_objects(). */
     public static function objects( mixed $context = false, bool $format = true, bool $load_value = true ): array|false {
-        if ( Acf::active() ) {
-            return get_field_objects( $context, $format, $load_value );
-        }
         // As get_field_objects(): each stored value whose `_name` reference resolves to a
         // field of that same name (which leaves out sub-field values).
         $resolved = Storage::context( $context );
@@ -124,13 +94,11 @@ final class Field {
 
     /* Repeater and flexible-content loops, mirroring have_rows()/the_row(). */
 
+    /** Starts a loop or checks whether the current loop has another row. */
     public static function have_rows( string $selector, mixed $context = false ): bool {
-        if ( Acf::active() ) {
-            return have_rows( $selector, $context );
-        }
-        $key = $selector . '|' . serialize( false === $context ? '' : Storage::context( $context ) );
         $top = end( self::$loops );
-        if ( false !== $top && $top['selector'] === $selector && $top['context'] === $key ) {
+        $resolved = false === $context && false !== $top ? $top['context'] : Storage::context( $context );
+        if ( false !== $top && $top['selector'] === $selector && $top['context'] === $resolved ) {
             if ( $top['index'] + 1 < count( $top['rows'] ) ) {
                 return true;
             }
@@ -138,69 +106,97 @@ final class Field {
             return false;
         }
 
-        // Nested loop: a sub field of the current row.
-        if ( false !== $top && false === $context && $top['index'] >= 0 && array_key_exists( $selector, $top['rows'][ $top['index'] ] ) ) {
-            $rows = $top['rows'][ $top['index'] ][ $selector ];
+        // Bug: storing formatted rows loses the raw values and the subfield keys.
+        // Fix: keep raw rows with the field definition. Why: the callers choose the return format.
+        $field = false === $context ? self::sub_field( $selector ) : null;
+        if ( null !== $field ) {
+            $raw = self::current_row()[ $field['key'] ] ?? null;
         } else {
-            $rows = self::get( $selector, $context );
+            [ $field, $name ] = Values::resolve( $selector, $resolved );
+            $raw = null === $field ? null : Values::load( $resolved, $field, $name );
         }
-        if ( ! is_array( $rows ) || [] === $rows ) {
+        if ( ! is_array( $raw ) || [] === $raw || ! in_array( $field['type'], [ 'group', 'repeater', 'flexible_content' ], true ) ) {
             return false;
         }
-        self::$loops[] = [ 'rows' => array_values( $rows ), 'index' => -1, 'selector' => $selector, 'context' => $key ];
+        $rows = 'group' === $field['type'] ? [ $raw ] : array_values( $raw );
+        self::$loops[] = [ 'rows' => $rows, 'field' => $field, 'context' => $resolved, 'index' => -1, 'selector' => $selector ];
         return true;
     }
 
-    /** @return array<string,mixed>|false */
+    /** Advances the active loop and returns its row. */
     public static function the_row( bool $format = false ): array|false {
-        if ( Acf::active() ) {
-            return the_row( $format );
-        }
-        $i = count( self::$loops ) - 1;
-        if ( $i < 0 ) {
+        $index = array_key_last( self::$loops );
+        if ( null === $index ) {
             return false;
         }
-        self::$loops[ $i ]['index']++;
-        return self::$loops[ $i ]['rows'][ self::$loops[ $i ]['index'] ] ?? false;
+        self::$loops[ $index ]['index']++;
+        return self::get_row( $format );
     }
 
-    public static function get_sub_field( string $selector, bool $format = true ): mixed {
-        if ( Acf::active() ) {
-            return get_sub_field( $selector, $format );
-        }
+    /** Returns the current row, optionally formatted and keyed by name. */
+    public static function get_row( bool $format = false ): array|false {
         $row = self::current_row();
-        return is_array( $row ) ? ( $row[ $selector ] ?? null ) : null;
+        if ( null === $row ) {
+            return false;
+        }
+        if ( ! $format ) {
+            return $row;
+        }
+        $loop = end( self::$loops );
+        $field = $loop['field'];
+        if ( 'group' === $field['type'] ) {
+            return Values::format( $row, $loop['context'], $field );
+        }
+        $formatted = Values::format( [ $row ], $loop['context'], $field );
+        return $formatted[0] ?? false;
+    }
+
+    /** Reads a child field by name or key in the current row. */
+    public static function get_sub_field( string $selector, bool $format = true, bool $escape_html = false ): mixed {
+        $field = self::sub_field( $selector );
+        if ( null === $field ) {
+            return null;
+        }
+        $value = self::current_row()[ $field['key'] ] ?? null;
+        $loop = end( self::$loops );
+        $value = $format ? Values::format( $value, $loop['context'], $field ) : $value;
+        return $escape_html && is_string( $value ) ? wp_kses_post( $value ) : $value;
+    }
+
+    /** Resolves a definition in the current row's group or flexible layout. */
+    private static function sub_field( string $selector ): ?array {
+        $row = self::current_row();
+        if ( null === $row ) {
+            return null;
+        }
+        $loop = end( self::$loops );
+        $fields = 'flexible_content' === $loop['field']['type']
+            ? Values::layout_fields( $loop['field'], (string) ( $row['acf_fc_layout'] ?? '' ) )
+            : (array) ( $loop['field']['sub_fields'] ?? [] );
+        foreach ( $fields as $sub ) {
+            if ( $selector === $sub['key'] || $selector === $sub['name'] ) {
+                return $sub;
+            }
+        }
+        return null;
     }
 
     public static function the_sub_field( string $selector, bool $format = true ): void {
-        if ( Acf::active() ) {
-            the_sub_field( $selector, $format );
-            return;
-        }
         $value = self::get_sub_field( $selector, $format );
         echo is_array( $value ) ? esc_html( implode( ', ', array_filter( $value, 'is_scalar' ) ) ) : wp_kses_post( (string) $value ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
     }
 
     public static function get_row_index(): int {
-        if ( Acf::active() ) {
-            return (int) get_row_index();
-        }
         $top = end( self::$loops );
         return false === $top ? 0 : $top['index'] + 1;
     }
 
     public static function get_row_layout(): string|false {
-        if ( Acf::active() ) {
-            return get_row_layout();
-        }
         $row = self::current_row();
         return is_array( $row ) && isset( $row['acf_fc_layout'] ) ? (string) $row['acf_fc_layout'] : false;
     }
 
     public static function reset_rows(): bool {
-        if ( Acf::active() ) {
-            return (bool) reset_rows();
-        }
         array_pop( self::$loops );
         return true;
     }

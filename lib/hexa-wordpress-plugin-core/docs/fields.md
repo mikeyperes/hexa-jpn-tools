@@ -2,17 +2,15 @@
 
 Namespace: `Hexa\PluginCore\Fields`
 
-The one custom-field API for Hexa plugins. With ACF (free or Pro) active,
-every call delegates to ACF unchanged. Without ACF, Core registers, stores,
-formats and edits the same fields natively, using ACF's storage layout, so
-data moves freely between the two modes. ACF Pro is never a requirement.
+Hexa WP Core registers, reads, formats and edits its fields on every site.
+It reads the existing WordPress metadata and options, including data stored
+before the migration. Core's editing inputs and hooks are separate from ACF.
 
 ## Classes
 
-- `Acf`: `active()` and `mode()` (`acf` or `native`).
 - `FieldGroups`: `add( $group )` takes the array you would pass to
   `acf_add_local_field_group()`; `ready( $callback, $priority )` runs a
-  registration callback on `acf/init` with ACF, otherwise during `init`.
+  registration callback during Core initialization.
   Lookups: `get_group()`, `fields()`, `get_field()`, `all()`, `remove()`.
 - `Field`: `get()`, `update()`, `delete()`, `the()`, `all()`, `object()`,
   `objects()`, and the loop functions `have_rows()`, `the_row()`,
@@ -24,13 +22,13 @@ data moves freely between the two modes. ACF Pro is never a requirement.
 - `Form`: `head()`, `render( $args )`, `enqueue()` and `data()` mirror
   `acf_form_head()`, `acf_form()`, `acf_enqueue_scripts()` and
   `acf_get_form_data()`.
-- `Hooks`: `on( 'save_post', $callback )` listens on `acf/save_post` and on the
-  native `hexa_fields/save_post`, so the callback runs in both modes. Qualified
+- `Hooks`: `on( 'save_post', $callback )` listens on Core's
+  `hexa_fields/save_post`. Qualified
   hooks work the same way (`prepare_field/name=title`, `load_value/key=...`,
   `format_value/type=...`, `update_value/...`, `render_field/...`, `init`).
 - `Storage`, `Values`, `Renderer`, `AdminScreens`: the native engine.
 
-## Native mode
+## Storage and editing
 
 - Storage: post, user, term and comment meta, or `{post_id}_{name}` options,
   each with the `_{name}` field-key reference. Group sub fields are
@@ -47,13 +45,12 @@ data moves freely between the two modes. ACF Pro is never a requirement.
   user_form, user_role, current_user, current_user_role, taxonomy and
   options_page, plus host-defined rules registered with
   `Hooks::on( 'location/rule_match/<param>', ... )` exactly as with ACF. Flexible content, clone and map fields keep their stored value
-  but are edited only with ACF.
-- Native hooks fire only as `hexa_fields/*`, never `acf/*`, so third-party ACF
-  add-ons are never called without ACF.
+  and are read-only in Core editors.
+- Native hooks fire only as `hexa_fields/*`, never `acf/*`, so independently managed fields keep their own callbacks.
 
 ## Groups built in the ACF admin screen
 
-ACF stores groups created in its admin screen as `acf-field-group` and `acf-field` posts. Without ACF, `Fields\Database` reads them on first need (one query per request): their fields resolve and format like code-registered ones, active groups render on their screens, and a code-registered group with the same key takes precedence, as in ACF.
+ACF stores groups created in its admin screen as `acf-field-group` and `acf-field` posts. `Fields\Database` reads them on first need. Core can read and format these legacy definitions. Database-only groups stay on their current editor when their field-group post type is registered. A group registered in Core takes precedence for Core lookups.
 
 ## Migrating a host plugin
 
@@ -73,7 +70,7 @@ Run `php bin/migrate-to-fields.php <plugin-root> --dry-run` to preview, then wit
 
 ## Testing a host plugin
 
-Require `lib/hexa-wordpress-plugin-core/tests/support/fields.php` after the test's own WordPress and ACF stubs. It autoloads the Fields classes and runs them in ACF mode, so `Field::get()` and `FieldGroups::add()` call the test's `get_field()` and `acf_add_local_field_group()` stubs exactly as they call ACF on a live site.
+Require `lib/hexa-wordpress-plugin-core/tests/support/fields.php` after the test's WordPress stubs. It autoloads Fields and uses the test's WordPress option and metadata stubs.
 
 ## Client-friendly view (3.27.0)
 
@@ -97,7 +94,7 @@ FieldGroups::add( [
 ] );
 ```
 
-Users in the client view see `instructions` only. Everyone else sees `instructions` followed by `developer_instructions`. Sub-fields and flexible-content layouts follow the same rule. `'enabled' => false` shows developer notes to everyone. Groups registered through `AcfFieldGroupRegistry` get a per-group Client-friendly view switch (everyone below administrator, or chosen roles) on the host plugin's ACF structures screen; a saved choice overrides the code default. Filter: `hexa_core_fields_client_view( $client, $setting, $user )`.
+Users in the client view see `instructions` only. Everyone else sees `instructions` followed by `developer_instructions`. Sub-fields and flexible-content layouts follow the same rule. `'enabled' => false` shows developer notes to everyone. Groups registered through `AcfFieldGroupRegistry` get a per-group Client-friendly view switch (everyone below administrator, or chosen roles) on the host plugin's Field Structures screen; a saved choice overrides the code default. Filter: `hexa_core_fields_client_view( $client, $setting, $user )`.
 
 ### Staff-only groups (3.28.0)
 

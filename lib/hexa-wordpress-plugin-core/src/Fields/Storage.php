@@ -103,7 +103,9 @@ final class Storage {
         if ( 'option' === $type ) {
             return update_option( $key, $value ) || get_option( $key ) === $value;
         }
-        return false !== update_metadata( $type, (int) $id, $key, $value );
+        // Bug: WordPress strips slashes from metadata writes.
+        // Fix: slash the unslashed Core value. Why: both form and direct writes preserve text exactly.
+        return false !== update_metadata( $type, (int) $id, $key, wp_slash( $value ) );
     }
 
     /** @param array{0:string,1:int|string} $context */

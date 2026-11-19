@@ -1,0 +1,20 @@
+<?php
+use Hexa\PluginCore\Sitemaps\RecommendationRegistry as R;
+require __DIR__.'/sitemaps.php';
+$fixtures=[];
+foreach(['e-floating-buttons','elementor_library','e-landing-page','elementor_future_helper','e-new-helper','own_story','provider_template'] as $name)$fixtures['post_type_'.$name]=['kind'=>'post_type','name'=>$name,'url'=>'https://example.test/'.$name.'-sitemap.xml','recommended'=>true];
+$hooks[R::EXCLUDED_POST_TYPES_FILTER]=static fn($types)=>array_merge($types,['provider_template']);
+$result=R::apply_policy($fixtures);
+foreach(['e-floating-buttons','elementor_library','e-landing-page','elementor_future_helper','e-new-helper','provider_template'] as $name)check(!$result['post_type_'.$name]['recommended'],'Helpers cannot be recommended on after providers');
+check($result['post_type_own_story']['recommended'],'Own content type preserved');
+$collision=['post_type_publication'=>['kind'=>'post_type','name'=>'publication','url'=>'https://example.test/publication-sitemap.xml','recommended'=>true,'setting'=>'pt_publication_sitemap'],'taxonomy_publication'=>['kind'=>'taxonomy','name'=>'publication','url'=>'https://example.test/publication-sitemap.xml','recommended'=>true,'setting'=>'tax_publication_sitemap']];
+$result=R::apply_policy($collision);
+check($result['post_type_publication']['recommended'],'Content type wins');
+check(!$result['taxonomy_publication']['recommended'],'Colliding taxonomy off');
+check($result['taxonomy_publication']['collision_with']==='post_type_publication','Winner identified');
+$hooks[R::FILTER]=static fn($rows)=>array_merge($rows,$collision);
+$before=get_option('rank-math-options-sitemap',[]);
+$change=R::change('taxonomy_publication',true);
+check(!$change['ok'] && str_contains($change['message'],'publication-sitemap.xml'),'Colliding enable action rejected');
+check(get_option('rank-math-options-sitemap',[])===$before,'Rejected collision never writes Rank Math');
+echo "Sitemap policy checks complete: $tests total assertions\n";

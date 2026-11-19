@@ -4,7 +4,7 @@ namespace Hexa\PluginCore\Fields;
 
 /**
  * Native load, format and write of field values using ACF's storage layout
- * and return formats. Only used while ACF is not active.
+ * and return formats.
  */
 final class Values {
     private const LAYOUT_TYPES = [ 'accordion', 'tab', 'message' ];
@@ -332,7 +332,7 @@ final class Values {
      * @param array<string,mixed> $field
      * @return array<int,array<string,mixed>>
      */
-    private static function layout_fields( array $field, string $layout ): array {
+    public static function layout_fields( array $field, string $layout ): array {
         foreach ( (array) ( $field['layouts'] ?? [] ) as $definition ) {
             if ( is_array( $definition ) && $layout === (string) ( $definition['name'] ?? '' ) ) {
                 return (array) ( $definition['sub_fields'] ?? [] );
@@ -341,21 +341,21 @@ final class Values {
         return [];
     }
 
-    /** ACF's `acf_the_content` chain, registered once when ACF is not active so site hooks on it keep working. */
+    /** WordPress content formatters for Core's rich-text field values. */
     private static function content( string $value ): string {
         if ( '' === $value ) {
             return $value;
         }
-        if ( ! has_filter( 'acf_the_content', 'wpautop' ) ) {
-            add_filter( 'acf_the_content', 'capital_P_dangit', 11 );
-            add_filter( 'acf_the_content', 'wptexturize' );
-            add_filter( 'acf_the_content', 'convert_smilies', 20 );
-            add_filter( 'acf_the_content', 'wpautop' );
-            add_filter( 'acf_the_content', 'shortcode_unautop' );
-            add_filter( 'acf_the_content', function_exists( 'wp_filter_content_tags' ) ? 'wp_filter_content_tags' : 'wp_make_content_images_responsive' );
-            add_filter( 'acf_the_content', 'do_shortcode', 11 );
+        if ( ! has_filter( 'hexa_fields/the_content', 'wpautop' ) ) {
+            add_filter( 'hexa_fields/the_content', 'capital_P_dangit', 11 );
+            add_filter( 'hexa_fields/the_content', 'wptexturize' );
+            add_filter( 'hexa_fields/the_content', 'convert_smilies', 20 );
+            add_filter( 'hexa_fields/the_content', 'wpautop' );
+            add_filter( 'hexa_fields/the_content', 'shortcode_unautop' );
+            add_filter( 'hexa_fields/the_content', function_exists( 'wp_filter_content_tags' ) ? 'wp_filter_content_tags' : 'wp_make_content_images_responsive' );
+            add_filter( 'hexa_fields/the_content', 'do_shortcode', 11 );
         }
-        return (string) apply_filters( 'acf_the_content', $value );
+        return (string) apply_filters( 'hexa_fields/the_content', $value );
     }
 
     /** @param array<string,mixed> $field */

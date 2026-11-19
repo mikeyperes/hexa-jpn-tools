@@ -19,3 +19,7 @@ $result = (new DiscussionOperations())->close_comments_and_pings();
 Action results contain `success`, `action`, `before`, `after`, `counts`, `items`, and `messages`; discussion mutations also include `items_truncated`, bounded `unprocessed_ids`, `unprocessed_ids_truncated`, and `stopped_no_progress`. Status also includes `available`. Empty discussion ID arrays mean all applicable records.
 
 Run `php tests/wordpress-operations.php`. Hosts must separately test their protected AJAX/UI layer and exact environment.
+
+Site-wide discussion closing uses bounded updates of only comment and ping status fields, with post-cache invalidation. It includes registered post types and attachments without invoking content-save hooks for every row. Explicit ID requests retain native WordPress post updates.
+
+The bounded selector includes all stored post statuses of registered types and closes any discussion value other than closed, including imported nonstandard values.

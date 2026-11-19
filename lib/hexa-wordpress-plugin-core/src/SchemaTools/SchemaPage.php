@@ -19,6 +19,12 @@ final class SchemaPage {
 
     /** Linked properties keep @id and @type so validators can follow them. */
     private const LINKED_REFERENCE_PROPERTIES = [
+        'partOfSeries' => [ '@id', '@type' ],
+        'partOfSeason' => [ '@id', '@type' ],
+        'associatedMedia' => [ '@id', '@type' ],
+        'webFeed' => [ '@id', '@type' ],
+        'actor' => [ '@id', '@type' ],
+        'contributor' => [ '@id', '@type' ],
         'author'             => [ '@id', '@type' ],
         'publisher'          => [ '@id', '@type' ],
         'copyrightHolder'    => [ '@id', '@type' ],
@@ -126,39 +132,67 @@ final class SchemaPage {
      */
     public static function build( array $by_source ): array {
         $nodes = [];
-        $index = [];
         self::$contributors = [];
         foreach ( $by_source as $source => $list ) {
-            $added = false;
-            foreach ( $list as $node ) {
-                if ( ! is_array( $node ) || empty( $node['@type'] ) ) {
-                    continue;
-                }
-                unset( $node['@context'] );
-                $node = SchemaGraph::clean( $node );
-                $key = isset( $node['@id'] ) && is_scalar( $node['@id'] ) ? 'id:' . (string) $node['@id'] : 'hash:' . md5( serialize( $node ) );
-                if ( isset( $index[ $key ] ) ) {
-                    $nodes[ $index[ $key ] ] = self::merge( $nodes[ $index[ $key ] ], $node );
-                } else {
-                    $index[ $key ] = count( $nodes );
-                    $nodes[] = $node;
-                }
-                $added = true;
-            }
-            if ( $added ) {
+            $merged = self::merge_nodes( (array) $list );
+            if ( [] !== $merged ) {
                 self::$contributors[] = (string) $source;
+                $nodes = array_merge( $nodes, $merged );
             }
         }
 
-        $nodes = apply_filters( 'hexa_plugin_core_schema_graph', $nodes, self::$contributors );
+        $nodes = apply_filters( 'hexa_plugin_core_schema_graph', self::merge_nodes( $nodes ), self::$contributors );
         if ( ! is_array( $nodes ) || [] === $nodes ) {
             self::$document = [];
             return [];
         }
 
-        $document = SchemaGraph::sanitize_urls( [ '@context' => 'https://schema.org', '@graph' => array_values( $nodes ) ] );
-        self::$document = SchemaGraph::standalone_nodes( $document, self::LINKED_REFERENCE_PROPERTIES );
+        self::$document = self::document_for( $nodes );
         return self::$document;
+    }
+
+    /**
+     * One list of nodes with every repeated @id merged into one node, earlier
+     * nodes winning conflicts. Nodes without an @id are kept once each.
+     *
+     * @param list<mixed> $nodes
+     * @return list<array<string,mixed>>
+     */
+    public static function merge_nodes( array $nodes ): array {
+        $merged = [];
+        $index  = [];
+        foreach ( $nodes as $node ) {
+            if ( ! is_array( $node ) || empty( $node['@type'] ) ) {
+                continue;
+            }
+            unset( $node['@context'] );
+            $node = SchemaGraph::clean( $node );
+            $key = isset( $node['@id'] ) && is_scalar( $node['@id'] ) ? 'id:' . (string) $node['@id'] : 'hash:' . md5( serialize( $node ) );
+            if ( isset( $index[ $key ] ) ) {
+                $merged[ $index[ $key ] ] = self::merge( $merged[ $index[ $key ] ], $node );
+            } else {
+                $index[ $key ] = count( $merged );
+                $merged[] = $node;
+            }
+        }
+        return $merged;
+    }
+
+    /**
+     * The printed form of a node list, as a page carries it: merged, URL
+     * checked, every node standalone. Changes no page state, so previews and
+     * admin screens can use it.
+     *
+     * @param list<mixed> $nodes
+     * @return array<string,mixed>
+     */
+    public static function document_for( array $nodes ): array {
+        $nodes = self::merge_nodes( $nodes );
+        if ( [] === $nodes ) {
+            return [];
+        }
+        $document = SchemaGraph::sanitize_urls( [ '@context' => 'https://schema.org', '@graph' => $nodes ] );
+        return SchemaGraph::standalone_nodes( $document, self::LINKED_REFERENCE_PROPERTIES );
     }
 
     /**

@@ -66,6 +66,7 @@ src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/Calendar/           Hexa\PluginCore\Calendar
 src/Map/                Hexa\PluginCore\Map
 src/QueryFilter/        Hexa\PluginCore\QueryFilter
+src/PressReleaseProfiles/ Hexa\PluginCore\PressReleaseProfiles
 src/PublicComponents/   Hexa\PluginCore\PublicComponents
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
 src/Taxonomies/         Hexa\PluginCore\Taxonomies
@@ -172,3 +173,7 @@ The automatic core tab must remain host-neutral. Host plugins provide hook names
 ## Commit Hygiene
 
 Do not create backup files. Do not commit generated vendor files unless explicitly requested. Keep implementation and docs in the same commit when they define a new public pattern.
+
+- `src/Sitemaps/`: shared sitemap registry, conditions, Rank Math comparison and administrator endpoints. See `docs/sitemaps.md`.
+
+- `src/PdfPrint/`: generic physical page dimensions and trusted HTML print/PDF rendering, `Hexa\PluginCore\PdfPrint`.
